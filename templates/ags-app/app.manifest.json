@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "app": "{{APP}}",
+  "instance": "{{INSTANCE}}",
+  "configDir": "{{CONFIG_DIR}}",
+  "mode": "live",
+  "holdsUnsavedState": false
+}

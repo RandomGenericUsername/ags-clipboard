@@ -1,0 +1,10 @@
+{
+  "name": "{{REPO}}",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone AGS {{APP}} app.",
+  "exports": {
+    ".": "./app.tsx"
+  }
+}

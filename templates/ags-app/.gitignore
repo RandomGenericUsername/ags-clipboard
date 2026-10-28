@@ -1,0 +1,10 @@
+node_modules/
+@girs/
+tsconfig.json
+env.d.ts
+build/
+dist/
+.dev/
+.worktrees/
+.DS_Store
+*.swp

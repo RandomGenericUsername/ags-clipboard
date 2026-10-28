@@ -1,0 +1,10 @@
+{
+  "name": "ags-clipboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone AGS clipboard-history overlay (instance clipboard, config dir ags-clipboard).",
+  "exports": {
+    ".": "./app.tsx"
+  }
+}

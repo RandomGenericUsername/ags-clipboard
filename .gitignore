@@ -1,0 +1,22 @@
+# Dependencies and generated desktop typings. `make platform-dev` creates the
+# `node_modules/ags-platform` symlink; `make types` generates @girs/, env.d.ts
+# and a colliding tsconfig.json. Never committed (AD-34/AD-37).
+node_modules/
+@girs/
+tsconfig.json
+env.d.ts
+
+# AGS bundle output (`make bundle`). Never committed.
+build/
+dist/
+
+# Local-only platform/contracts checkouts for the v0.3.0 tuple. The symlinks
+# point at sibling repos; no fetched artifact is committed.
+.dev/
+
+# Ticket worktrees (scripts/worktree-guard.sh).
+.worktrees/
+
+# Editor/OS noise.
+.DS_Store
+*.swp

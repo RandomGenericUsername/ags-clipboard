@@ -1,0 +1,27 @@
+{
+  "//": [
+    "Desktop-stack typecheck config. HAND-WRITTEN AND COMMITTED.",
+    "`ags types -d . -u` overwrites tsconfig.json, so this file uses a",
+    "non-colliding name. Do not rename it. @girs/ and env.d.ts are generated",
+    "per host by `make types` and are gitignored."
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "ags/gtk4",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "ags": ["/usr/share/ags/js/lib/index.ts"],
+      "ags/*": ["/usr/share/ags/js/lib/*"]
+    },
+    "skipLibCheck": true,
+    "lib": ["ES2022", "DOM"],
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["**/*.ts", "**/*.tsx", "@girs/index.d.ts", "env.d.ts"],
+  "exclude": ["node_modules", "tests", "templates"]
+}

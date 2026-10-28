@@ -1,0 +1,14 @@
+{
+  "name": "ags-app",
+  "description": "Frozen copyable standalone AGS app repo template (AD-33). Copy this directory to the new repo root and replace every token below; no generator is required.",
+  "tokens": {
+    "{{APP}}": "one lowercase app id and repo suffix, e.g. notifications",
+    "{{INSTANCE}}": "AGS instance name; must equal app.tsx instanceName and ags list",
+    "{{CONFIG_DIR}}": "deployed config-link basename, e.g. ags-notifications",
+    "{{WINDOW}}": "top-level window name, e.g. notifications-window",
+    "{{LAUNCHER}}": "launcher command name, e.g. notifications-ui",
+    "{{REPO}}": "repository name, e.g. ags-notifications",
+    "{{KEYBIND}}": "human keybind description"
+  },
+  "replace": "{{APP}} {{INSTANCE}} {{CONFIG_DIR}} {{WINDOW}} {{LAUNCHER}} {{REPO}} {{KEYBIND}}"
+}

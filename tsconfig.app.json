@@ -1,0 +1,45 @@
+{
+  "//": [
+    "Desktop-stack typecheck config for the ags-clipboard package. HAND-WRITTEN",
+    "AND COMMITTED. `ags bundle` transpiles without type-checking, so this is",
+    "the gate that catches a type error before it becomes a runtime failure.",
+    "",
+    "`ags types -d . -u` writes its OWN tsconfig.json at the repo root and",
+    "OVERWRITES it on every run, so this file deliberately uses a non-colliding",
+    "name. Do not rename it to tsconfig.json.",
+    "",
+    "make types runs `ags types -d . -u` and generates the machine-specific",
+    "@girs/ + env.d.ts for THIS host; both are gitignored. The `ags`/`ags/*`",
+    "paths map makes the AGS runtime resolve for every file in the program,",
+    "including ags-platform adapters that import `ags/gtk4/app`.",
+    "resolveJsonModule is required by the platform's icon-registry adapter;",
+    "skipLibCheck skips identifier clashes in the generated GIR declarations."
+  ],
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "ags/gtk4",
+
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "strict": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "ags": ["/usr/share/ags/js/lib/index.ts"],
+      "ags/*": ["/usr/share/ags/js/lib/*"]
+    },
+
+    "skipLibCheck": true,
+    "lib": ["ES2022", "DOM"],
+    "resolveJsonModule": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "@girs/index.d.ts",
+    "env.d.ts"
+  ],
+  "exclude": ["node_modules", "tests", "templates"]
+}

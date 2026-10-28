@@ -1,0 +1,32 @@
+name: ci
+
+# Stock-runner CI only (AD-19/AD-23): pure tests and manifest/handler/template
+# conformance. Typecheck and bundle are LOCAL gates; do not add a self-hosted
+# job.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    env:
+      CONTRACTS_ROOT: ${{ github.workspace }}/contracts
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/checkout@v4
+        with:
+          repository: RandomGenericUsername/ags-platform
+          ref: v0.3.0
+          path: .dev/ags-platform/v0.3.0
+      - uses: actions/checkout@v4
+        with:
+          repository: RandomGenericUsername/contracts
+          ref: v0.3.0
+          path: contracts
+      - run: make ci

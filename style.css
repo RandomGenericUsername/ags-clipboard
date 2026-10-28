@@ -1,0 +1,226 @@
+/* clipboard overlay — follows the generated runtime palette
+ * (colors.css): panel/border mirror the capture tool and rofi launcher, and
+ * each card's type header uses a palette token (never a fixed hex), so a
+ * wallpaper change restyles the overlay like the rest of the desktop. */
+
+window#clipboard-window {
+  background-color: transparent;
+  color: @color_foreground;
+}
+
+.clipboard-panel {
+  background-color: alpha(@color_00, 0.92);
+  border: 2px solid @color_04;
+  border-radius: 16px;
+  padding: 12px;
+}
+
+/* Unified field: SOLID @color_01 surface (rofi's inputbar), matching the
+ * wallpaper-selector and rofi launcher (gui-unification spec §4). */
+.clipboard-search {
+  background-color: @color_01;
+  color: @color_foreground;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 8px;
+  min-height: 26px;
+}
+
+.clipboard-search placeholder {
+  color: alpha(@color_foreground, 0.55);
+}
+
+/* Incognito is an active toggle: the shared action-active role (@color_06),
+ * so it no longer collides with the selection accent (spec §4). */
+.clipboard-incognito {
+  min-width: 120px;
+  background-color: alpha(@color_06, 0.18);
+  border: 1px solid @color_06;
+  color: @color_foreground;
+  border-radius: 8px;
+}
+
+.clipboard-incognito:hover {
+  background-color: alpha(@color_06, 0.30);
+}
+
+/* Clear is destructive: the palette's caution slot, light text (spec §4
+ * severity-caution). */
+.clipboard-clear {
+  min-width: 64px;
+  background-color: @color_03;
+  color: @color_foreground;
+  border-radius: 8px;
+}
+
+.clipboard-clear:hover {
+  background-color: alpha(@color_03, 0.82);
+}
+
+.clipboard-ui-icon {
+  opacity: 0.9;
+}
+
+.clipboard-list {
+  min-height: 150px;
+}
+
+/* ── Card ─────────────────────────────────────────────────────────── */
+
+.clipboard-card {
+  min-width: 260px;
+  border-radius: 12px;
+  background-color: alpha(@color_background, 0.45);
+  border: 1px solid alpha(@color_foreground, 0.12);
+}
+
+.clipboard-card:hover {
+  border-color: @color_04;
+}
+
+/* Highlight follows the card's TYPE token (same palette token as its header),
+ * so the selected outline is dynamic per type, not one shared accent. The
+ * GESTURE is the shared one (ring + 12% tint, never a solid fill over the
+ * content), so clipboard still reads as the same system (spec §3.7 exception). */
+.kind-text.selected {
+  border-color: @color_06;
+  background-color: alpha(@color_06, 0.12);
+  box-shadow: 0 0 0 2px alpha(@color_06, 0.6);
+}
+
+.kind-code.selected {
+  border-color: @color_00;
+  background-color: alpha(@color_00, 0.12);
+  box-shadow: 0 0 0 2px alpha(@color_00, 0.6);
+}
+
+.kind-color.selected {
+  border-color: @color_13;
+  background-color: alpha(@color_13, 0.12);
+  box-shadow: 0 0 0 2px alpha(@color_13, 0.6);
+}
+
+.kind-image.selected {
+  border-color: @color_09;
+  background-color: alpha(@color_09, 0.12);
+  box-shadow: 0 0 0 2px alpha(@color_09, 0.6);
+}
+
+.kind-link.selected {
+  border-color: @color_04;
+  background-color: alpha(@color_04, 0.12);
+  box-shadow: 0 0 0 2px alpha(@color_04, 0.6);
+}
+
+.kind-emoji.selected {
+  border-color: @color_12;
+  background-color: alpha(@color_12, 0.12);
+  box-shadow: 0 0 0 2px alpha(@color_12, 0.6);
+}
+
+/* Type header: background = palette token, text contrast chosen at runtime
+ * (on-dark → light text, on-light → dark text) by token luminance. Corners
+ * are clipped by the card's Gtk.Overflow.HIDDEN. */
+.clipboard-head {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.clipboard-head.on-dark {
+  color: @color_15;
+}
+
+.clipboard-head.on-light {
+  color: @color_00;
+}
+
+.kind-text .clipboard-head {
+  background-color: @color_06;
+}
+
+.kind-code .clipboard-head {
+  background-color: @color_00;
+}
+
+.kind-color .clipboard-head {
+  background-color: @color_13;
+}
+
+.kind-image .clipboard-head {
+  background-color: @color_09;
+}
+
+.kind-link .clipboard-head {
+  background-color: @color_04;
+}
+
+.kind-emoji .clipboard-head {
+  background-color: @color_12;
+}
+
+.clipboard-index {
+  min-width: 18px;
+  min-height: 18px;
+  padding: 0;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  background-color: alpha(@color_00, 0.32);
+  color: inherit;
+}
+
+.clipboard-head-label {
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.clipboard-time {
+  font-size: 0.7rem;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+/* ── Body ─────────────────────────────────────────────────────────── */
+
+.clipboard-body {
+  padding: 12px;
+  min-height: 122px;
+}
+
+.clipboard-text,
+.clipboard-code {
+  color: @color_foreground;
+}
+
+.clipboard-text {
+  font-size: 0.82rem;
+}
+
+.clipboard-code {
+  font-family: monospace;
+  font-size: 0.72rem;
+}
+
+.clipboard-link {
+  color: @color_10;
+}
+
+.clipboard-emoji {
+  font-size: 2rem;
+}
+
+.clipboard-thumb-wrap,
+.clipboard-swatch-wrap {
+  border-radius: 8px;
+}
+
+.clipboard-hex {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: @color_foreground;
+}
+
+.clipboard-empty {
+  color: alpha(@color_foreground, 0.6);
+  padding: 24px;
+}
