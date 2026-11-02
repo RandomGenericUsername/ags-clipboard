@@ -51,13 +51,13 @@ process.
 
 ## Local development
 
-The program tuple is `ags-platform` / `contracts` / `dotfiles-assets`
-`v0.3.0`. Those tags are local-only in this run; the local gates use a
-gitignored symlink under `.dev/`.
+The program tuple is `ags-platform` `v0.4.0` / `contracts` `v0.3.0` /
+`dotfiles-assets` `v0.3.0`. Those tags are local-only in this run; the local
+gates use a gitignored symlink under `.dev/`.
 
 ```sh
-ln -s ../../../ags-platform .dev/ags-platform/v0.3.0   # or use AGS_PLATFORM_DEV
-make test          # pure unit tests (Node only)
+ln -s ../../../ags-platform .dev/ags-platform/v0.4.0   # or use AGS_PLATFORM_DEV
+make test          # pure unit + palette-role tests (Node only)
 make conformance   # manifest + handler + template gate
 make drift         # shared event client <-> contracts drift gate
 make typecheck     # LOCAL desktop stack: ags + GIR declarations

@@ -71,15 +71,17 @@ export function uiIcon(variant: string, size = 18): Gtk.Widget {
   return fallback
 }
 
-//: Each content type is themed by a generated-palette token (never a fixed
-//: hex) so the header follows the wallpaper like the rest of the desktop.
+//: Each content type is themed by a palette.v1 role (never a fixed hex) so the
+//: header follows the wallpaper like the rest of the desktop. These MUST stay
+//: in sync with the `.kind-* .clipboard-head` rules in style.css: the role's
+//: hex is what decides the header's on-dark/on-light ink below.
 const TYPE_TOKEN: Record<ItemKind, string> = {
-  text: "color_06",
-  code: "color_00",
-  color: "color_13",
-  image: "color_09",
-  link: "color_04",
-  emoji: "color_12",
+  text: "tertiary",
+  code: "surface_container_lowest",
+  color: "error",
+  image: "error_container",
+  link: "primary",
+  emoji: "secondary",
 }
 
 const TYPE_LABEL: Record<ItemKind, string> = {
@@ -137,7 +139,7 @@ function relativeLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
 }
 
-//: "on-dark" (light text) when the type token is dark, else "on-light".
+//: "on-dark" (light text) when the type role is dark, else "on-light".
 function headerTextClass(kind: ItemKind): string {
   const hex = paletteTokens()[TYPE_TOKEN[kind]]
   if (hex === undefined) return "on-dark"

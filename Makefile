@@ -1,9 +1,10 @@
 .PHONY: help platform-dev deps types test conformance drift ci bundle typecheck gates clean-tags
 
-# The program tuple this app builds/tests against (AD-31/AD-34). v0.3.0 is the
-# REQ-008 adoption tuple and is LOCAL-ONLY in this run: local gates symlink it
-# from .dev/ (gitignored), CI checks out the tags explicitly once published.
-AGS_PLATFORM_VERSION := v0.3.0
+# The program tuple this app builds/tests against (AD-31/AD-34). v0.4.0 is the
+# palette.v1 role tuple the CSS migration consumes; v0.3.0 is the contracts
+# tuple. Both are LOCAL-ONLY in this run: local gates symlink them from .dev/
+# (gitignored), CI checks out the tags explicitly once published.
+AGS_PLATFORM_VERSION := v0.4.0
 CONTRACTS_VERSION := v0.3.0
 AGS_PLATFORM_REPO := https://github.com/RandomGenericUsername/ags-platform.git
 AGS_PLATFORM_DEV ?=
@@ -21,8 +22,8 @@ help:
 	@echo "make ci           stock-runner gate: test + conformance"
 	@echo "make gates        all local gates: test + conformance + bundle + typecheck"
 	@echo ""
-	@echo "Local-only v0.3.0 tuple: put a checkout/symlink at"
-	@echo "  .dev/ags-platform/v0.3.0  (or AGS_PLATFORM_DEV=/path/to/ags-platform)"
+	@echo "Local-only v0.4.0 platform / v0.3.0 contracts tuple: put checkouts/symlinks at"
+	@echo "  .dev/ags-platform/v0.4.0  (or AGS_PLATFORM_DEV=/path/to/ags-platform)"
 	@echo "and a contracts checkout at ../contracts (or set CONTRACTS_ROOT)."
 
 # The platform shortcut. It MUST point outside node_modules: Node refuses to
@@ -74,8 +75,8 @@ types:
 # modules; nothing reachable imports `gi://*` or `ags/*`.
 test: platform-dev
 	@command -v node >/dev/null || { echo "FAIL: test: node is not on PATH" >&2; exit 1; }
-	@echo "==> test: node --test tests/unit.test.mjs"
-	node --test tests/unit.test.mjs
+	@echo "==> test: node --test tests/unit.test.mjs tests/theme-roles.test.mjs"
+	node --test tests/unit.test.mjs tests/theme-roles.test.mjs
 
 # Manifest/handler/template conformance. The platform's own checkAppRepo gate
 # plus the app-specific identity, refresh and namespace assertions.

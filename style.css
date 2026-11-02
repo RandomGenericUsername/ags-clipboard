@@ -1,25 +1,25 @@
-/* clipboard overlay — follows the generated runtime palette
+/* clipboard overlay — follows the runtime-generated palette.v1 roles
  * (colors.css): panel/border mirror the capture tool and rofi launcher, and
- * each card's type header uses a palette token (never a fixed hex), so a
+ * each card's type header uses a semantic role (never a fixed hex), so a
  * wallpaper change restyles the overlay like the rest of the desktop. */
 
 window#clipboard-window {
   background-color: transparent;
-  color: @color_foreground;
+  color: @on_surface;
 }
 
 .clipboard-panel {
-  background-color: alpha(@color_00, 0.92);
-  border: 2px solid @color_04;
+  background-color: alpha(@surface, 0.92);
+  border: 2px solid @primary;
   border-radius: 16px;
   padding: 12px;
 }
 
-/* Unified field: SOLID @color_01 surface (rofi's inputbar), matching the
- * wallpaper-selector and rofi launcher (gui-unification spec §4). */
+/* Unified field: SOLID @surface_container surface (rofi's inputbar), matching
+ * the wallpaper-selector and rofi launcher (gui-unification spec §4). */
 .clipboard-search {
-  background-color: @color_01;
-  color: @color_foreground;
+  background-color: @surface_container;
+  color: @on_surface;
   border: none;
   border-radius: 8px;
   padding: 4px 8px;
@@ -27,34 +27,34 @@ window#clipboard-window {
 }
 
 .clipboard-search placeholder {
-  color: alpha(@color_foreground, 0.55);
+  color: alpha(@on_surface, 0.55);
 }
 
-/* Incognito is an active toggle: the shared action-active role (@color_06),
+/* Incognito is an active toggle: the shared action-active role (@primary),
  * so it no longer collides with the selection accent (spec §4). */
 .clipboard-incognito {
   min-width: 120px;
-  background-color: alpha(@color_06, 0.18);
-  border: 1px solid @color_06;
-  color: @color_foreground;
+  background-color: alpha(@primary, 0.18);
+  border: 1px solid @primary;
+  color: @on_surface;
   border-radius: 8px;
 }
 
 .clipboard-incognito:hover {
-  background-color: alpha(@color_06, 0.30);
+  background-color: alpha(@primary, 0.30);
 }
 
-/* Clear is destructive: the palette's caution slot, light text (spec §4
- * severity-caution). */
+/* Clear is destructive: the error-container role, with its matching light ink
+ * on the dark container (spec §4 severity-caution). */
 .clipboard-clear {
   min-width: 64px;
-  background-color: @color_03;
-  color: @color_foreground;
+  background-color: @error_container;
+  color: @on_error_container;
   border-radius: 8px;
 }
 
 .clipboard-clear:hover {
-  background-color: alpha(@color_03, 0.82);
+  background-color: alpha(@error_container, 0.82);
 }
 
 .clipboard-ui-icon {
@@ -70,56 +70,56 @@ window#clipboard-window {
 .clipboard-card {
   min-width: 260px;
   border-radius: 12px;
-  background-color: alpha(@color_background, 0.45);
-  border: 1px solid alpha(@color_foreground, 0.12);
+  background-color: alpha(@surface, 0.45);
+  border: 1px solid alpha(@on_surface, 0.12);
 }
 
 .clipboard-card:hover {
-  border-color: @color_04;
+  border-color: @primary;
 }
 
-/* Highlight follows the card's TYPE token (same palette token as its header),
- * so the selected outline is dynamic per type, not one shared accent. The
- * GESTURE is the shared one (ring + 12% tint, never a solid fill over the
- * content), so clipboard still reads as the same system (spec §3.7 exception). */
+/* Highlight follows the card's TYPE role (same role as its header), so the
+ * selected outline is dynamic per type, not one shared accent. The GESTURE is
+ * the shared one (ring + 12% tint, never a solid fill over the content), so
+ * clipboard still reads as the same system (spec §3.7 exception). */
 .kind-text.selected {
-  border-color: @color_06;
-  background-color: alpha(@color_06, 0.12);
-  box-shadow: 0 0 0 2px alpha(@color_06, 0.6);
+  border-color: @tertiary;
+  background-color: alpha(@tertiary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@tertiary, 0.6);
 }
 
 .kind-code.selected {
-  border-color: @color_00;
-  background-color: alpha(@color_00, 0.12);
-  box-shadow: 0 0 0 2px alpha(@color_00, 0.6);
+  border-color: @surface_container_lowest;
+  background-color: alpha(@surface_container_lowest, 0.12);
+  box-shadow: 0 0 0 2px alpha(@surface_container_lowest, 0.6);
 }
 
 .kind-color.selected {
-  border-color: @color_13;
-  background-color: alpha(@color_13, 0.12);
-  box-shadow: 0 0 0 2px alpha(@color_13, 0.6);
+  border-color: @error;
+  background-color: alpha(@error, 0.12);
+  box-shadow: 0 0 0 2px alpha(@error, 0.6);
 }
 
 .kind-image.selected {
-  border-color: @color_09;
-  background-color: alpha(@color_09, 0.12);
-  box-shadow: 0 0 0 2px alpha(@color_09, 0.6);
+  border-color: @error_container;
+  background-color: alpha(@error_container, 0.12);
+  box-shadow: 0 0 0 2px alpha(@error_container, 0.6);
 }
 
 .kind-link.selected {
-  border-color: @color_04;
-  background-color: alpha(@color_04, 0.12);
-  box-shadow: 0 0 0 2px alpha(@color_04, 0.6);
+  border-color: @primary;
+  background-color: alpha(@primary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@primary, 0.6);
 }
 
 .kind-emoji.selected {
-  border-color: @color_12;
-  background-color: alpha(@color_12, 0.12);
-  box-shadow: 0 0 0 2px alpha(@color_12, 0.6);
+  border-color: @secondary;
+  background-color: alpha(@secondary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@secondary, 0.6);
 }
 
-/* Type header: background = palette token, text contrast chosen at runtime
- * (on-dark → light text, on-light → dark text) by token luminance. Corners
+/* Type header: background = palette role, text contrast chosen at runtime
+ * (on-dark → light text, on-light → dark text) by role luminance. Corners
  * are clipped by the card's Gtk.Overflow.HIDDEN. */
 .clipboard-head {
   min-height: 36px;
@@ -127,35 +127,35 @@ window#clipboard-window {
 }
 
 .clipboard-head.on-dark {
-  color: @color_15;
+  color: @on_surface;
 }
 
 .clipboard-head.on-light {
-  color: @color_00;
+  color: @on_primary;
 }
 
 .kind-text .clipboard-head {
-  background-color: @color_06;
+  background-color: @tertiary;
 }
 
 .kind-code .clipboard-head {
-  background-color: @color_00;
+  background-color: @surface_container_lowest;
 }
 
 .kind-color .clipboard-head {
-  background-color: @color_13;
+  background-color: @error;
 }
 
 .kind-image .clipboard-head {
-  background-color: @color_09;
+  background-color: @error_container;
 }
 
 .kind-link .clipboard-head {
-  background-color: @color_04;
+  background-color: @primary;
 }
 
 .kind-emoji .clipboard-head {
-  background-color: @color_12;
+  background-color: @secondary;
 }
 
 .clipboard-index {
@@ -165,7 +165,7 @@ window#clipboard-window {
   border-radius: 6px;
   font-size: 0.75rem;
   font-weight: 800;
-  background-color: alpha(@color_00, 0.32);
+  background-color: alpha(@surface, 0.32);
   color: inherit;
 }
 
@@ -189,7 +189,7 @@ window#clipboard-window {
 
 .clipboard-text,
 .clipboard-code {
-  color: @color_foreground;
+  color: @on_surface;
 }
 
 .clipboard-text {
@@ -202,7 +202,7 @@ window#clipboard-window {
 }
 
 .clipboard-link {
-  color: @color_10;
+  color: @primary;
 }
 
 .clipboard-emoji {
@@ -217,10 +217,10 @@ window#clipboard-window {
 .clipboard-hex {
   font-family: monospace;
   font-size: 0.75rem;
-  color: @color_foreground;
+  color: @on_surface;
 }
 
 .clipboard-empty {
-  color: alpha(@color_foreground, 0.6);
+  color: alpha(@on_surface, 0.6);
   padding: 24px;
 }

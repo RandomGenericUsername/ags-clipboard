@@ -1,5 +1,5 @@
 /* {{REPO}} — follows the runtime-generated palette (colors.css). */
 window#{{WINDOW}} {
   background-color: transparent;
-  color: @color_foreground;
+  color: @on_surface;
 }

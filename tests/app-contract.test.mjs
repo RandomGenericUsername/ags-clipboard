@@ -256,9 +256,9 @@ test("the contracts v0.3.0 manifest schema agrees with the platform", () => {
   );
 });
 
-test("the Makefile pins the v0.3.0 program tuple", () => {
+test("the Makefile pins the v0.4.0 platform / v0.3.0 contracts tuple", () => {
   const makefile = readText("Makefile");
-  assert.match(makefile, /^AGS_PLATFORM_VERSION := v0\.3\.0$/m);
+  assert.match(makefile, /^AGS_PLATFORM_VERSION := v0\.4\.0$/m);
   assert.match(makefile, /^CONTRACTS_VERSION := v0\.3\.0$/m);
 });
 

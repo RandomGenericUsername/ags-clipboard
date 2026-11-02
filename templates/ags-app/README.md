@@ -24,7 +24,7 @@ make bundle        # LOCAL: ags bundle app.tsx build/{{APP}}.js
 make gates         # all of the above
 ```
 
-The program tuple is `ags-platform`/`contracts` v0.3.0. Locally those tags are
+The program tuple is `ags-platform` v0.4.0 / `contracts` v0.3.0. Locally those tags are
 symlinked under `.dev/` (gitignored); CI checks them out explicitly.
 
 ## Replace

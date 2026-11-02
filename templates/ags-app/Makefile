@@ -1,6 +1,6 @@
 .PHONY: help platform-dev deps types test conformance ci bundle typecheck gates
 
-AGS_PLATFORM_VERSION := v0.3.0
+AGS_PLATFORM_VERSION := v0.4.0
 CONTRACTS_VERSION := v0.3.0
 AGS_PLATFORM_REPO := https://github.com/RandomGenericUsername/ags-platform.git
 AGS_PLATFORM_DEV ?=
