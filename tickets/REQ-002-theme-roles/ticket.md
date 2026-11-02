@@ -108,6 +108,11 @@ That is exactly why the mapping is per site.
   the six-role set and are asserted distinct by the gate.
 - **Index badge wash.** Kept as `alpha(@surface, 0.32)` to mirror the original
   darkening wash; `@scrim` would be the palette-relative overlay alternative.
+- **Type-role polarity.** In the live palette `tertiary`, `error`, `primary` and
+  `secondary` are light, so the text/color/link/emoji headers use the on-light
+  ink (`@on_primary`, 7.70–7.73:1) while code/image stay on-dark. This follows
+  the role luminance exactly as the old code followed the carrier luminance;
+  the runtime picker computes the same class from the same role names.
 
 ## Implementation
 
