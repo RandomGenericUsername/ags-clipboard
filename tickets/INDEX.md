@@ -11,7 +11,7 @@
 ## Requirements
 
 - [REQ-001-standalone-clipboard-pilot/ticket.md](./REQ-001-standalone-clipboard-pilot/ticket.md) — Extract the clipboard overlay into the standalone ags-clipboard pilot | `done` | links: worktree none, branch main
-- [REQ-002-theme-roles/ticket.md](./REQ-002-theme-roles/ticket.md) — Migrate the clipboard CSS to semantic palette.v1 roles | `in-progress` | links: worktree .worktrees/REQ-002/, branch ticket/REQ-002-theme-roles
+- [REQ-002-theme-roles/ticket.md](./REQ-002-theme-roles/ticket.md) — Migrate the clipboard CSS to semantic palette.v1 roles | `done` | links: worktree .worktrees/REQ-002/, branch ticket/REQ-002-theme-roles
 
 ## Bugs
 
