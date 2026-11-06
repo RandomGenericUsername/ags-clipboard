@@ -18,6 +18,15 @@ standalone app contract: the repo root **is** the app package.
 deployed config link, requires `manifest.instance == app.tsx instanceName ==
 ags list`, and requires `manifest.configDir == the deployed link basename`.
 
+## Design contract
+
+The redesign is the two-mode command surface specified in
+[tickets/REQ-005-overlay-redesign/ticket.md](tickets/REQ-005-overlay-redesign/ticket.md):
+Normal (rail + preview) and Compact (center / left / right). Open
+[tickets/REQ-005-overlay-redesign/mock.html](tickets/REQ-005-overlay-redesign/mock.html)
+in a browser (no build step). The bottom card strip described below is the live
+behavior, not the target.
+
 ## Runtime contract
 
 ### Data paths
@@ -28,6 +37,8 @@ documents:
 - history: `$XDG_STATE_HOME/clipboard/history.json`
 - images: `$XDG_CACHE_HOME/clipboard/`
 - daemon config: `$XDG_CONFIG_HOME/clipboard/config.json`
+- overlay settings: `$XDG_CONFIG_HOME/clipboard-ui/config.json` (the app's
+  Normal/Compact layout; **not** the daemon's `clipboard/config.json`)
 
 The daemon performs the one-time migration from the retired namespace; this
 app never reads the old paths. Writable state stays outside the installed tag

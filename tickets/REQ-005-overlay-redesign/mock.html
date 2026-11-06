@@ -1,0 +1,2397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Clipboard — command surface prototype</title>
+<style>
+/* ============================================================
+   CLIPBOARD — same philosophy as the wallpaper overlay:
+     · content is the surface; chrome floats
+     · browse ≠ commit (select previews, Enter/Copy commits)
+     · one command bar; type is a stripe + glyph, never a header fill
+     · accent is a state colour; type hues annotate only
+     · 8 px rhythm, 40–44 px targets, sentence case
+   ============================================================ */
+
+:root {
+  --ink: #f6f5f8;
+  --ink-dim: rgba(246, 245, 248, .62);
+  --ink-faint: rgba(246, 245, 248, .40);
+  --hairline: rgba(255, 255, 255, .12);
+  --glass: rgba(9, 9, 13, .55);
+  --glass-strong: rgba(9, 9, 13, .90);
+  --accent: #ff8a6a;
+  --on-accent: #1a0b06;
+  --live: #4ade80;
+  --danger: #f87171;
+
+  --t-text: #7dd3fc;
+  --t-code: #a78bfa;
+  --t-image: #fb923c;
+  --t-color: #f472b6;
+  --t-link: #38bdf8;
+  --t-emoji: #fbbf24;
+
+  --r-bar: 16px;
+  --r-card: 14px;
+  --r-pill: 999px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #000;
+  color: var(--ink);
+  font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont,
+               "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input { font: inherit; color: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+
+kbd {
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--ink-dim);
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 5px;
+  padding: 3px 5px;
+}
+
+/* ── desktop ────────────────────────────────────────────────── */
+
+#wall {
+  position: fixed;
+  inset: -4%;
+  z-index: 0;
+  background-image:
+    radial-gradient(90% 80% at 22% 12%, #5b2f8a 0%, transparent 58%),
+    radial-gradient(70% 70% at 78% 28%, #c23a72 0%, transparent 55%),
+    radial-gradient(60% 50% at 52% 92%, #ff7a59 0%, transparent 60%),
+    linear-gradient(155deg, #0d0716 0%, #241033 45%, #090510 100%);
+  background-size: cover;
+  background-position: center;
+  filter: blur(16px) brightness(.38) saturate(1.2);
+  transform: scale(1.04);
+  transition: filter .35s ease, transform .35s ease;
+}
+
+body.is-closed #wall {
+  filter: blur(0) brightness(1) saturate(1);
+  transform: none;
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 100% at 50% 38%, transparent 30%, rgba(0, 0, 0, .55) 100%),
+    linear-gradient(to bottom, rgba(4, 4, 7, .55), rgba(4, 4, 7, .72));
+  transition: opacity .3s ease;
+}
+
+body.is-closed .scrim { opacity: 0; }
+
+.desktopbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 8;
+  height: 40px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 18px;
+  background: rgba(8, 8, 12, .52);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  backdrop-filter: blur(22px) saturate(1.2);
+  font-size: 11px;
+  color: rgba(255, 255, 255, .62);
+}
+.db-left { display: flex; align-items: center; gap: 3px; }
+.db-ws {
+  width: 22px; height: 22px; display: grid; place-items: center;
+  border-radius: 7px; font-size: 10.5px; font-variant-numeric: tabular-nums;
+}
+.db-ws.active { background: rgba(255, 255, 255, .14); color: var(--ink); }
+.db-center { font-size: 11.5px; font-weight: 600; color: rgba(255, 255, 255, .84); font-variant-numeric: tabular-nums; }
+.db-right { justify-self: end; display: flex; align-items: center; gap: 12px; }
+.db-right svg { opacity: .72; }
+
+/* ── shell ──────────────────────────────────────────────────── */
+
+.shell {
+  position: fixed;
+  top: 40px;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 20px 20px;
+  transition: opacity .24s ease, transform .24s ease;
+}
+
+.shell.is-closed {
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+}
+
+/* ── command bar ────────────────────────────────────────────── */
+
+.cmdbar {
+  flex: 0 0 auto;
+  height: 60px;
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 0 14px 0 16px;
+  border-radius: var(--r-bar);
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(26px) saturate(1.25);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .34);
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 38px;
+  padding: 0 11px 0 12px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .10);
+  transition: border-color .16s, background .16s;
+}
+.search:focus-within {
+  border-color: rgba(255, 255, 255, .24);
+  background: rgba(255, 255, 255, .09);
+}
+.search svg { flex: 0 0 auto; color: var(--ink-faint); }
+.search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  font-size: 13px;
+}
+.search input::placeholder { color: var(--ink-faint); }
+.search kbd { flex: 0 0 auto; transition: opacity .15s; }
+.search:focus-within kbd, .search.has-text kbd { opacity: 0; }
+
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.filters::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, background .15s;
+}
+.chip:hover { color: var(--ink); background: rgba(255, 255, 255, .05); }
+.chip.selected { color: var(--ink); background: rgba(255, 255, 255, .13); }
+.chip .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.cmd-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: end;
+}
+
+.incognito {
+  height: 32px;
+  padding: 0 11px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, .10);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.incognito:hover { color: var(--ink); background: rgba(255, 255, 255, .05); }
+.incognito.is-on {
+  color: #ffd9cc;
+  background: rgba(255, 138, 106, .14);
+  border-color: rgba(255, 138, 106, .35);
+}
+.incognito.is-on .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(255, 138, 106, .14);
+}
+
+.clear {
+  height: 32px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.clear:hover { color: var(--danger); background: rgba(248, 113, 113, .08); }
+
+.clear-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: 10.5px;
+  color: var(--ink-dim);
+}
+.clear-confirm button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, .12);
+  background: transparent;
+  font-size: 10px;
+  font-weight: 650;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.clear-confirm button:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+.clear-confirm button.danger {
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, .30);
+  background: rgba(248, 113, 113, .08);
+}
+.clear-confirm button.danger:hover { background: rgba(248, 113, 113, .16); }
+
+/* ── content split ──────────────────────────────────────────── */
+
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* ── history rail ───────────────────────────────────────────── */
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--glass);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(26px) saturate(1.2);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .30);
+}
+
+.rail-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 54px;
+  padding: 0 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.rail-title { font-size: 15px; font-weight: 650; letter-spacing: -.01em; }
+
+.count {
+  min-width: 22px;
+  height: 18px;
+  padding: 0 6px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .08);
+  color: var(--ink-dim);
+  font-size: 9.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.new-pill {
+  height: 20px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 138, 106, .35);
+  background: rgba(255, 138, 106, .14);
+  color: #ffd9cc;
+  font-size: 9.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.paused-note {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.rail-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .16) transparent;
+}
+
+.group-label {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 9px 16px 5px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--ink-faint);
+  background: linear-gradient(to bottom, rgba(9, 9, 13, .96), rgba(9, 9, 13, .72));
+  backdrop-filter: blur(6px);
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 64px;
+  padding: 0 12px 0 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background .12s;
+}
+.row:hover { background: rgba(255, 255, 255, .04); }
+.row.is-selected { background: rgba(255, 255, 255, .08); }
+
+.row .stripe {
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--tc);
+  opacity: .75;
+  transition: opacity .12s, box-shadow .2s;
+}
+.row.is-selected .stripe { opacity: 1; }
+.row.is-new .stripe { box-shadow: 0 0 14px var(--tc); }
+
+.row .glyph {
+  width: 32px;
+  height: 32px;
+  margin-left: 14px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--tc);
+}
+
+.row .thumb {
+  width: 36px;
+  height: 36px;
+  margin-left: 12px;
+  flex: 0 0 auto;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10);
+}
+
+.swatch-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .25);
+}
+
+.row-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.row-sub {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kidx {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: right;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.pin {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-faint);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity .12s, color .12s, background .12s;
+}
+.row:hover .pin, .row.is-selected .pin, .pin.on { opacity: 1; }
+.pin:hover { color: var(--ink); background: rgba(255, 255, 255, .07); }
+.pin.on { color: var(--accent); }
+
+.rail-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 18px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-faint);
+  line-height: 1.6;
+}
+.rail-empty b { display: block; color: var(--ink-dim); font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+
+/* ── preview ────────────────────────────────────────────────── */
+
+.preview {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(9, 9, 13, .30);
+}
+
+.pv-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 26px 0;
+}
+
+.type-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--tc);
+}
+
+.pv-meta { font-size: 10.5px; color: var(--ink-faint); }
+
+.pv-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 26px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .16) transparent;
+}
+
+.text-body {
+  max-width: 820px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.code-body {
+  max-width: 980px;
+  margin: 0;
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .06);
+  font-family: "JetBrains Mono", "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: rgba(246, 245, 248, .92);
+  overflow: auto;
+  white-space: pre;
+}
+
+.image-body {
+  width: 100%;
+  height: min(52vh, 440px);
+  border-radius: 14px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-color: rgba(0, 0, 0, .28);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+
+.color-body {
+  width: 100%;
+  height: 220px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+}
+
+.hex {
+  margin-top: 18px;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+.rgb {
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.link-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 720px;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .06);
+}
+.globe {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .06);
+  color: var(--t-link);
+}
+.domain { font-size: 18px; font-weight: 650; }
+.url { margin-top: 3px; font-size: 11.5px; color: var(--ink-dim); word-break: break-all; }
+
+.emoji-body {
+  padding: 34px 0;
+  text-align: center;
+  font-size: 120px;
+  line-height: 1;
+}
+
+.pv-empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  text-align: center;
+}
+.pv-empty .big { font-size: 14px; font-weight: 600; color: var(--ink-dim); }
+.pv-empty .icon {
+  width: 50px; height: 50px; display: grid; place-items: center;
+  border-radius: 50%; background: rgba(255, 255, 255, .05);
+  color: var(--ink-dim); margin-bottom: 4px;
+}
+
+.pv-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 12px 26px 14px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+
+.pv-foot-left { min-width: 0; }
+.pv-foot-meta { font-size: 10.5px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.pv-hints { margin-top: 3px; font-size: 9.5px; color: var(--ink-faint); }
+
+.pv-actions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+
+.ghost {
+  height: 32px;
+  padding: 0 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ghost:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+.ghost.danger:hover { color: var(--danger); background: rgba(248, 113, 113, .08); }
+.ghost.on { color: var(--accent); background: rgba(255, 138, 106, .10); }
+
+.secondary {
+  height: 36px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.secondary:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+
+.copy {
+  height: 38px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .30);
+  transition: transform .14s, filter .14s;
+}
+.copy:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.copy kbd { color: inherit; background: rgba(0, 0, 0, .14); border-color: rgba(0, 0, 0, .18); }
+
+/* ── settings gear + popover ───────────────────────────────── */
+
+.gear {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .10);
+  background: transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+  transition: color .15s, background .15s, border-color .15s;
+}
+.gear:hover, .gear.is-active {
+  color: var(--ink);
+  background: rgba(255, 255, 255, .08);
+  border-color: rgba(255, 255, 255, .22);
+}
+.gear:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.settings-pop {
+  position: fixed;
+  z-index: 12;
+  width: 320px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(12, 12, 17, .94);
+  border: 1px solid rgba(255, 255, 255, .14);
+  backdrop-filter: blur(26px) saturate(1.2);
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .55);
+}
+.sp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.sp-head .title { font-size: 13px; font-weight: 650; }
+.sp-head .sub { font-size: 10px; font-weight: 550; color: var(--ink-faint); }
+.sp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+.sp-row:first-of-type { border-top: 0; }
+.sp-row.is-disabled { opacity: .36; pointer-events: none; }
+.sp-label { font-size: 11.5px; font-weight: 550; color: rgba(255, 255, 255, .86); }
+.sp-label .desc {
+  display: block;
+  margin-top: 2px;
+  max-width: 160px;
+  font-size: 9.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--ink-faint);
+}
+.seg {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .10);
+}
+.seg button {
+  height: 26px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.seg button:hover { color: var(--ink); }
+.seg button.selected { background: rgba(255, 255, 255, .15); color: var(--ink); }
+.sp-foot {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+
+/* ── compact mode ───────────────────────────────────────────── */
+
+body.is-compact #wall {
+  filter: blur(0) brightness(.94) saturate(1.02);
+  transform: none;
+}
+
+body.is-compact .scrim { opacity: .16; }
+body.is-closed .scrim { opacity: 0; }
+
+.compact {
+  position: fixed;
+  z-index: 5;
+  width: 440px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px;
+  background: rgba(9, 9, 13, .74);
+  border: 1px solid var(--hairline);
+  backdrop-filter: blur(28px) saturate(1.25);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .58);
+  transition: opacity .24s ease, transform .24s ease;
+}
+
+/* center: the floating quick panel */
+.compact.pos-center {
+  left: 50%;
+  top: 10vh;
+  transform: translateX(-50%);
+  width: 440px;
+  max-height: 64vh;
+}
+
+/* left/right: full work-area height bars */
+.compact.pos-left {
+  left: 12px;
+  top: 52px;
+  bottom: 12px;
+  width: 400px;
+  max-height: none;
+}
+
+.compact.pos-right {
+  right: 12px;
+  left: auto;
+  top: 52px;
+  bottom: 12px;
+  width: 400px;
+  max-height: none;
+}
+
+body.is-closed .compact {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.is-closed .compact.pos-center { transform: translate(-50%, 8px); }
+body.is-closed .compact.pos-left,
+body.is-closed .compact.pos-right { transform: translateY(8px); }
+
+.c-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.c-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, .06);
+  border: 1px solid rgba(255, 255, 255, .10);
+  transition: border-color .15s, background .15s;
+}
+.c-search:focus-within {
+  border-color: rgba(255, 255, 255, .24);
+  background: rgba(255, 255, 255, .09);
+}
+.c-search svg { flex: 0 0 auto; color: var(--ink-faint); }
+.c-search input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  font-size: 12px;
+}
+.c-search input::placeholder { color: var(--ink-faint); }
+.c-search kbd { flex: 0 0 auto; transition: opacity .15s; }
+.c-search:focus-within kbd, .c-search.has-text kbd { opacity: 0; }
+
+.c-filter {
+  flex: 0 0 auto;
+  height: 30px;
+  max-width: 84px;
+  padding: 0 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, .10);
+  background: rgba(255, 255, 255, .06);
+  color: var(--ink-dim);
+  font-size: 10px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+}
+.c-filter:hover { color: var(--ink); }
+.c-filter option { background: #14141a; color: #f6f5f8; }
+
+.c-head .gear { width: 30px; height: 30px; flex: 0 0 auto; }
+
+.c-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 0 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .16) transparent;
+}
+
+.c-label {
+  padding: 7px 14px 3px;
+  font-size: 9.5px;
+  font-weight: 650;
+  color: var(--ink-faint);
+}
+.c-divider { height: 1px; margin: 5px 14px; background: rgba(255, 255, 255, .07); }
+
+.c-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 10px 0 0;
+  cursor: pointer;
+  user-select: none;
+  transition: background .12s;
+}
+.c-row:hover { background: rgba(255, 255, 255, .04); }
+.c-row.is-selected { background: rgba(255, 255, 255, .08); }
+
+.c-row .stripe {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  border-radius: 0 2px 2px 0;
+  background: var(--tc);
+  opacity: .8;
+}
+.c-row.is-selected .stripe { opacity: 1; }
+
+.c-row .glyph {
+  width: 26px;
+  height: 26px;
+  margin-left: 10px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .05);
+  color: var(--tc);
+}
+.c-row .thumb {
+  width: 26px;
+  height: 26px;
+  margin-left: 8px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .10);
+}
+.c-row .swatch-dot { width: 14px; height: 14px; }
+
+.c-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.c-age {
+  flex: 0 0 auto;
+  font-size: 9.5px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.c-row .pin { width: 22px; height: 22px; }
+
+.c-foot {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+  font-size: 9.5px;
+  color: var(--ink-faint);
+}
+.c-foot .c-spacer { flex: 1; }
+.c-foot-label { white-space: nowrap; }
+.c-foot button {
+  height: 22px;
+  padding: 0 7px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 9.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.c-foot button:hover { color: var(--ink); background: rgba(255, 255, 255, .06); }
+.c-incog.on { color: #ffd9cc; background: rgba(255, 138, 106, .12); }
+.c-clear:hover { color: var(--danger) !important; background: rgba(248, 113, 113, .08) !important; }
+.c-new {
+  color: #ffd9cc !important;
+  background: rgba(255, 138, 106, .14) !important;
+  border: 1px solid rgba(255, 138, 106, .35);
+}
+.c-expand { width: 22px; padding: 0 !important; justify-content: center; }
+.c-danger { color: var(--danger) !important; }
+
+.c-empty {
+  padding: 46px 18px;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  line-height: 1.6;
+}
+.c-empty b { display: block; color: var(--ink-dim); font-size: 12.5px; font-weight: 600; margin-bottom: 3px; }
+
+/* ── toast + reopen ─────────────────────────────────────────── */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 84px;
+  z-index: 30;
+  transform: translate(-50%, 10px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--r-pill);
+  background: var(--glass-strong);
+  border: 1px solid rgba(255, 255, 255, .16);
+  backdrop-filter: blur(18px);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 550;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast .ok {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, .14);
+}
+.toast b { font-weight: 650; }
+.toast-action {
+  height: 24px;
+  padding: 0 9px;
+  border-radius: var(--r-pill);
+  border: 1px solid rgba(255, 138, 106, .35);
+  background: rgba(255, 138, 106, .12);
+  color: #ffd9cc;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reopen {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  z-index: 10;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--hairline);
+  background: var(--glass-strong);
+  backdrop-filter: blur(20px);
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.reopen:hover { background: rgba(28, 28, 36, .92); }
+
+/* ── responsive ─────────────────────────────────────────────── */
+
+@media (max-width: 1280px) {
+  .content { grid-template-columns: 360px minmax(0, 1fr); }
+  .cmdbar { grid-template-columns: minmax(240px, 1fr) auto auto; gap: 12px; }
+}
+
+@media (max-width: 1040px) {
+  .content { grid-template-columns: 320px minmax(0, 1fr); }
+  .filters { max-width: 42vw; }
+  .pv-hints { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="wall"></div>
+<div class="scrim"></div>
+
+<div class="desktopbar">
+  <div class="db-left">
+    <span class="db-ws active">1</span>
+    <span class="db-ws">2</span>
+    <span class="db-ws">3</span>
+    <span class="db-ws">4</span>
+    <span class="db-ws">5</span>
+  </div>
+  <div class="db-center">10:42</div>
+  <div class="db-right">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" aria-hidden="true">
+      <path d="M2.5 8.5a15 15 0 0 1 19 0"></path>
+      <path d="M5.5 12a10.5 10.5 0 0 1 13 0"></path>
+      <path d="M8.7 15.4a6 6 0 0 1 6.6 0"></path>
+      <circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"></circle>
+    </svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9v6h4l5 4V5L8 9H4Z"></path>
+      <path d="M17 9.5a4 4 0 0 1 0 5"></path>
+    </svg>
+    <svg width="18" height="14" viewBox="0 0 28 24" fill="none" stroke="currentColor"
+         stroke-width="1.7" aria-hidden="true">
+      <rect x="2" y="6" width="20" height="12" rx="3"></rect>
+      <path d="M24 10v4" stroke-linecap="round"></path>
+      <rect x="4.5" y="8.5" width="13" height="7" rx="1.5" fill="currentColor" stroke="none"></rect>
+    </svg>
+  </div>
+</div>
+
+<div class="shell" id="shell">
+
+  <div class="cmdbar">
+    <label class="search" id="searchWrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.2-3.2"></path>
+      </svg>
+      <input id="search" type="text" placeholder="Search clipboard…" autocomplete="off" spellcheck="false">
+      <kbd>/</kbd>
+    </label>
+
+    <div class="filters" id="filters">
+      <button class="chip selected" data-filter="all">All</button>
+      <button class="chip" data-filter="text"><span class="dot" style="background:var(--t-text)"></span>Text</button>
+      <button class="chip" data-filter="link"><span class="dot" style="background:var(--t-link)"></span>Links</button>
+      <button class="chip" data-filter="code"><span class="dot" style="background:var(--t-code)"></span>Code</button>
+      <button class="chip" data-filter="image"><span class="dot" style="background:var(--t-image)"></span>Images</button>
+      <button class="chip" data-filter="color"><span class="dot" style="background:var(--t-color)"></span>Colors</button>
+      <button class="chip" data-filter="emoji"><span class="dot" style="background:var(--t-emoji)"></span>Emoji</button>
+    </div>
+
+    <div class="cmd-actions">
+      <button class="incognito" id="incognito" aria-pressed="false">
+        <span class="dot" hidden></span>
+        <span id="incognitoLabel">Incognito off</span>
+      </button>
+      <div id="clearWrap">
+        <button class="clear" id="clearBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path>
+          </svg>
+          Clear
+        </button>
+        <div class="clear-confirm" id="clearConfirm" hidden>
+          <span>Clear all?</span>
+          <button class="danger" id="clearYes">Yes</button>
+          <button id="clearNo">No</button>
+        </div>
+      </div>
+      <button class="gear" id="gearBtn" aria-label="Settings" aria-expanded="false">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10 3.05V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <section class="rail">
+      <header class="rail-head">
+        <span class="rail-title">History</span>
+        <span class="count" id="count">12</span>
+        <button class="new-pill" id="newPill" hidden></button>
+        <span class="paused-note" id="pausedNote" hidden>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M9 5v14M15 5v14"></path>
+          </svg>
+          Captures paused
+        </span>
+      </header>
+      <div class="rail-scroll" id="railScroll" role="listbox" aria-label="Clipboard history"></div>
+    </section>
+
+    <section class="preview" id="preview">
+      <div class="pv-head" id="pvHead"></div>
+      <div class="pv-body" id="pvBody"></div>
+      <div class="pv-foot" id="pvFoot"></div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Compact mode: a 440 px quick panel. The desktop stays sharp behind it. -->
+<div class="compact" id="compact" hidden>
+  <div class="c-head">
+    <label class="c-search" id="cSearchWrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="m20 20-3.2-3.2"></path>
+      </svg>
+      <input id="cSearch" type="text" placeholder="Search clipboard…" autocomplete="off" spellcheck="false">
+      <kbd>/</kbd>
+    </label>
+    <select class="c-filter" id="cFilter" aria-label="Filter type">
+      <option value="all">All</option>
+      <option value="text">Text</option>
+      <option value="link">Links</option>
+      <option value="code">Code</option>
+      <option value="image">Images</option>
+      <option value="color">Colors</option>
+      <option value="emoji">Emoji</option>
+    </select>
+    <button class="gear" id="cGearBtn" aria-label="Settings" aria-expanded="false">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6h.09A1.7 1.7 0 0 0 10 3.05V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.09a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"></path>
+      </svg>
+    </button>
+  </div>
+  <div class="c-list" id="cList" role="listbox" aria-label="Clipboard history"></div>
+  <div class="c-foot" id="cFoot"></div>
+</div>
+
+<!-- Layout settings: the capture-tool grammar, in a popover. -->
+<div class="settings-pop" id="settingsPop" hidden>
+  <div class="sp-head">
+    <span class="title">Settings</span>
+    <span class="sub">Layout</span>
+  </div>
+  <div class="sp-row">
+    <div class="sp-label">
+      Layout
+      <span class="desc">Normal shows the preview.</span>
+    </div>
+    <div class="seg" id="segMode">
+      <button data-mode="normal" class="selected">Normal</button>
+      <button data-mode="compact">Compact</button>
+    </div>
+  </div>
+  <div class="sp-row" id="posRow">
+    <div class="sp-label">
+      Compact position
+      <span class="desc">Center, or a full-height side bar.</span>
+    </div>
+    <div class="seg" id="segPos">
+      <button data-cpos="center" class="selected">Center</button>
+      <button data-cpos="left">Left</button>
+      <button data-cpos="right">Right</button>
+    </div>
+  </div>
+  <div class="sp-foot">Changes save immediately.</div>
+</div>
+
+<button class="reopen" id="reopen" hidden>Open clipboard</button>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── type vocabulary ──────────────────────────────────────────── */
+
+const TYPE = {
+  text:  { label: "Text",  color: "#7dd3fc" },
+  code:  { label: "Code",  color: "#a78bfa" },
+  image: { label: "Image", color: "#fb923c" },
+  color: { label: "Color", color: "#f472b6" },
+  link:  { label: "Link",  color: "#38bdf8" },
+  emoji: { label: "Emoji", color: "#fbbf24" },
+};
+
+const ICONS = {
+  text:  '<path d="M4 6h16M4 12h16M4 18h10"/>',
+  code:  '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-5 4 4 3-3 4 4"/>',
+  color: '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11Z"/>',
+  link:  '<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
+  emoji: '<circle cx="12" cy="12" r="9"/><path d="M8.5 10h.01M15.5 10h.01M8.5 15a4.5 4.5 0 0 0 7 0"/>',
+  pin:   '<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3H7l3-3-1-7Z"/>',
+  trash: '<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+  pause: '<path d="M9 5v14M15 5v14"/>',
+  play:  '<path d="m8 5 11 7-11 7V5Z"/>',
+  copy:  '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z"/>',
+  clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/>',
+  expand: '<path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>',
+};
+
+function icon(name, size = 16) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+    stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ""}</svg>`;
+}
+
+/* ── sample history ───────────────────────────────────────────── */
+
+const ART_DRAGON = "radial-gradient(90% 80% at 22% 12%, #5b2f8a 0%, transparent 58%), radial-gradient(70% 70% at 78% 28%, #c23a72 0%, transparent 55%), radial-gradient(60% 50% at 52% 92%, #ff7a59 0%, transparent 60%), linear-gradient(155deg, #0d0716 0%, #241033 45%, #090510 100%)";
+const ART_AURORA = "radial-gradient(80% 70% at 18% 78%, #14532d 0%, transparent 60%), radial-gradient(70% 60% at 62% 22%, #2dd4bf 0%, transparent 55%), radial-gradient(55% 45% at 88% 66%, #3b82f6 0%, transparent 58%), linear-gradient(160deg, #03100f 0%, #072422 52%, #020b0a 100%)";
+
+let items = [
+  {
+    id: "note", kind: "text", pinned: true, day: "today", age: "12 min ago", size: "84 B",
+    text: "The orchestrator only resolves what the apps cannot.",
+  },
+  {
+    id: "repo", kind: "link", pinned: true, day: "today", age: "28 min ago", size: "62 B",
+    text: "https://github.com/RandomGenericUsername/dotfiles-v3",
+  },
+  {
+    id: "creed", kind: "text", pinned: false, day: "today", age: "1 min ago", size: "40 B",
+    text: "Browse is free. Commit is deliberate.",
+  },
+  {
+    id: "placement", kind: "code", pinned: false, day: "today", age: "3 min ago", size: "412 B",
+    text: `export function applyPlacement(
+  position: "bottom" | "top",
+  reservedTop: number,
+  offsetPx: number,
+): number {
+  if (position !== "top") return 0;
+  const reserved = Math.max(0, Math.trunc(reservedTop));
+  const offset = Math.max(0, Math.trunc(offsetPx));
+  return reserved + 14 + offset;
+}`,
+  },
+  {
+    id: "screenshot", kind: "image", pinned: false, day: "today", age: "5 min ago",
+    size: "1.8 MB", title: "screenshot-2026-11-06-1042.png", meta: "1920 × 1080", art: ART_DRAGON,
+  },
+  {
+    id: "accent", kind: "color", pinned: false, day: "today", age: "6 min ago", size: "7 B",
+    text: "#ff8a6a",
+  },
+  {
+    id: "rocket", kind: "emoji", pinned: false, day: "today", age: "9 min ago", size: "4 B",
+    text: "🚀",
+  },
+  {
+    id: "rules", kind: "text", pinned: false, day: "yesterday", age: "1 day ago", size: "1.1 KB",
+    text: "Content is the surface; chrome floats.\n\nOne chrome layer: glass, a hairline, one shadow. Accent is a state colour, never a frame. Type is a scale, not a set of uppercase micro-labels.\n\nBrowse is free. Commit is deliberate. If it looks like a dialog, it is a dialog.",
+  },
+  {
+    id: "setcmd", kind: "code", pinned: false, day: "yesterday", age: "1 day ago", size: "96 B",
+    text: "dotfiles-runtime wallpaper set ~/Pictures/walls/ember.jpg",
+  },
+  {
+    id: "preview", kind: "image", pinned: false, day: "yesterday", age: "1 day ago",
+    size: "890 KB", title: "clipboard-preview.png", meta: "1600 × 1000", art: ART_AURORA,
+  },
+  {
+    id: "gtk", kind: "link", pinned: false, day: "yesterday", age: "1 day ago", size: "48 B",
+    text: "https://developer.gnome.org/gtk4/stable/",
+  },
+  {
+    id: "dialog", kind: "text", pinned: false, day: "older", age: "3 days ago", size: "52 B",
+    text: "If it looks like a dialog, it is a dialog.",
+  },
+];
+
+/* ── state ────────────────────────────────────────────────────── */
+
+let selectedId = items[0].id;
+let filter = "all";
+let query = "";
+let incognito = false;
+let clearConfirm = false;
+let closed = false;
+let newCount = 0;
+let undo = null;
+let undoTimer = null;
+let toastTimer = null;
+
+/* Layout mode: normal (full command surface) or compact (quick panel).
+   The real app persists this to $XDG_CONFIG_HOME/clipboard/config.json. */
+const SETTINGS_KEY = "clipboard.settings";
+function loadSettings() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    const mode = raw?.layout?.mode === "compact" ? "compact" : "normal";
+    const position = raw?.layout?.compact?.position;
+    const compactPosition = position === "left" || position === "right" ? position : "center";
+    return { mode, compactPosition };
+  } catch {
+    return { mode: "normal", compactPosition: "center" };
+  }
+}
+const savedLayout = loadSettings();
+let mode = savedLayout.mode;
+let compactPosition = savedLayout.compactPosition;
+let settingsOpen = false;
+let settingsAnchor = null;
+
+const $ = (id) => document.getElementById(id);
+
+const el = {
+  shell: $("shell"),
+  compact: $("compact"),
+  search: $("search"),
+  searchWrap: $("searchWrap"),
+  cSearch: $("cSearch"),
+  cSearchWrap: $("cSearchWrap"),
+  cFilter: $("cFilter"),
+  cGearBtn: $("cGearBtn"),
+  cList: $("cList"),
+  cFoot: $("cFoot"),
+  gearBtn: $("gearBtn"),
+  settingsPop: $("settingsPop"),
+  segMode: $("segMode"),
+  segPos: $("segPos"),
+  posRow: $("posRow"),
+  filters: $("filters"),
+  count: $("count"),
+  newPill: $("newPill"),
+  pausedNote: $("pausedNote"),
+  railScroll: $("railScroll"),
+  preview: $("preview"),
+  pvHead: $("pvHead"),
+  pvBody: $("pvBody"),
+  pvFoot: $("pvFoot"),
+  incognito: $("incognito"),
+  incognitoLabel: $("incognitoLabel"),
+  clearBtn: $("clearBtn"),
+  clearConfirm: $("clearConfirm"),
+  clearYes: $("clearYes"),
+  clearNo: $("clearNo"),
+  reopen: $("reopen"),
+  toast: $("toast"),
+};
+
+/* ── helpers ──────────────────────────────────────────────────── */
+
+const TYPE_ORDER = ["text", "link", "code", "image", "color", "emoji"];
+const DAY_ORDER = ["today", "yesterday", "older"];
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function domainOf(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function firstLine(text) {
+  const line = String(text || "").split("\n")[0].trim();
+  return line.length > 90 ? `${line.slice(0, 89)}…` : line || "(empty)";
+}
+
+function rowTitle(item) {
+  if (item.kind === "image") return item.title || "Image";
+  if (item.kind === "link") return domainOf(item.text || "");
+  if (item.kind === "color") return (item.text || "").trim();
+  if (item.kind === "emoji") return item.text || "Emoji";
+  return firstLine(item.text || "");
+}
+
+function rowSub(item) {
+  return `${TYPE[item.kind].label} · ${item.age}`;
+}
+
+/* pinned first, then the original recency order within each day */
+function ordered() {
+  return [...items.filter((item) => item.pinned), ...items.filter((item) => !item.pinned)];
+}
+
+function filtered() {
+  const needle = query.trim().toLowerCase();
+  return ordered().filter((item) => {
+    if (filter !== "all" && item.kind !== filter) return false;
+    if (needle.length === 0) return true;
+    const hay = [rowTitle(item), item.text || "", item.title || "", item.meta || "", TYPE[item.kind].label]
+      .join(" ")
+      .toLowerCase();
+    return hay.includes(needle);
+  });
+}
+
+function selectedItem() {
+  return filtered().find((item) => item.id === selectedId) || null;
+}
+
+function ensureSelection() {
+  const list = filtered();
+  if (list.length === 0) { selectedId = null; return; }
+  if (!list.some((item) => item.id === selectedId)) selectedId = list[0].id;
+}
+
+/* ── rail ─────────────────────────────────────────────────────── */
+
+function leadMarkup(item) {
+  if (item.kind === "image") {
+    return `<span class="thumb" style="background-image:${item.art}"></span>`;
+  }
+  if (item.kind === "color") {
+    return `<span class="glyph"><span class="swatch-dot" style="background:${item.text}"></span></span>`;
+  }
+  return `<span class="glyph">${icon(item.kind, 16)}</span>`;
+}
+
+function rowMarkup(item, index) {
+  const selected = item.id === selectedId;
+  const pinned = item.pinned;
+  return `<div class="row ${selected ? "is-selected" : ""} ${item.isNew ? "is-new" : ""}"
+      data-id="${item.id}" role="option" aria-selected="${selected}"
+      style="--tc:${TYPE[item.kind].color}">
+    <span class="stripe"></span>
+    ${leadMarkup(item)}
+    <span class="row-text">
+      <span class="row-title">${escapeHtml(rowTitle(item))}</span>
+      <span class="row-sub">${escapeHtml(rowSub(item))}</span>
+    </span>
+    ${index < 9 ? `<span class="kidx">${index + 1}</span>` : ""}
+    <button class="pin ${pinned ? "on" : ""}" data-pin="${item.id}"
+      aria-label="${pinned ? "Unpin" : "Pin"} ${escapeHtml(rowTitle(item))}"
+      aria-pressed="${pinned}">${icon("pin", 13)}</button>
+  </div>`;
+}
+
+function renderRail() {
+  const list = filtered();
+  el.count.textContent = String(list.length);
+
+  if (list.length === 0) {
+    el.railScroll.innerHTML = `<div class="rail-empty"><b>${items.length === 0 ? "Clipboard is empty" : "No matches"}</b>${items.length === 0 ? "New captures appear here." : "Try another search or filter."}</div>`;
+    return;
+  }
+
+  const groups = [
+    { label: "Pinned", items: list.filter((item) => item.pinned) },
+    { label: "Today", items: list.filter((item) => !item.pinned && item.day === "today") },
+    { label: "Yesterday", items: list.filter((item) => !item.pinned && item.day === "yesterday") },
+    { label: "Older", items: list.filter((item) => !item.pinned && item.day === "older") },
+  ].filter((group) => group.items.length > 0);
+
+  el.railScroll.innerHTML = groups
+    .map(
+      (group) => `<div class="group">
+        <div class="group-label">${group.label}</div>
+        ${group.items.map((item) => rowMarkup(item, list.indexOf(item))).join("")}
+      </div>`,
+    )
+    .join("");
+}
+
+function scrollToSelected() {
+  const root = mode === "compact" ? el.cList : el.railScroll;
+  const row = root.querySelector(`[data-id="${selectedId}"]`);
+  if (row) row.scrollIntoView({ block: "nearest" });
+}
+
+/* ── preview ──────────────────────────────────────────────────── */
+
+function parseHex(value) {
+  const match = String(value || "").trim().match(/^#?([0-9a-fA-F]{6})$/);
+  if (!match) return null;
+  const int = Number.parseInt(match[1], 16);
+  return { r: (int >> 16) & 255, g: (int >> 8) & 255, b: int & 255 };
+}
+
+function rgbLabel(rgb) { return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`; }
+
+function hslLabel(rgb) {
+  const r = rgb.r / 255, g = rgb.g / 255, b = rgb.b / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  let h = 0, s = 0;
+  if (d !== 0) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h = Math.round(h * 60);
+    if (h < 0) h += 360;
+  }
+  return `hsl(${h}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%)`;
+}
+
+function previewBody(item) {
+  if (item.kind === "text") {
+    return `<div class="text-body">${escapeHtml(item.text || "")}</div>`;
+  }
+  if (item.kind === "code") {
+    return `<pre class="code-body">${escapeHtml(item.text || "")}</pre>`;
+  }
+  if (item.kind === "image") {
+    return `<div class="image-body" style="background-image:${item.art}"></div>`;
+  }
+  if (item.kind === "color") {
+    const rgb = parseHex(item.text);
+    return `<div class="color-body" style="background:${item.text}"></div>
+      <div class="hex">${escapeHtml(item.text)}</div>
+      <div class="rgb">${rgb ? `${rgbLabel(rgb)} · ${hslLabel(rgb)}` : ""}</div>`;
+  }
+  if (item.kind === "link") {
+    const domain = domainOf(item.text || "");
+    return `<div class="link-card">
+      <div class="globe">${icon("globe", 20)}</div>
+      <div>
+        <div class="domain">${escapeHtml(domain)}</div>
+        <div class="url">${escapeHtml(item.text || "")}</div>
+      </div>
+    </div>`;
+  }
+  if (item.kind === "emoji") {
+    return `<div class="emoji-body">${escapeHtml(item.text || "")}</div>`;
+  }
+  return "";
+}
+
+function previewMeta(item) {
+  const parts = [`Captured ${item.age}`];
+  if (item.kind === "code") {
+    const lines = String(item.text || "").split("\n").length;
+    parts.push(`${lines} lines`);
+  }
+  return parts.join(" · ");
+}
+
+function renderPreview() {
+  const item = selectedItem();
+
+  if (!item) {
+    el.preview.style.setProperty("--tc", "var(--ink-dim)");
+    el.pvHead.innerHTML = `<span class="type-chip">${icon("clipboard", 14)} Clipboard</span>`;
+    el.pvBody.innerHTML = `<div class="pv-empty">
+      <div class="icon">${icon("clipboard", 22)}</div>
+      <div class="big">${items.length === 0 ? "Clipboard is empty" : "Nothing selected"}</div>
+      <div>${items.length === 0 ? "Copy something and it will appear here." : "Try another search or filter."}</div>
+    </div>`;
+    el.pvFoot.innerHTML = "";
+    return;
+  }
+
+  const type = TYPE[item.kind];
+  el.preview.style.setProperty("--tc", type.color);
+
+  el.pvHead.innerHTML = `
+    <span class="type-chip">${icon(item.kind, 14)} ${type.label}</span>
+    <span class="pv-meta">${escapeHtml(previewMeta(item))}</span>`;
+
+  el.pvBody.innerHTML = previewBody(item);
+
+  const open = item.kind === "link"
+    ? `<button class="secondary" data-action="open">${icon("external", 14)} Open</button>`
+    : "";
+  const pinLabel = item.pinned ? "Unpin" : "Pin";
+
+  el.pvFoot.innerHTML = `
+    <div class="pv-foot-left">
+      <div class="pv-foot-meta">${escapeHtml(item.size || "")}${item.meta ? ` · ${escapeHtml(item.meta)}` : ""}</div>
+      <div class="pv-hints">↑↓ browse · ↵ copy · ⌫ delete · Ctrl+F pin</div>
+    </div>
+    <div class="pv-actions">
+      <button class="ghost ${item.pinned ? "on" : ""}" data-action="pin">${icon("pin", 13)} ${pinLabel}</button>
+      <button class="ghost danger" data-action="delete">${icon("trash", 13)} Delete</button>
+      ${open}
+      <button class="copy" data-action="copy">${icon("copy", 14)} Copy <kbd>↵</kbd></button>
+    </div>`;
+}
+
+/* ── chrome state ─────────────────────────────────────────────── */
+
+function updateFilters() {
+  for (const chip of el.filters.querySelectorAll(".chip")) {
+    chip.classList.toggle("selected", chip.dataset.filter === filter);
+  }
+}
+
+function updateIncognito() {
+  el.incognito.classList.toggle("is-on", incognito);
+  el.incognito.setAttribute("aria-pressed", String(incognito));
+  el.incognito.innerHTML = `<span class="dot" ${incognito ? "" : "hidden"}></span>
+    ${icon(incognito ? "play" : "pause", 12)}
+    <span>Incognito ${incognito ? "on" : "off"}</span>`;
+  el.pausedNote.hidden = !incognito;
+}
+
+function updateNewPill() {
+  el.newPill.hidden = newCount === 0;
+  el.newPill.textContent = `${newCount} new`;
+}
+
+function updateClear() {
+  el.clearBtn.hidden = clearConfirm;
+  el.clearConfirm.hidden = !clearConfirm;
+}
+
+function renderAll() {
+  ensureSelection();
+  renderRail();
+  renderPreview();
+  renderCompact();
+  updateFilters();
+  updateIncognito();
+  updateNewPill();
+  updateClear();
+}
+
+/* ── layout mode + settings ───────────────────────────────────── */
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+      layout: { mode, compact: { position: compactPosition } },
+    }));
+  } catch {
+    /* storage unavailable: the session still works */
+  }
+}
+
+function updateModeSegments() {
+  for (const button of el.segMode.querySelectorAll("button[data-mode]")) {
+    button.classList.toggle("selected", button.dataset.mode === mode);
+  }
+}
+
+function updatePositionSegments() {
+  for (const button of el.segPos.querySelectorAll("button[data-cpos]")) {
+    button.classList.toggle("selected", button.dataset.cpos === compactPosition);
+  }
+  el.posRow.classList.toggle("is-disabled", mode !== "compact");
+}
+
+function updateCompactFilter() {
+  el.cFilter.value = filter;
+}
+
+function applyMode() {
+  const compact = mode === "compact";
+  document.body.classList.toggle("is-compact", compact);
+  el.shell.hidden = compact;
+  el.compact.hidden = !compact;
+  el.compact.classList.toggle("pos-center", compact && compactPosition === "center");
+  el.compact.classList.toggle("pos-left", compact && compactPosition === "left");
+  el.compact.classList.toggle("pos-right", compact && compactPosition === "right");
+  el.search.value = query;
+  el.cSearch.value = query;
+  el.searchWrap.classList.toggle("has-text", query.length > 0);
+  el.cSearchWrap.classList.toggle("has-text", query.length > 0);
+  updateModeSegments();
+  updatePositionSegments();
+  updateCompactFilter();
+  if (!closed) (compact ? el.cSearch : el.search).focus();
+  if (settingsOpen) positionSettingsPop();
+}
+
+function setMode(next) {
+  if (next !== "normal" && next !== "compact") return;
+  mode = next;
+  saveSettings();
+  closeSettings();
+  applyMode();
+  renderAll();
+  scrollToSelected();
+}
+
+function setCompactPosition(next) {
+  if (next !== "center" && next !== "left" && next !== "right") return;
+  compactPosition = next;
+  saveSettings();
+  applyMode();
+  renderAll();
+  scrollToSelected();
+}
+
+function compactRow(item) {
+  const selected = item.id === selectedId;
+  return `<div class="c-row ${selected ? "is-selected" : ""}" data-id="${item.id}"
+      role="option" aria-selected="${selected}" style="--tc:${TYPE[item.kind].color}">
+    <span class="stripe"></span>
+    ${leadMarkup(item)}
+    <span class="c-title">${escapeHtml(rowTitle(item))}</span>
+    <span class="c-age">${escapeHtml(item.age)}</span>
+    <button class="pin ${item.pinned ? "on" : ""}" data-pin="${item.id}"
+      aria-label="${item.pinned ? "Unpin" : "Pin"} ${escapeHtml(rowTitle(item))}"
+      aria-pressed="${item.pinned}">${icon("pin", 11)}</button>
+  </div>`;
+}
+
+function renderCompact() {
+  const list = filtered();
+
+  if (list.length === 0) {
+    el.cList.innerHTML = `<div class="c-empty"><b>${items.length === 0 ? "Clipboard is empty" : "No matches"}</b>${items.length === 0 ? "New captures appear here." : "Try another search or filter."}</div>`;
+  } else {
+    const pinned = list.filter((item) => item.pinned);
+    const rest = list.filter((item) => !item.pinned);
+    el.cList.innerHTML = [
+      pinned.length ? `<div class="c-label">Pinned</div>` : "",
+      pinned.map(compactRow).join(""),
+      pinned.length ? `<div class="c-divider"></div>` : "",
+      rest.map(compactRow).join(""),
+    ].join("");
+  }
+
+  renderCompactFoot();
+  updateCompactFilter();
+}
+
+function renderCompactFoot() {
+  if (clearConfirm) {
+    el.cFoot.innerHTML = `<span class="c-foot-label">Clear all?</span>
+      <span class="c-spacer"></span>
+      <button class="c-danger" data-caction="yes">Yes</button>
+      <button data-caction="no">No</button>`;
+    return;
+  }
+
+  const count = filtered().length;
+  el.cFoot.innerHTML = `<span class="c-foot-label">${count} ${count === 1 ? "item" : "items"}</span>
+    ${newCount > 0 ? `<button class="c-new" data-caction="new">${newCount} new</button>` : ""}
+    <span class="c-spacer"></span>
+    <button class="c-incog ${incognito ? "on" : ""}" data-caction="incognito">
+      ${icon(incognito ? "play" : "pause", 10)} ${incognito ? "Incognito on" : "Incognito off"}
+    </button>
+    <button class="c-clear" data-caction="clear">Clear</button>
+    <button class="c-expand" data-caction="expand" aria-label="Normal mode" title="Normal mode">${icon("expand", 12)}</button>`;
+}
+
+function positionSettingsPop() {
+  if (!settingsAnchor) return;
+  const rect = settingsAnchor.getBoundingClientRect();
+  el.settingsPop.style.right = `${Math.max(10, window.innerWidth - rect.right)}px`;
+  el.settingsPop.style.left = "auto";
+  el.settingsPop.style.top = `${rect.bottom + 8}px`;
+  el.settingsPop.style.bottom = "auto";
+}
+
+function openSettings(anchor) {
+  settingsOpen = true;
+  settingsAnchor = anchor;
+  el.settingsPop.hidden = false;
+  anchor.classList.add("is-active");
+  anchor.setAttribute("aria-expanded", "true");
+  updateModeSegments();
+  updatePositionSegments();
+  positionSettingsPop();
+}
+
+function closeSettings() {
+  settingsOpen = false;
+  if (settingsAnchor) {
+    settingsAnchor.classList.remove("is-active");
+    settingsAnchor.setAttribute("aria-expanded", "false");
+  }
+  settingsAnchor = null;
+  el.settingsPop.hidden = true;
+}
+
+/* ── selection / copy / pin / delete ─────────────────────────── */
+
+function selectItem(id) {
+  if (!id) return;
+  selectedId = id;
+  const item = items.find((entry) => entry.id === id);
+  if (item && item.isNew) {
+    item.isNew = false;
+    newCount = 0;
+  }
+  for (const root of [el.railScroll, el.cList]) {
+    root.querySelectorAll(".row, .c-row").forEach((row) => {
+      const on = row.dataset.id === id;
+      row.classList.toggle("is-selected", on);
+      row.setAttribute("aria-selected", String(on));
+    });
+  }
+  renderPreview();
+  updateNewPill();
+  renderCompactFoot();
+  scrollToSelected();
+}
+
+function move(delta) {
+  const list = filtered();
+  if (list.length === 0) return;
+  const index = list.findIndex((item) => item.id === selectedId);
+  const next = Math.max(0, Math.min(list.length - 1, index + delta));
+  selectItem(list[next].id);
+}
+
+function copyItem(item) {
+  if (!item) return;
+  closeOverlay(`<span class="ok"></span> Copied · <b>${escapeHtml(rowTitle(item))}</b>`);
+}
+
+function copySelected() {
+  copyItem(selectedItem());
+}
+
+function copyNth(n) {
+  copyItem(filtered()[n]);
+}
+
+function openSelectedLink() {
+  const item = selectedItem();
+  if (!item || item.kind !== "link") return;
+  closeOverlay(`Opening <b>${escapeHtml(domainOf(item.text || ""))}</b>…`);
+}
+
+function togglePin(id) {
+  const item = items.find((entry) => entry.id === id);
+  if (!item) return;
+  item.pinned = !item.pinned;
+  renderAll();
+  scrollToSelected();
+  toast(`${item.pinned ? "Pinned" : "Unpinned"} <b>${escapeHtml(rowTitle(item))}</b>`, null, null, 1500);
+}
+
+function togglePinSelected() {
+  if (selectedId) togglePin(selectedId);
+}
+
+function deleteSelected() {
+  const list = filtered();
+  const index = list.findIndex((item) => item.id === selectedId);
+  if (index < 0) return;
+
+  const item = list[index];
+  const arrayIndex = items.findIndex((entry) => entry.id === item.id);
+  const next = list[index + 1] || list[index - 1] || null;
+
+  items.splice(arrayIndex, 1);
+  selectedId = next ? next.id : null;
+  renderAll();
+
+  undo = { item, index: arrayIndex };
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { undo = null; }, 5200);
+
+  toast(`Deleted <b>${escapeHtml(rowTitle(item))}</b>`, "Undo", () => {
+    if (!undo) return;
+    items.splice(undo.index, 0, undo.item);
+    selectedId = undo.item.id;
+    undo = null;
+    renderAll();
+    scrollToSelected();
+  }, 5200);
+  scrollToSelected();
+}
+
+/* ── clear ────────────────────────────────────────────────────── */
+
+function askClear() {
+  clearConfirm = true;
+  updateClear();
+  renderCompactFoot();
+}
+
+function cancelClear() {
+  clearConfirm = false;
+  updateClear();
+  renderCompactFoot();
+}
+
+function doClear() {
+  items = [];
+  selectedId = null;
+  newCount = 0;
+  clearConfirm = false;
+  renderAll();
+  toast("History cleared", null, null, 1800);
+}
+
+/* ── incognito ────────────────────────────────────────────────── */
+
+function toggleIncognito() {
+  incognito = !incognito;
+  renderAll();
+  toast(incognito ? "Incognito on — captures paused" : "Incognito off — capturing", null, null, 1800);
+}
+
+/* ── live update simulation ───────────────────────────────────── */
+
+function simulateCapture() {
+  const id = `new-${Date.now()}`;
+  const item = {
+    id,
+    kind: "text",
+    pinned: false,
+    day: "today",
+    age: "just now",
+    size: "42 B",
+    text: "A new capture just landed. It did not steal your selection.",
+    isNew: true,
+  };
+  items.unshift(item);
+  if (selectedId === null) selectedId = id;
+  else newCount += 1;
+
+  renderAll();
+  updateNewPill();
+  scrollToSelected();
+
+  const row = el.railScroll.querySelector(`[data-id="${id}"]`);
+  if (row) {
+    row.classList.add("is-new");
+    setTimeout(() => row.classList.remove("is-new"), 2200);
+  }
+}
+
+function jumpToNewest() {
+  const newest = items.find((item) => item.isNew) || items[0];
+  if (!newest) return;
+  items.forEach((item) => { item.isNew = false; });
+  newCount = 0;
+  selectItem(newest.id);
+  renderAll();
+  scrollToSelected();
+}
+
+/* ── close / reopen ───────────────────────────────────────────── */
+
+function closeOverlay(message) {
+  closed = true;
+  clearConfirm = false;
+  closeSettings();
+  updateClear();
+  el.shell.classList.add("is-closed");
+  document.body.classList.add("is-closed");
+  el.reopen.hidden = false;
+  if (message) toast(message, null, null, 2200);
+}
+
+function openOverlay() {
+  closed = false;
+  el.shell.classList.remove("is-closed");
+  document.body.classList.remove("is-closed");
+  el.reopen.hidden = true;
+  filter = "all";
+  query = "";
+  el.search.value = "";
+  el.cSearch.value = "";
+  el.searchWrap.classList.remove("has-text");
+  el.cSearchWrap.classList.remove("has-text");
+  newCount = 0;
+  selectedId = ordered()[0]?.id ?? null;
+  renderAll();
+  applyMode();
+}
+
+/* ── toast ────────────────────────────────────────────────────── */
+
+function toast(html, actionLabel, onAction, duration = 2400) {
+  el.toast.innerHTML = `${html}${actionLabel ? ` <button class="toast-action">${actionLabel}</button>` : ""}`;
+  el.toast.classList.add("show");
+  clearTimeout(toastTimer);
+
+  if (actionLabel && onAction) {
+    const button = el.toast.querySelector(".toast-action");
+    if (button) {
+      button.onclick = () => {
+        onAction();
+        hideToast();
+      };
+    }
+  }
+
+  toastTimer = setTimeout(hideToast, duration);
+}
+
+function hideToast() {
+  el.toast.classList.remove("show");
+}
+
+/* ── wiring ───────────────────────────────────────────────────── */
+
+el.search.addEventListener("input", () => {
+  query = el.search.value;
+  el.cSearch.value = query;
+  el.searchWrap.classList.toggle("has-text", query.length > 0);
+  el.cSearchWrap.classList.toggle("has-text", query.length > 0);
+  ensureSelection();
+  renderAll();
+});
+
+el.cSearch.addEventListener("input", () => {
+  query = el.cSearch.value;
+  el.search.value = query;
+  el.searchWrap.classList.toggle("has-text", query.length > 0);
+  el.cSearchWrap.classList.toggle("has-text", query.length > 0);
+  ensureSelection();
+  renderAll();
+});
+
+el.filters.addEventListener("click", (event) => {
+  const chip = event.target.closest(".chip");
+  if (!chip) return;
+  filter = chip.dataset.filter;
+  ensureSelection();
+  renderAll();
+});
+
+el.cFilter.addEventListener("change", () => {
+  filter = el.cFilter.value;
+  ensureSelection();
+  renderAll();
+});
+
+/* layout settings */
+el.gearBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (settingsOpen) closeSettings();
+  else openSettings(el.gearBtn);
+});
+
+el.cGearBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
+  if (settingsOpen) closeSettings();
+  else openSettings(el.cGearBtn);
+});
+
+el.settingsPop.addEventListener("click", (event) => event.stopPropagation());
+
+el.segMode.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-mode]");
+  if (button) setMode(button.dataset.mode);
+});
+
+el.segPos.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-cpos]");
+  if (button) setCompactPosition(button.dataset.cpos);
+});
+
+document.addEventListener("click", () => {
+  if (settingsOpen) closeSettings();
+});
+
+window.addEventListener("resize", () => {
+  if (settingsOpen) positionSettingsPop();
+});
+
+/* compact panel */
+el.cList.addEventListener("click", (event) => {
+  const pin = event.target.closest(".pin");
+  if (pin) {
+    event.stopPropagation();
+    togglePin(pin.dataset.pin);
+    return;
+  }
+  const row = event.target.closest(".c-row");
+  if (!row) return;
+  const item = items.find((entry) => entry.id === row.dataset.id);
+  /* compact mode is retrieve-first: a row click copies and closes */
+  if (item) copyItem(item);
+});
+
+el.cFoot.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-caction]");
+  if (!button) return;
+  const action = button.dataset.caction;
+  if (action === "incognito") toggleIncognito();
+  if (action === "clear") askClear();
+  if (action === "yes") doClear();
+  if (action === "no") cancelClear();
+  if (action === "expand") setMode("normal");
+  if (action === "new") jumpToNewest();
+});
+
+el.incognito.addEventListener("click", toggleIncognito);
+
+el.clearBtn.addEventListener("click", askClear);
+el.clearYes.addEventListener("click", doClear);
+el.clearNo.addEventListener("click", cancelClear);
+
+el.newPill.addEventListener("click", jumpToNewest);
+el.reopen.addEventListener("click", openOverlay);
+
+el.railScroll.addEventListener("click", (event) => {
+  const pin = event.target.closest(".pin");
+  if (pin) {
+    event.stopPropagation();
+    togglePin(pin.dataset.pin);
+    return;
+  }
+  const row = event.target.closest(".row");
+  if (row) selectItem(row.dataset.id);
+});
+
+el.preview.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-action]");
+  if (!button) return;
+  const action = button.dataset.action;
+  if (action === "copy") copySelected();
+  if (action === "open") openSelectedLink();
+  if (action === "pin") togglePinSelected();
+  if (action === "delete") deleteSelected();
+});
+
+window.addEventListener("keydown", (event) => {
+  const typing = event.target.tagName === "INPUT";
+
+  if (event.key === "Escape") {
+    if (settingsOpen) { closeSettings(); return; }
+    if (clearConfirm) { cancelClear(); return; }
+    if (typing && query.length > 0) {
+      query = "";
+      el.search.value = "";
+      el.cSearch.value = "";
+      el.searchWrap.classList.remove("has-text");
+      el.cSearchWrap.classList.remove("has-text");
+      ensureSelection();
+      renderAll();
+      return;
+    }
+    if (!closed) closeOverlay(null);
+    return;
+  }
+
+  if (closed) return;
+
+  if (event.key === "/" && !typing) {
+    event.preventDefault();
+    const input = mode === "compact" ? el.cSearch : el.search;
+    input.focus();
+    input.select();
+    return;
+  }
+
+  if (event.key === "ArrowDown") { event.preventDefault(); move(1); return; }
+  if (event.key === "ArrowUp") { event.preventDefault(); move(-1); return; }
+
+  if (event.key === "Enter") { event.preventDefault(); copySelected(); return; }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
+    event.preventDefault();
+    togglePinSelected();
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && /^[1-9]$/.test(event.key)) {
+    event.preventDefault();
+    copyNth(Number(event.key) - 1);
+    return;
+  }
+
+  if (event.key === "Delete") {
+    const searchValue = mode === "compact" ? el.cSearch.value : el.search.value;
+    if (!typing || searchValue.length === 0) {
+      event.preventDefault();
+      deleteSelected();
+      return;
+    }
+  }
+
+  if (!typing && event.key.toLowerCase() === "n") {
+    event.preventDefault();
+    simulateCapture();
+  }
+});
+
+/* ── boot / deep links ────────────────────────────────────────── */
+
+const params = new URLSearchParams(location.search);
+
+const wantedMode = params.get("mode");
+if (wantedMode === "normal" || wantedMode === "compact") mode = wantedMode;
+
+const wantedPos = params.get("pos");
+if (wantedPos === "center" || wantedPos === "left" || wantedPos === "right") {
+  compactPosition = wantedPos;
+}
+
+if (params.get("empty") === "1") {
+  items = [];
+  selectedId = null;
+}
+
+const wantedFilter = params.get("filter");
+if (wantedFilter && (wantedFilter === "all" || TYPE_ORDER.includes(wantedFilter))) {
+  filter = wantedFilter;
+}
+
+const wantedQuery = params.get("q");
+if (wantedQuery) {
+  query = wantedQuery;
+  el.search.value = wantedQuery;
+  el.cSearch.value = wantedQuery;
+  el.searchWrap.classList.add("has-text");
+  el.cSearchWrap.classList.add("has-text");
+}
+
+if (params.get("incognito") === "1") incognito = true;
+
+const wantedId = params.get("id");
+if (wantedId && items.some((item) => item.id === wantedId)) selectedId = wantedId;
+
+renderAll();
+applyMode();
+
+if (params.get("view") === "clear") { askClear(); }
+if (params.get("new") === "1") setTimeout(simulateCapture, 120);
+if (params.get("settings") === "1") {
+  setTimeout(() => openSettings(mode === "compact" ? el.cGearBtn : el.gearBtn), 120);
+}
+if (params.get("closed") === "1") closeOverlay(null);
+</script>
+</body>
+</html>
