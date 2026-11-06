@@ -11,15 +11,16 @@
  * list all survive.
  *
  * `applyAppearance(surface)` orders the three widget steps: forget the
- * token/texture caches, rebuild the static search icon, then rebuild the cards.
- * The window supplies the real GTK operations; a test supplies recorders.
+ * rasterized-icon texture cache, rebuild the static search icon, then rebuild
+ * the cards. The window supplies the real GTK operations; a test supplies
+ * recorders.
  *
  * PURE: no `ags`, no `gi://*`, no I/O.
  */
 
 /** The three GTK operations the overlay performs for one appearance. */
 export interface AppearanceSurface {
-  /** Drop the palette-token and rasterized-icon caches. */
+  /** Drop the rasterized-icon texture cache. */
   clearCaches(): void;
   /** Replace the static search glyph with one rendered from the new palette. */
   rebuildSearchIcon(): void;
@@ -30,9 +31,8 @@ export interface AppearanceSurface {
 /**
  * Run the non-destructive appearance refresh in its required order.
  *
- * Caches MUST be cleared before either widget tree is rebuilt: a card built
- * from the old token cache would keep the old header contrast, and a search
- * icon copied from the old texture cache would keep the old palette tint.
+ * Caches MUST be cleared before either widget tree is rebuilt: a search icon
+ * copied from the old texture cache would keep the old palette tint.
  */
 export function applyAppearance(surface: AppearanceSurface): void {
   surface.clearCaches();

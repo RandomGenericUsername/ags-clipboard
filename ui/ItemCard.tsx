@@ -1,5 +1,4 @@
 import { Gtk } from "ags/gtk4"
-import GLib from "gi://GLib?version=2.0"
 import Gdk from "gi://Gdk?version=4.0"
 import GdkPixbuf from "gi://GdkPixbuf?version=2.0"
 import type { ClipboardItem, ItemKind } from "../lib/clipboard-types"
@@ -71,19 +70,9 @@ export function uiIcon(variant: string, size = 18): Gtk.Widget {
   return fallback
 }
 
-//: Each content type is themed by a palette.v1 role (never a fixed hex) so the
-//: header follows the wallpaper like the rest of the desktop. These MUST stay
-//: in sync with the `.kind-* .clipboard-head` rules in style.css: the role's
-//: hex is what decides the header's on-dark/on-light ink below.
-const TYPE_TOKEN: Record<ItemKind, string> = {
-  text: "tertiary",
-  code: "surface_container_lowest",
-  color: "error",
-  image: "error_container",
-  link: "primary",
-  emoji: "secondary",
-}
-
+//: Header fills and their matching Material `on_*` ink live entirely in
+//: style.css (`.kind-* .clipboard-head`). The card only adds its kind class, so
+//: the ink follows the v2 appearance roles without any runtime color math.
 const TYPE_LABEL: Record<ItemKind, string> = {
   text: "Text",
   code: "Code",
@@ -93,57 +82,15 @@ const TYPE_LABEL: Record<ItemKind, string> = {
   emoji: "Emoji",
 }
 
-let tokenCache: Record<string, string> | null = null
-
 /**
  * Drop every visual cache a palette change invalidates (AD-27).
  *
- * `tokenCache` holds the palette tokens each header's contrast was derived
- * from; `textureCache` holds rasterized themed glyphs at their old tint. The
+ * `textureCache` holds rasterized themed glyphs at their old tint. The
  * palette-refresh surface calls this BEFORE rebuilding the cards and the
- * static search icon, so both read the repointed `colors.css` pointer.
+ * static search icon, so both read the repointed appearance roles.
  */
 export function clearVisualCaches(): void {
-  tokenCache = null
   textureCache.clear()
-}
-
-function paletteTokens(): Record<string, string> {
-  if (tokenCache !== null) return tokenCache
-  const tokens: Record<string, string> = {}
-  try {
-    const path = `${GLib.get_user_config_dir()}/ags/colors.css`
-    const [ok, bytes] = GLib.file_get_contents(path)
-    if (ok && bytes !== null) {
-      const text = new TextDecoder().decode(bytes)
-      for (const match of text.matchAll(/@define-color\s+([\w-]+)\s+(#[0-9a-fA-F]{6})/g)) {
-        tokens[match[1]] = match[2]
-      }
-    }
-  } catch (error) {
-    console.error(`clipboard: cannot read palette tokens: ${error}`)
-  }
-  tokenCache = tokens
-  return tokens
-}
-
-function relativeLuminance(hex: string): number {
-  const int = Number.parseInt(hex.slice(1), 16)
-  const channel = (value: number): number => {
-    const c = value / 255
-    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
-  }
-  const r = channel((int >> 16) & 0xff)
-  const g = channel((int >> 8) & 0xff)
-  const b = channel(int & 0xff)
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
-}
-
-//: "on-dark" (light text) when the type role is dark, else "on-light".
-function headerTextClass(kind: ItemKind): string {
-  const hex = paletteTokens()[TYPE_TOKEN[kind]]
-  if (hex === undefined) return "on-dark"
-  return relativeLuminance(hex) < 0.45 ? "on-dark" : "on-light"
 }
 
 function relativeTime(timestamp: number): string {
@@ -183,9 +130,7 @@ export function ItemCard(
 
   // CenterBox lays start/end out itself — no child hexpand, which would
   // otherwise propagate up and make the card stretch in the list.
-  const header = new Gtk.CenterBox({
-    css_classes: ["clipboard-head", headerTextClass(item.kind)],
-  })
+  const header = new Gtk.CenterBox({ css_classes: ["clipboard-head"] })
   const headStart = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 4 })
   const badge = new Gtk.Label({ label: String(index), xalign: 0.5 })
   badge.add_css_class("clipboard-index")

@@ -1,7 +1,7 @@
-/* clipboard overlay — follows the runtime-generated palette.v1 roles
- * (colors.css): panel/border mirror the capture tool and rofi launcher, and
- * each card's type header uses a semantic role (never a fixed hex), so a
- * wallpaper change restyles the overlay like the rest of the desktop. */
+/* clipboard overlay — follows the v2 appearance roles (appearance.css):
+ * panel/border mirror the capture tool and rofi launcher, and each card's type
+ * header uses a semantic role (never a fixed hex), so a wallpaper change
+ * restyles the overlay like the rest of the desktop. */
 
 window#clipboard-window {
   background-color: transparent;
@@ -118,44 +118,44 @@ window#clipboard-window {
   box-shadow: 0 0 0 2px alpha(@secondary, 0.6);
 }
 
-/* Type header: background = palette role, text contrast chosen at runtime
- * (on-dark → light text, on-light → dark text) by role luminance. Corners
- * are clipped by the card's Gtk.Overflow.HIDDEN. */
+/* Type header: background = palette role, ink = that role's Material `on_*`
+ * counterpart. The mapping is static; there is no runtime luminance math.
+ * `surface_container_lowest` is the neutral surface head and has no
+ * `on_surface_container_lowest` role, so it deterministically uses
+ * @on_surface. Corners are clipped by the card's Gtk.Overflow.HIDDEN. */
 .clipboard-head {
   min-height: 36px;
   padding: 0 12px;
 }
 
-.clipboard-head.on-dark {
-  color: @on_surface;
-}
-
-.clipboard-head.on-light {
-  color: @on_primary;
-}
-
 .kind-text .clipboard-head {
   background-color: @tertiary;
+  color: @on_tertiary;
 }
 
 .kind-code .clipboard-head {
   background-color: @surface_container_lowest;
+  color: @on_surface;
 }
 
 .kind-color .clipboard-head {
   background-color: @error;
+  color: @on_error;
 }
 
 .kind-image .clipboard-head {
   background-color: @error_container;
+  color: @on_error_container;
 }
 
 .kind-link .clipboard-head {
   background-color: @primary;
+  color: @on_primary;
 }
 
 .kind-emoji .clipboard-head {
   background-color: @secondary;
+  color: @on_secondary;
 }
 
 .clipboard-index {

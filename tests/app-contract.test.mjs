@@ -287,11 +287,11 @@ test("app.tsx registers the real appearance-refresh handler", () => {
   assert.match(app, /refreshClipboardAppearance\(\)/, "the widgets are rebuilt");
 });
 
-test("the refresh clears the real token and texture caches", () => {
+test("the refresh clears the rasterized-icon texture cache", () => {
   const itemCard = readText("ui", "ItemCard.tsx");
   const body = functionBody(itemCard, "export function clearVisualCaches");
-  assert.match(body, /tokenCache = null/);
   assert.match(body, /textureCache\.clear\(\)/);
+  assert.doesNotMatch(body, /tokenCache/);
 });
 
 test("the refresh surface rebuilds the search icon and cards", () => {

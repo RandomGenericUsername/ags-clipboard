@@ -29,7 +29,7 @@ const cardWidth = appearance.value("layout.ags-clipboard.card-width", 260)
 // The runtime-owned palette refresh (AD-27), composed with the overlay's
 // existing show/hide/toggle request surface below. `createAppearanceRefreshHandler`
 // re-applies the WHOLE appearance (palette + skin + mode) first, then runs the
-// app-owned work: drop the palette-token/texture caches, rebuild the static
+// app-owned work: drop the rasterized-icon texture cache, rebuild the static
 // search icon and rebuild the cards from the SAME in-memory list. The mapped
 // overlay, query, selection and clipboard history are never reset. The helper
 // is idempotent by the opaque appearance hash and answers through the platform

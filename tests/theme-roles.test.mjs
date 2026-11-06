@@ -6,8 +6,9 @@
 // roles, so a carrier-index migration would silently break the per-type card
 // hues and the state colors. This gate pins the outcome instead: no
 // CSS/TS/TSX file may reference a legacy carrier, every `@role` the sheet
-// uses must be declared by `palette.v1`, and the ItemCard contrast picker must
-// use the exact role its header is filled with.
+// uses must be declared by `palette.v1`, and each card kind's header ink must
+// be the static Material `on_*` counterpart of its fill. The app must not read
+// the palette artifact or compute contrast at runtime.
 //
 // The forbidden token is assembled from pieces so this test itself stays clean
 // under the repo-wide absence grep.
@@ -50,6 +51,18 @@ function readText(...parts) {
 
 const LEGACY_TOKEN = new RegExp("@" + "color" + "_[a-z0-9_]+", "g");
 
+//: Header fill -> the Material ink role that belongs to that fill. `code` is
+//: the neutral `surface_container_lowest` head, which has no `on_*` sibling;
+//: its deterministic ink is `@on_surface`.
+const HEADER_INK = {
+  text: ["tertiary", "on_tertiary"],
+  code: ["surface_container_lowest", "on_surface"],
+  color: ["error", "on_error"],
+  image: ["error_container", "on_error_container"],
+  link: ["primary", "on_primary"],
+  emoji: ["secondary", "on_secondary"],
+};
+
 test("no legacy positional carrier token survives in CSS/TS/TSX", () => {
   const legacy = [];
   for (const file of walk(ROOT)) {
@@ -79,35 +92,54 @@ test("every @role in the stylesheets is a declared palette.v1 role", () => {
   }
 });
 
-test("the ItemCard TYPE_TOKEN map matches each header fill", () => {
-  const itemCard = readText("ui", "ItemCard.tsx");
-  const block = itemCard.match(/const TYPE_TOKEN:[^{]+\{([\s\S]*?)\n\}/);
-  assert.notEqual(block, null, "ui/ItemCard.tsx must declare TYPE_TOKEN");
-  const tokens = new Map(
-    [...block[1].matchAll(/(\w+):\s*"([a-z0-9_]+)"/g)].map((m) => [m[1], m[2]]),
-  );
-
+test("each card kind's header uses its fill's static on_* ink", () => {
   const css = readText("style.css");
   const heads = new Map(
-    [...css.matchAll(/\.kind-(\w+) \.clipboard-head \{\s*background-color: @([a-z0-9_]+);/g)].map(
-      (m) => [m[1], m[2]],
-    ),
+    [
+      ...css.matchAll(
+        /\.kind-(\w+) \.clipboard-head \{\s*background-color: @([a-z0-9_]+);\s*color: @([a-z0-9_]+);\s*\}/g,
+      ),
+    ].map((match) => [match[1], [match[2], match[3]]]),
   );
 
-  assert.deepEqual([...tokens.keys()].sort(), [...heads.keys()].sort());
-  for (const [kind, role] of tokens) {
-    assert.equal(
-      heads.get(kind),
-      role,
-      `.kind-${kind} header uses @${heads.get(kind)} but TYPE_TOKEN says ${role}`,
-    );
-  }
+  assert.deepEqual(
+    Object.fromEntries(heads),
+    HEADER_INK,
+    "every .kind-* header must set its fill and matching on_* ink in CSS",
+  );
 });
 
-test("the six per-type roles stay distinct", () => {
+test("the six per-type header fills stay distinct", () => {
+  const fills = Object.values(HEADER_INK).map(([fill]) => fill);
+  assert.equal(fills.length, 6);
+  assert.equal(new Set(fills).size, 6, "each item kind keeps its own hue role");
+});
+
+test("the header ink classes and runtime luminance math are gone", () => {
+  const css = readText("style.css");
+  assert.doesNotMatch(css, /\.clipboard-head\.on-(?:dark|light)\b/);
+  assert.doesNotMatch(css, /\bon-(?:dark|light)\b/);
+
   const itemCard = readText("ui", "ItemCard.tsx");
-  const block = itemCard.match(/const TYPE_TOKEN:[^{]+\{([\s\S]*?)\n\}/);
-  const roles = [...block[1].matchAll(/(\w+):\s*"([a-z0-9_]+)"/g)].map((m) => m[2]);
-  assert.equal(roles.length, 6);
-  assert.equal(new Set(roles).size, 6, "each item kind keeps its own hue role");
+  for (const forbidden of [
+    /colors\.css/,
+    /gi:\/\/GLib/,
+    /\brelativeLuminance\b/,
+    /\bpaletteTokens\b/,
+    /\btokenCache\b/,
+    /\bheaderTextClass\b/,
+    /\bon-(?:dark|light)\b/,
+  ]) {
+    assert.doesNotMatch(
+      itemCard,
+      forbidden,
+      `ui/ItemCard.tsx still carries the runtime ink workaround: ${forbidden}`,
+    );
+  }
+
+  const clearStart = itemCard.indexOf("export function clearVisualCaches");
+  assert.notEqual(clearStart, -1, "ui/ItemCard.tsx must keep clearVisualCaches");
+  const clearBody = itemCard.slice(clearStart, itemCard.indexOf("function relativeTime"));
+  assert.match(clearBody, /textureCache\.clear\(\)/);
+  assert.doesNotMatch(clearBody, /tokenCache/);
 });

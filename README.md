@@ -39,7 +39,7 @@ The runtime invokes `ags request palette-refresh <appearance-hash> -i clipboard`
 after an appearance change. `createAppearanceRefreshHandler` re-applies the
 whole appearance first, then the app:
 
-1. clears the palette-token and rasterized-icon caches;
+1. clears the rasterized-icon texture cache;
 2. rebuilds the static search glyph from the new palette;
 3. rebuilds the visible cards from the **same** in-memory clipboard list.
 
@@ -59,7 +59,8 @@ process.
 runtime composes palette, skin and mode into that one generation, and the
 platform installs it as one USER-priority provider over the bundled `style.css`
 glass fallback. Missing artifacts are a no-op, so the bundled fallback keeps
-today's rendering.
+today's rendering. Card header ink is a static `on_*` role map in `style.css`;
+the app does no palette parsing or luminance math.
 
 The card width is the TSX-owned layout token
 `layout.ags-clipboard.card-width` (fallback `260`), read through

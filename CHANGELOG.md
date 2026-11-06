@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.5.0 — 2026-11-06
+
+- Move the card header ink into `style.css` as a static per-kind map:
+  `text` `@tertiary`/`@on_tertiary`, `code`
+  `@surface_container_lowest`/`@on_surface`, `color` `@error`/`@on_error`,
+  `image` `@error_container`/`@on_error_container`, `link`
+  `@primary`/`@on_primary`, `emoji` `@secondary`/`@on_secondary`. The dark
+  palette keeps each header's previous light/dark polarity at 7.24–14.88:1.
+- Remove the runtime workaround from `ui/ItemCard.tsx`: no
+  `~/.config/ags/colors.css` read, no relative-luminance threshold, no
+  `on-dark`/`on-light` classes and no palette token cache.
+  `clearVisualCaches` now clears only the rasterized-icon texture cache.
+- `tests/theme-roles.test.mjs` pins the six per-kind fill/ink pairs and the
+  absence of the palette read/luminance math; `tests/app-contract.test.mjs`
+  requires only the texture-cache clear.
+
 ## v0.4.0 — 2026-11-06
 
 - Migrate to the unified appearance plane (contracts v0.7.0 / `ags-platform`

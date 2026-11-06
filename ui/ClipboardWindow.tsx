@@ -315,8 +315,8 @@ export function ClipboardWindow(
 
   // The surface the app-level palette-refresh handler drives. `rebuild` here
   // is the FULL card rebuild (no `builtKey` short-circuit), because the old
-  // cards hold textures and header-contrast decisions from the previous
-  // palette. It keeps `items`, `query`, `selected`, `paused` and `jobId`.
+  // cards hold textures from the previous palette. It keeps `items`, `query`,
+  // `selected`, `paused` and `jobId`.
   appearanceSurfaces.push({
     clearCaches: clearVisualCaches,
     rebuildSearchIcon,
