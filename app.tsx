@@ -1,8 +1,8 @@
 import app from "ags/gtk4/app"
 import Gtk from "gi://Gtk?version=4.0"
 import style from "./style.css"
-import { theme } from "ags-platform/adapters/theme"
-import { createAppSkin } from "ags-platform/adapters/skin"
+import { createAppearance } from "ags-platform/adapters/appearance"
+import { createAppearanceRefreshHandler } from "ags-platform/ports/appearance-refresh"
 import { PALETTE_REFRESH_COMMAND } from "ags-platform/ports/palette-refresh"
 import {
   ClipboardWindow,
@@ -12,24 +12,29 @@ import {
   toggleWindow,
 } from "./ui/ClipboardWindow"
 import { handleRequest } from "./lib/requests"
-import { createClipboardPaletteRefresh } from "./lib/palette-refresh"
 
-// The skin plane is app-scoped: only the CSS pointer
-// ($XDG_CONFIG_HOME/ags-clipboard/skin.css) is per app; the token map and both
-// palette artifacts are shared. The adapter owns its own file monitor, so a
-// runtime repoint of skin.css reloads without a clipboard request command.
-const skin = createAppSkin({ configDir: "ags-clipboard" })
+// The v2 appearance plane is app-scoped: palette, skin and mode are published
+// as ONE generation behind `$XDG_STATE_HOME/dotfiles/current/appearance`, and
+// the platform adapter installs the composed sheet as one USER-priority
+// provider. Only the stable consumer link
+// (`$XDG_CONFIG_HOME/ags-clipboard/appearance.css`) is per app; the adapter
+// owns the single watcher, so a runtime repoint reloads without a clipboard
+// request command.
+const appearance = createAppearance({ configDir: "ags-clipboard" })
+
+// TSX-owned layout token. The accessor is reactive; `peek()` reads it without
+// registering a dependency because `ItemCard` needs a plain pixel number.
+const cardWidth = appearance.value("layout.ags-clipboard.card-width", 260)
 
 // The runtime-owned palette refresh (AD-27), composed with the overlay's
-// existing show/hide/toggle request surface below. This is the real refresh,
-// not a Theme-only ack: it re-applies the stable Theme pointer, drops the
-// palette-token/texture caches, rebuilds the static search icon and rebuilds
-// the cards from the SAME in-memory list. The mapped overlay, query, selection
-// and clipboard history are never reset. `createClipboardPaletteRefresh` makes
-// it idempotent by the opaque appearance hash and answers through the platform
+// existing show/hide/toggle request surface below. `createAppearanceRefreshHandler`
+// re-applies the WHOLE appearance (palette + skin + mode) first, then runs the
+// app-owned work: drop the palette-token/texture caches, rebuild the static
+// search icon and rebuild the cards from the SAME in-memory list. The mapped
+// overlay, query, selection and clipboard history are never reset. The helper
+// is idempotent by the opaque appearance hash and answers through the platform
 // helper's single JSON-encoded string.
-const paletteRefresh = createClipboardPaletteRefresh(() => {
-  theme.apply()
+const paletteRefresh = createAppearanceRefreshHandler(appearance, () => {
   refreshClipboardAppearance()
 })
 
@@ -74,17 +79,13 @@ app.start({
     })
   },
   main() {
-    // Reuse the shell's generated palette so the overlay matches the bar.
-    // Applied through the Theme port (spine AD-13): the adapter owns WHICH
-    // artifact is applied — the stable `colors.css` pointer, repointed on
-    // every palette change — so this file no longer reads the path itself.
-    theme.apply()
-    // The skin plane (frozen Skin Spec v1) is applied AFTER the palette: its
-    // composed provider carries the palette roles plus the runtime-expanded
-    // skin.css at USER priority, over the bundled style.css glass fallback.
-    skin.apply()
+    // Reuse the runtime-composed appearance so the overlay matches the rest
+    // of the desktop. One provider carries the palette roles, the skin and the
+    // resolved mode; missing artifacts are a no-op, leaving the bundled
+    // style.css glass fallback in place.
+    appearance.apply()
     for (const monitor of app.get_monitors()) {
-      addWindow(ClipboardWindow(monitor))
+      addWindow(ClipboardWindow(monitor, cardWidth))
     }
   },
 })

@@ -1,22 +1,18 @@
 /**
  * The pure core of the clipboard overlay's live appearance refresh (AD-27).
  *
- * The runtime invokes `palette-refresh <appearance-hash>` after the palette
- * pointer moved. The app must converge on the new appearance WITHOUT touching
- * the overlay's state: the visible surface, the query, the selected card and
- * the in-memory clipboard list all survive.
+ * The runtime invokes `palette-refresh <appearance-hash>` after the appearance
+ * pointer moved. The platform's `createAppearanceRefreshHandler` re-applies the
+ * whole appearance and makes the request idempotent by that hash; this module
+ * owns only the non-destructive widget steps the app performs afterwards.
  *
- * Two separate concerns live here so a stock-runner test can execute them with
- * no `gi://`/`ags` imports:
+ * The overlay must converge on the new appearance WITHOUT touching its state:
+ * the visible surface, the query, the selected card and the in-memory clipboard
+ * list all survive.
  *
- * 1. `applyAppearance(surface)` orders the three non-destructive widget steps:
- *    forget the token/texture caches, rebuild the static search icon, then
- *    rebuild the cards. The window supplies the real GTK operations; a test
- *    supplies recorders.
- * 2. `createAppearanceRefresh(apply)` makes the whole thing idempotent by the
- *    opaque appearance hash: the same hash does no work and still reports
- *    `applied`, while a new hash runs the refresh. A throw is not recorded as
- *    applied, so the runtime's next trigger retries it.
+ * `applyAppearance(surface)` orders the three widget steps: forget the
+ * token/texture caches, rebuild the static search icon, then rebuild the cards.
+ * The window supplies the real GTK operations; a test supplies recorders.
  *
  * PURE: no `ags`, no `gi://*`, no I/O.
  */
@@ -31,11 +27,6 @@ export interface AppearanceSurface {
   rebuildCards(): void;
 }
 
-/** What the platform's `createPaletteRefreshHandler` accepts as applied. */
-export interface AppearanceApplied {
-  status: "applied";
-}
-
 /**
  * Run the non-destructive appearance refresh in its required order.
  *
@@ -47,27 +38,4 @@ export function applyAppearance(surface: AppearanceSurface): void {
   surface.clearCaches();
   surface.rebuildSearchIcon();
   surface.rebuildCards();
-}
-
-/**
- * Wrap an appearance application as a hash-idempotent refresh.
- *
- * The refresh is opaque to the hash; the app only records which appearance it
- * last applied successfully. Repeated triggers for the same hash are safe and
- * cheap (the runtime ledger retries failures, not successes). A new hash runs
- * the refresh; a failed refresh leaves the previous hash in place so the next
- * trigger retries it.
- */
-export function createAppearanceRefresh(
-  apply: () => void,
-): (appearanceHash: string) => AppearanceApplied {
-  let appliedHash: string | null = null;
-
-  return (appearanceHash: string): AppearanceApplied => {
-    if (appearanceHash !== appliedHash) {
-      apply();
-      appliedHash = appearanceHash;
-    }
-    return { status: "applied" };
-  };
 }

@@ -5,6 +5,7 @@ import GLib from "gi://GLib?version=2.0"
 // shared client instead of a local event-bus copy. Topics are the contract
 // names, passed as literals exactly as the bar does for `capture.state`.
 import { domainEvents, type DomainPayload } from "ags-platform/adapters/event-bus"
+import type { ReadAccessor } from "ags-platform/ports/reactive"
 import {
   itemFromPayload,
   itemKey,
@@ -34,9 +35,10 @@ const appearanceSurfaces: AppearanceSurface[] = []
 /**
  * Rebuild every overlay's themed widgets from the current palette pointer.
  *
- * Called only by the app-level `palette-refresh` handler after `theme.apply()`.
- * It deliberately does not read history, change visibility, reset the query or
- * select a card: those belong to the user's open surface, not to the palette.
+ * Called only by the app-level `palette-refresh` handler after the platform
+ * helper re-applies the whole appearance. It deliberately does not read history,
+ * change visibility, reset the query or select a card: those belong to the
+ * user's open surface, not to the appearance.
  */
 export function refreshClipboardAppearance(): void {
   for (const surface of appearanceSurfaces) applyAppearance(surface)
@@ -63,7 +65,10 @@ export function toggleWindow(): void {
 }
 
 /** The bottom layer-shell clipboard overlay (design D7). */
-export function ClipboardWindow(gdkmonitor: Gdk.Monitor) {
+export function ClipboardWindow(
+  gdkmonitor: Gdk.Monitor,
+  cardWidth: ReadAccessor<number>,
+) {
   let items: ClipboardItem[] = []
   let query = ""
   let selected = 0
@@ -161,7 +166,7 @@ export function ClipboardWindow(gdkmonitor: Gdk.Monitor) {
     if (selected >= shown.length) selected = shown.length - 1
     if (selected < 0) selected = 0
     shown.forEach((item, index) => {
-      const card = ItemCard(item, index + 1, select, openLink)
+      const card = ItemCard(item, index + 1, select, openLink, cardWidth.peek())
       cards.push(card)
       list.append(card)
     })

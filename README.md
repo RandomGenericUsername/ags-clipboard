@@ -36,44 +36,45 @@ app never reads the old paths. Writable state stays outside the installed tag
 ### `palette-refresh`
 
 The runtime invokes `ags request palette-refresh <appearance-hash> -i clipboard`
-after an appearance change. The app:
+after an appearance change. `createAppearanceRefreshHandler` re-applies the
+whole appearance first, then the app:
 
-1. re-applies the stable Theme pointer (`$XDG_CONFIG_HOME/ags/colors.css`);
-2. clears the palette-token and rasterized-icon caches;
-3. rebuilds the static search glyph from the new palette;
-4. rebuilds the visible cards from the **same** in-memory clipboard list.
+1. clears the palette-token and rasterized-icon caches;
+2. rebuilds the static search glyph from the new palette;
+3. rebuilds the visible cards from the **same** in-memory clipboard list.
 
 Overlay visibility, the search query, the selected index and clipboard state
 are never reset. The handler is idempotent by appearance hash and answers with
 exactly one JSON-encoded string (`{"ok":true}` or a protocol failure), via
-`ags-platform/ports/palette-refresh`. A wallpaper change never restarts the
+`ags-platform/ports/appearance-refresh`. A wallpaper change never restarts the
 process.
 
-### Skin plane
+### Appearance plane (v2)
 
-`main()` composes appearance once, in this order:
+`app.tsx` declares one module-level
+`createAppearance({ configDir: "ags-clipboard" })`; `main()` calls
+`appearance.apply()` once. The adapter watches only
+`$XDG_STATE_HOME/dotfiles/current/appearance` and reads the stable consumer link
+`$XDG_CONFIG_HOME/ags-clipboard/appearance.css` plus its `tokens.json`. The
+runtime composes palette, skin and mode into that one generation, and the
+platform installs it as one USER-priority provider over the bundled `style.css`
+glass fallback. Missing artifacts are a no-op, so the bundled fallback keeps
+today's rendering.
 
-1. `theme.apply()` applies the stable `$XDG_CONFIG_HOME/ags/colors.css`
-   palette pointer;
-2. `skin.apply()` applies the app-scoped skin provider **last**, at USER
-   priority, over the bundled `style.css` glass fallback.
-
-The skin is app-scoped by its AGS config dir: the runtime-expanded CSS is
-`$XDG_CONFIG_HOME/ags-clipboard/skin.css`, while the grouped token map
-`$XDG_STATE_HOME/dotfiles/current/skin.json` and both palette artifacts are
-shared. Missing skin artifacts are a no-op, so the bundled `style.css` keeps
-today's rendering. The platform adapter owns its file monitor; there is no
-skin-refresh request and the `palette-refresh` handler is unchanged. This app
-has no TSX layout tokens in v1, so it does not call `createAppSkinValue`.
+The card width is the TSX-owned layout token
+`layout.ags-clipboard.card-width` (fallback `260`), read through
+`appearance.value(...)` with `peek()` where GTK needs a plain number. No
+skin-refresh request is added; the one fixed `palette-refresh` command is the
+only appearance trigger.
 
 ## Local development
 
-The program tuple is `ags-platform` `v0.8.0` / `contracts` `v0.6.0` /
-`dotfiles-assets` `v0.3.0`. Those tags are local-only in this run; the local
+The program tuple is `ags-platform` `v0.9.0` / `contracts` `v0.7.0` /
+`dotfiles-assets` `v0.12.0`. Those tags are local-only in this run; the local
 gates use a gitignored symlink under `.dev/`.
 
 ```sh
-ln -s ../../../ags-platform .dev/ags-platform/v0.8.0   # or use AGS_PLATFORM_DEV
+ln -s ../../../ags-platform .dev/ags-platform/v0.9.0   # or use AGS_PLATFORM_DEV
 make test          # pure unit + palette-role tests (Node only)
 make conformance   # manifest + handler + template gate
 make drift         # shared event client <-> contracts drift gate

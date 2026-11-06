@@ -166,7 +166,8 @@ export function ItemCard(
   item: ClipboardItem,
   index: number,
   onSelect: (item: ClipboardItem) => void,
-  onOpenLink?: (item: ClipboardItem) => void,
+  onOpenLink: ((item: ClipboardItem) => void) | undefined,
+  cardWidth: number,
 ): Gtk.Box {
   const card = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -176,7 +177,7 @@ export function ItemCard(
   // Clip children to the rounded card corners (GTK does not do this by
   // default), so the header/body follow the card radius like the mockup.
   card.set_overflow(Gtk.Overflow.HIDDEN)
-  card.set_size_request(260, -1)
+  card.set_size_request(cardWidth, -1)
   card.set_hexpand(false)
   card.set_halign(Gtk.Align.START)
 

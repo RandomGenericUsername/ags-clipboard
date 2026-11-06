@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.4.0 — 2026-11-06
+
+- Migrate to the unified appearance plane (contracts v0.7.0 / `ags-platform`
+  v0.9.0): `app.tsx` declares one
+  `createAppearance({ configDir: "ags-clipboard" })` and `main()` calls
+  `appearance.apply()`. The split `theme.apply()` / `skin.apply()` startup is
+  removed.
+- The one `palette-refresh` command now goes through
+  `createAppearanceRefreshHandler(appearance, work)`: the platform re-applies
+  the whole appearance and owns hash idempotence, while `work` keeps the
+  non-destructive cache clear, search-icon rebuild and card rebuild. No new
+  request command is added.
+- The card width is the TSX-owned layout token
+  `layout.ags-clipboard.card-width` (fallback `260`) instead of a hard constant.
+  `style.css` remains the bundled glass fallback; selectors, geometry,
+  gestures and behavior are unchanged.
+- Replace `tests/validation/skin-consumption.test.mjs` with
+  `tests/validation/appearance-migration.test.mjs`: appearance
+  apply/configDir/refresh-handler wiring, the layout token, and the absence of
+  Theme/Skin calls.
+- Pin the local tuple at `ags-platform` v0.9.0 / `contracts` v0.7.0.
+
 ## v0.3.0 — 2026-11-05
 
 - Consume the app-scoped skin plane: `app.tsx` declares one

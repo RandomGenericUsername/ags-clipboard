@@ -5,8 +5,8 @@
 // This is the repo-local gate the standalone contract requires:
 //   1. `app.manifest.json` is schema-valid and carries the pilot identity;
 //   2. app.tsx / window / launcher / history paths agree with that identity;
-//   3. the live palette-refresh handler is real (cache clear, Theme pointer,
-//      search-icon + card rebuild) and non-destructive;
+//   3. the live palette-refresh handler is real (whole-appearance apply, cache
+//      clear, search-icon + card rebuild) and non-destructive;
 //   4. the shared dev-flow template (AGENTS, tickets, guard, Makefile, CI,
 //      tests, templates/ags-app) is present and the platform's own
 //      `checkAppRepo` template gate passes;
@@ -237,7 +237,7 @@ test("the frozen copyable template is present for the next app", () => {
   }
 });
 
-test("the contracts v0.6.0 manifest schema agrees with the platform", () => {
+test("the contracts v0.7.0 manifest schema agrees with the platform", () => {
   const contractsRoot = findContractsRoot();
   assert.notEqual(contractsRoot, null, "cannot find contracts (set CONTRACTS_ROOT)");
   const schema = JSON.parse(
@@ -256,25 +256,34 @@ test("the contracts v0.6.0 manifest schema agrees with the platform", () => {
   );
 });
 
-test("the Makefile pins the v0.8.0 platform / v0.6.0 contracts tuple", () => {
+test("the Makefile pins the v0.9.0 platform / v0.7.0 contracts tuple", () => {
   const makefile = readText("Makefile");
-  assert.match(makefile, /^AGS_PLATFORM_VERSION := v0\.8\.0$/m);
-  assert.match(makefile, /^CONTRACTS_VERSION := v0\.6\.0$/m);
+  assert.match(makefile, /^AGS_PLATFORM_VERSION := v0\.9\.0$/m);
+  assert.match(makefile, /^CONTRACTS_VERSION := v0\.7\.0$/m);
 });
 
 // ── 3. The live handler is real and non-destructive ────────────────────────
 
-test("app.tsx registers the real palette-refresh handler", () => {
+test("app.tsx registers the real appearance-refresh handler", () => {
   const app = readText("app.tsx");
-  assert.match(app, /from\s+"\.\/lib\/palette-refresh"/);
-  assert.match(app, /createClipboardPaletteRefresh\(/);
+  assert.match(app, /from\s+"ags-platform\/adapters\/appearance"/);
+  assert.match(
+    app,
+    /const appearance = createAppearance\(\{\s*configDir: "ags-clipboard",?\s*\}\)/,
+  );
+  assert.match(app, /appearance\.apply\(\)/, "the whole appearance is applied");
+  assert.match(
+    app,
+    /createAppearanceRefreshHandler\(appearance,/,
+    "the platform helper re-applies the appearance before app work",
+  );
   assert.match(app, /requestHandler\s*\(/);
   assert.match(
     app,
     /if \(argv\[0\] === PALETTE_REFRESH_COMMAND\)[\s\S]*paletteRefresh\(argv, res\)/,
     "palette-refresh dispatches before the show/hide/toggle surface",
   );
-  assert.match(app, /theme\.apply\(\)/, "the stable Theme pointer is re-applied");
+  assert.doesNotMatch(app, /theme\.apply\(\)|\bskin\.apply\(\)/);
   assert.match(app, /refreshClipboardAppearance\(\)/, "the widgets are rebuilt");
 });
 

@@ -58,7 +58,7 @@ no self-hosted runner and no CI secret dependency.
 - `make bundle` — LOCAL: `ags bundle app.tsx build/ags-clipboard.js`.
 - `make gates` — all of the above.
 
-The program tuple is `ags-platform` v0.8.0 / `contracts` v0.6.0, local-only in
+The program tuple is `ags-platform` v0.9.0 / `contracts` v0.7.0, local-only in
 this run. `.dev/` is gitignored; never commit a fetched platform,
 `node_modules/`, `@girs/`, generated `tsconfig.json` or bundle output.
 
@@ -71,22 +71,26 @@ the release ticket.
 
 ## 6. Palette-refresh invariants
 
-`lib/palette-refresh.ts` and `lib/appearance.ts` are pure and executed by tests:
+The platform's `createAppearanceRefreshHandler` owns the protocol: exactly one
+JSON-string response per request, idempotent by appearance hash, and the whole
+appearance is re-applied before app work. `lib/appearance.ts` is pure and
+executed by tests; it owns only the non-destructive widget order:
 
-- exactly one JSON-string response per request, through the platform helper;
-- idempotent by appearance hash; a thrown refresh is not recorded as applied;
 - cache clear happens before the search-icon and card rebuilds;
 - overlay visibility, query, selection and clipboard state are preserved.
 
 `make conformance` asserts these source invariants and the platform
 `checkAppRepo` template gate. Do not weaken them to make a test pass.
 
-## 7. Skin plane
+## 7. Appearance plane (v2)
 
-`app.tsx` declares one module-level `createAppSkin({ configDir: "ags-clipboard" })`
-and `main()` calls `skin.apply()` immediately after `theme.apply()`. The CSS
-pointer is app-scoped (`$XDG_CONFIG_HOME/ags-clipboard/skin.css`); the grouped
-token map (`$XDG_STATE_HOME/dotfiles/current/skin.json`) and palette artifacts
-are shared. The skin adapter owns its monitor, so the palette-refresh handler
-stays theme-only and there is no skin-refresh request. `style.css` remains the
-bundled glass fallback. Layout is TSX-owned; this app has no v1 layout tokens.
+`app.tsx` declares one module-level
+`createAppearance({ configDir: "ags-clipboard" })` and `main()` calls
+`appearance.apply()`. The adapter watches only
+`$XDG_STATE_HOME/dotfiles/current/appearance`; the stable consumer link is
+`$XDG_CONFIG_HOME/ags-clipboard/appearance.css` and its `tokens.json` carries
+the composed palette, skin and mode. There is one fixed `palette-refresh`
+command and no skin-refresh request. `style.css` remains the bundled glass
+fallback. Layout is TSX-owned: the card width is
+`layout.ags-clipboard.card-width` (fallback `260`), read with `peek()` where GTK
+needs a plain number.
