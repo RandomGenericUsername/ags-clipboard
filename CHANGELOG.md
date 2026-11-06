@@ -1,6 +1,22 @@
 # Changelog
 
-## Unreleased
+## v0.3.0 — 2026-11-05
+
+- Consume the app-scoped skin plane: `app.tsx` declares one
+  `createAppSkin({ configDir: "ags-clipboard" })` and `main()` calls
+  `skin.apply()` immediately after `theme.apply()`. The composed skin provider
+  is installed last at USER priority over the bundled `style.css` glass
+  fallback; missing skin artifacts are a no-op.
+- The existing `palette-refresh` handler and the single `requestHandler` are
+  unchanged. No skin-refresh request is added; the platform adapter's own
+  monitor reloads `$XDG_CONFIG_HOME/ags-clipboard/skin.css` when the runtime
+  repoints it. No TSX layout tokens are added (none exist in v1).
+- Add `tests/validation/skin-consumption.test.mjs`: startup order, the
+  `ags-clipboard` config dir, the single request handler, and the retained
+  glass fallback.
+- Pin the local tuple at `ags-platform` v0.8.0 / `contracts` v0.6.0.
+
+## v0.2.0 — 2026-11-01
 
 - Migrate `style.css` and the frozen `templates/ags-app/style.css` from legacy
   CSG positional carrier names to the semantic `palette.v1` roles the

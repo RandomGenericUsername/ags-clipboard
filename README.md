@@ -49,14 +49,31 @@ exactly one JSON-encoded string (`{"ok":true}` or a protocol failure), via
 `ags-platform/ports/palette-refresh`. A wallpaper change never restarts the
 process.
 
+### Skin plane
+
+`main()` composes appearance once, in this order:
+
+1. `theme.apply()` applies the stable `$XDG_CONFIG_HOME/ags/colors.css`
+   palette pointer;
+2. `skin.apply()` applies the app-scoped skin provider **last**, at USER
+   priority, over the bundled `style.css` glass fallback.
+
+The skin is app-scoped by its AGS config dir: the runtime-expanded CSS is
+`$XDG_CONFIG_HOME/ags-clipboard/skin.css`, while the grouped token map
+`$XDG_STATE_HOME/dotfiles/current/skin.json` and both palette artifacts are
+shared. Missing skin artifacts are a no-op, so the bundled `style.css` keeps
+today's rendering. The platform adapter owns its file monitor; there is no
+skin-refresh request and the `palette-refresh` handler is unchanged. This app
+has no TSX layout tokens in v1, so it does not call `createAppSkinValue`.
+
 ## Local development
 
-The program tuple is `ags-platform` `v0.4.0` / `contracts` `v0.3.0` /
+The program tuple is `ags-platform` `v0.8.0` / `contracts` `v0.6.0` /
 `dotfiles-assets` `v0.3.0`. Those tags are local-only in this run; the local
 gates use a gitignored symlink under `.dev/`.
 
 ```sh
-ln -s ../../../ags-platform .dev/ags-platform/v0.4.0   # or use AGS_PLATFORM_DEV
+ln -s ../../../ags-platform .dev/ags-platform/v0.8.0   # or use AGS_PLATFORM_DEV
 make test          # pure unit + palette-role tests (Node only)
 make conformance   # manifest + handler + template gate
 make drift         # shared event client <-> contracts drift gate

@@ -58,7 +58,7 @@ no self-hosted runner and no CI secret dependency.
 - `make bundle` — LOCAL: `ags bundle app.tsx build/ags-clipboard.js`.
 - `make gates` — all of the above.
 
-The program tuple is `ags-platform` v0.4.0 / `contracts` v0.3.0, local-only in
+The program tuple is `ags-platform` v0.8.0 / `contracts` v0.6.0, local-only in
 this run. `.dev/` is gitignored; never commit a fetched platform,
 `node_modules/`, `@girs/`, generated `tsconfig.json` or bundle output.
 
@@ -80,3 +80,13 @@ the release ticket.
 
 `make conformance` asserts these source invariants and the platform
 `checkAppRepo` template gate. Do not weaken them to make a test pass.
+
+## 7. Skin plane
+
+`app.tsx` declares one module-level `createAppSkin({ configDir: "ags-clipboard" })`
+and `main()` calls `skin.apply()` immediately after `theme.apply()`. The CSS
+pointer is app-scoped (`$XDG_CONFIG_HOME/ags-clipboard/skin.css`); the grouped
+token map (`$XDG_STATE_HOME/dotfiles/current/skin.json`) and palette artifacts
+are shared. The skin adapter owns its monitor, so the palette-refresh handler
+stays theme-only and there is no skin-refresh request. `style.css` remains the
+bundled glass fallback. Layout is TSX-owned; this app has no v1 layout tokens.

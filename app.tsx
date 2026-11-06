@@ -2,6 +2,7 @@ import app from "ags/gtk4/app"
 import Gtk from "gi://Gtk?version=4.0"
 import style from "./style.css"
 import { theme } from "ags-platform/adapters/theme"
+import { createAppSkin } from "ags-platform/adapters/skin"
 import { PALETTE_REFRESH_COMMAND } from "ags-platform/ports/palette-refresh"
 import {
   ClipboardWindow,
@@ -12,6 +13,12 @@ import {
 } from "./ui/ClipboardWindow"
 import { handleRequest } from "./lib/requests"
 import { createClipboardPaletteRefresh } from "./lib/palette-refresh"
+
+// The skin plane is app-scoped: only the CSS pointer
+// ($XDG_CONFIG_HOME/ags-clipboard/skin.css) is per app; the token map and both
+// palette artifacts are shared. The adapter owns its own file monitor, so a
+// runtime repoint of skin.css reloads without a clipboard request command.
+const skin = createAppSkin({ configDir: "ags-clipboard" })
 
 // The runtime-owned palette refresh (AD-27), composed with the overlay's
 // existing show/hide/toggle request surface below. This is the real refresh,
@@ -72,6 +79,10 @@ app.start({
     // artifact is applied — the stable `colors.css` pointer, repointed on
     // every palette change — so this file no longer reads the path itself.
     theme.apply()
+    // The skin plane (frozen Skin Spec v1) is applied AFTER the palette: its
+    // composed provider carries the palette roles plus the runtime-expanded
+    // skin.css at USER priority, over the bundled style.css glass fallback.
+    skin.apply()
     for (const monitor of app.get_monitors()) {
       addWindow(ClipboardWindow(monitor))
     }
