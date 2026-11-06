@@ -13,7 +13,7 @@
 - [REQ-001-standalone-clipboard-pilot/ticket.md](./REQ-001-standalone-clipboard-pilot/ticket.md) — Extract the clipboard overlay into the standalone ags-clipboard pilot | `done` | links: worktree none, branch main
 - [REQ-002-theme-roles/ticket.md](./REQ-002-theme-roles/ticket.md) — Migrate the clipboard CSS to semantic palette.v1 roles | `done` | links: worktree .worktrees/REQ-002/, branch ticket/REQ-002-theme-roles
 - [REQ-003-skin-consumption/ticket.md](./REQ-003-skin-consumption/ticket.md) — Consume the app-scoped skin plane | `done` | links: worktree .worktrees/REQ-003/, branch ticket/REQ-003-skin-consumption
-- [REQ-004-appearance-migration/ticket.md](./REQ-004-appearance-migration/ticket.md) — Migrate the clipboard app to the v2 appearance plane | `in-progress` | links: worktree .worktrees/REQ-004/, branch ticket/REQ-004-appearance-migration
+- [REQ-004-appearance-migration/ticket.md](./REQ-004-appearance-migration/ticket.md) — Migrate the clipboard app to the v2 appearance plane | `done` | links: worktree .worktrees/REQ-004/, branch ticket/REQ-004-appearance-migration
 
 ## Bugs
 
