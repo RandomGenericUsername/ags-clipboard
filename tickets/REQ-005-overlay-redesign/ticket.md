@@ -27,8 +27,16 @@ Replace the bottom horizontal card strip with a desktop command surface:
   without stealing selection, and `Ctrl+1..9` are preserved.
 
 The normative mock is [`mock.html`](./mock.html); this ticket is the app-local
-implementation contract. The batch-level record is
-`dotfiles-v3/docs/107-clipboard-overlay.md`.
+implementation contract. The batch-level composition record was drafted as
+`dotfiles-v3/docs/107-clipboard-overlay.md`; that number is now the generations
+v3 RFC, so it is held on the design branch pending renumbering. This ticket is
+self-contained and canonical.
+
+## Design revision pending
+
+This design is **not frozen**. A change was requested after the initial
+contract. Do not merge this branch or add a `mock.sha256` until the revision is
+applied and the acceptance criteria are rechecked.
 
 ## Acceptance
 
