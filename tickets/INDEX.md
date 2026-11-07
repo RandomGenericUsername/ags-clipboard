@@ -15,7 +15,7 @@
 - [REQ-003-skin-consumption/ticket.md](./REQ-003-skin-consumption/ticket.md) — Consume the app-scoped skin plane | `done` | links: worktree .worktrees/REQ-003/, branch ticket/REQ-003-skin-consumption
 - [REQ-004-appearance-migration/ticket.md](./REQ-004-appearance-migration/ticket.md) — Migrate the clipboard app to the v2 appearance plane | `done` | links: worktree .worktrees/REQ-004/, branch ticket/REQ-004-appearance-migration
 - [REQ-006-ink-over-cleanup/ticket.md](./REQ-006-ink-over-cleanup/ticket.md) — Use static role-based card header ink | `done` | links: worktree `.worktrees/REQ-006/`, branch `ticket/REQ-006-ink-over-cleanup`
-- [REQ-007-generations-v3/ticket.md](./REQ-007-generations-v3/ticket.md) — Consume Generations v3 (contracts v0.8.0 / ags-platform v1.0.0) | `in-progress` | links: worktree `.worktrees/REQ-007/`, branch `ticket/REQ-007-generations-v3`
+- [REQ-007-generations-v3/ticket.md](./REQ-007-generations-v3/ticket.md) — Consume Generations v3 (contracts v0.8.0 / ags-platform v1.0.0) | `done` | links: worktree `.worktrees/REQ-007/`, branch `ticket/REQ-007-generations-v3`
 
 ## Bugs
 
