@@ -6,14 +6,19 @@
 //   - the clipboard item/parser helpers;
 //   - the instance request dispatch.
 //
-// The palette-refresh transport/idempotence is platform-owned now
-// (`createAppearanceRefreshHandler`); the source gate pins the app's wiring.
+// The appearance-refresh transport/idempotence is platform-owned
+// (`createAppearanceRefreshHandler`); these tests execute its v3 generation-
+// bound ack, and the source gate pins the app's wiring.
 //
 // Run from the repo root:  make test
 // ---------------------------------------------------------------------------
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import {
+  APPEARANCE_REFRESH_COMMAND,
+  createAppearanceRefreshHandler,
+} from "ags-platform/ports/appearance-refresh";
 import { applyAppearance } from "../lib/appearance.ts";
 import {
   itemFromPayload,
@@ -21,6 +26,8 @@ import {
   parseHistory,
 } from "../lib/clipboard-types.ts";
 import { handleRequest } from "../lib/requests.ts";
+
+const GEN_HASH = "a".repeat(64);
 
 // ── Appearance refresh core ────────────────────────────────────────────────
 
@@ -32,6 +39,50 @@ test("applyAppearance clears caches before rebuilding either widget tree", () =>
     rebuildCards: () => calls.push("cards"),
   });
   assert.deepEqual(calls, ["clear", "search-icon", "cards"]);
+});
+
+// ── v3 appearance-refresh handler ──────────────────────────────────────────
+
+test("appearance-refresh applies the requested generation and acks that hash", () => {
+  const applied = [];
+  const responses = [];
+  const handler = createAppearanceRefreshHandler(
+    {
+      applyGeneration(genHash) {
+        applied.push(genHash);
+        return { status: "applied", genHash };
+      },
+    },
+    () => ({ status: "applied" }),
+  );
+
+  handler([APPEARANCE_REFRESH_COMMAND, GEN_HASH], (response) => responses.push(response));
+
+  assert.deepEqual(applied, [GEN_HASH]);
+  assert.equal(responses.length, 1);
+  assert.deepEqual(JSON.parse(responses[0]), { applied: GEN_HASH });
+});
+
+test("the retired palette-refresh command is not a v3 success", () => {
+  const responses = [];
+  let applies = 0;
+  const handler = createAppearanceRefreshHandler(
+    {
+      applyGeneration(genHash) {
+        applies += 1;
+        return { status: "applied", genHash };
+      },
+    },
+    () => ({ status: "applied" }),
+  );
+
+  handler(["palette-refresh", GEN_HASH], (response) => responses.push(response));
+
+  const response = JSON.parse(responses[0]);
+  assert.equal(response.applied, undefined);
+  assert.equal(typeof response.failed, "string");
+  assert.equal(response.retryable, false);
+  assert.equal(applies, 0, "the retired command never applies a generation");
 });
 
 // ── Clipboard item helpers ─────────────────────────────────────────────────

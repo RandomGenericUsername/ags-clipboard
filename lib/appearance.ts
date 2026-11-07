@@ -1,10 +1,11 @@
 /**
  * The pure core of the clipboard overlay's live appearance refresh (AD-27).
  *
- * The runtime invokes `palette-refresh <appearance-hash>` after the appearance
- * pointer moved. The platform's `createAppearanceRefreshHandler` re-applies the
- * whole appearance and makes the request idempotent by that hash; this module
- * owns only the non-destructive widget steps the app performs afterwards.
+ * The runtime invokes `appearance-refresh <genHash>` after the committed
+ * generation moved. The platform's `createAppearanceRefreshHandler` re-applies
+ * exactly that generation and makes the request idempotent by its hash; this
+ * module owns only the non-destructive widget steps the app performs
+ * afterwards.
  *
  * The overlay must converge on the new appearance WITHOUT touching its state:
  * the visible surface, the query, the selected card and the in-memory clipboard

@@ -1,5 +1,26 @@
 # Changelog
 
+## v0.6.0 — 2026-11-07
+
+- Consume Generations v3 (contracts `v0.8.0` / `ags-platform` `v1.0.0`). The
+  platform adapter reads `$XDG_STATE_HOME/dotfiles/current/manifest.json` and
+  `current/appearance/ags-clipboard.css` plus `tokens.json`; it no longer reads
+  the v2 config-home convenience link or any skin path.
+- Replace the retired `palette-refresh` transport with the one v3
+  `appearance-refresh <genHash>` command. `app.tsx` keeps a single
+  `createAppearance({ configDir: "ags-clipboard" })`, one `appearance.apply()`
+  and one `createAppearanceRefreshHandler(appearance, work)`; the work returns
+  `{ status: "applied" }` so the helper answers
+  `{"applied":"<genHash>"}`. No new command is added.
+- `tests/unit.test.mjs` executes the v3 handler's generation-bound ack and
+  rejects `palette-refresh`; the source gates pin `APPEARANCE_REFRESH_COMMAND`
+  and the applied work result, and reject the old `{"ok":true}` shape.
+- `style.css` remains the bundled glass fallback; the
+  `layout.ags-clipboard.card-width` token (fallback `260`), selectors, geometry,
+  gestures and behavior are unchanged.
+- Pin the local tuple at `ags-platform` v1.0.0 / `contracts` v0.8.0 in the
+  Makefile, CI and docs.
+
 ## v0.5.0 — 2026-11-06
 
 - Move the card header ink into `style.css` as a static per-kind map:

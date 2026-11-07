@@ -30,7 +30,7 @@ mode=live      holdsUnsavedState=false
   “Open clipboard history”.
 - No app imports another app. Depend on `ags-platform` (and `contracts` at test
   time only), never on a sibling app repo.
-- The runtime is the only palette-refresh trigger. Do not subscribe to
+- The runtime is the only appearance-refresh trigger. Do not subscribe to
   `wallpaper.state` for palette application and do not invent a palette event.
 
 ## 3. Ticket flow
@@ -58,7 +58,7 @@ no self-hosted runner and no CI secret dependency.
 - `make bundle` — LOCAL: `ags bundle app.tsx build/ags-clipboard.js`.
 - `make gates` — all of the above.
 
-The program tuple is `ags-platform` v0.9.0 / `contracts` v0.7.0, local-only in
+The program tuple is `ags-platform` v1.0.0 / `contracts` v0.8.0, local-only in
 this run. `.dev/` is gitignored; never commit a fetched platform,
 `node_modules/`, `@girs/`, generated `tsconfig.json` or bundle output.
 
@@ -69,12 +69,13 @@ moved. Installed tags are read-only; writable state lives under XDG paths, never
 inside the tag. Tag only after `make gates` passes, and record the evidence in
 the release ticket.
 
-## 6. Palette-refresh invariants
+## 6. Appearance-refresh invariants
 
-The platform's `createAppearanceRefreshHandler` owns the protocol: exactly one
-JSON-string response per request, idempotent by appearance hash, and the whole
-appearance is re-applied before app work. `lib/appearance.ts` is pure and
-executed by tests; it owns only the non-destructive widget order:
+The platform's `createAppearanceRefreshHandler` owns the Generations v3
+protocol: exactly one JSON-string response per `appearance-refresh <genHash>`
+request, idempotent by generation hash, and the requested generation is
+re-applied before app work. `lib/appearance.ts` is pure and executed by tests;
+it owns only the non-destructive widget order:
 
 - cache clear happens before the search-icon and card rebuilds;
 - overlay visibility, query, selection and clipboard state are preserved.
@@ -82,15 +83,17 @@ executed by tests; it owns only the non-destructive widget order:
 `make conformance` asserts these source invariants and the platform
 `checkAppRepo` template gate. Do not weaken them to make a test pass.
 
-## 7. Appearance plane (v2)
+## 7. Appearance plane (Generations v3)
 
 `app.tsx` declares one module-level
 `createAppearance({ configDir: "ags-clipboard" })` and `main()` calls
 `appearance.apply()`. The adapter watches only
-`$XDG_STATE_HOME/dotfiles/current/appearance`; the stable consumer link is
-`$XDG_CONFIG_HOME/ags-clipboard/appearance.css` and its `tokens.json` carries
-the composed palette, skin and mode. There is one fixed `palette-refresh`
-command and no skin-refresh request. `style.css` remains the bundled glass
-fallback. Layout is TSX-owned: the card width is
+`$XDG_STATE_HOME/dotfiles/current`, verifies `current/manifest.json`, and reads
+`current/appearance/ags-clipboard.css` plus `tokens.json`; those carry the
+composed palette, skin and mode. The one refresh command is the v3
+`appearance-refresh <genHash>`; the work returns `{ status: "applied" }` so the
+helper can answer with the requested hash. There is no separate skin-refresh
+request and the retired `palette-refresh` command is not accepted. `style.css`
+remains the bundled glass fallback. Layout is TSX-owned: the card width is
 `layout.ags-clipboard.card-width` (fallback `260`), read with `peek()` where GTK
 needs a plain number.

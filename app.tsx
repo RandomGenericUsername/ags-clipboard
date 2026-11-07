@@ -2,8 +2,10 @@ import app from "ags/gtk4/app"
 import Gtk from "gi://Gtk?version=4.0"
 import style from "./style.css"
 import { createAppearance } from "ags-platform/adapters/appearance"
-import { createAppearanceRefreshHandler } from "ags-platform/ports/appearance-refresh"
-import { PALETTE_REFRESH_COMMAND } from "ags-platform/ports/palette-refresh"
+import {
+  APPEARANCE_REFRESH_COMMAND,
+  createAppearanceRefreshHandler,
+} from "ags-platform/ports/appearance-refresh"
 import {
   ClipboardWindow,
   hideWindow,
@@ -13,29 +15,30 @@ import {
 } from "./ui/ClipboardWindow"
 import { handleRequest } from "./lib/requests"
 
-// The v2 appearance plane is app-scoped: palette, skin and mode are published
-// as ONE generation behind `$XDG_STATE_HOME/dotfiles/current/appearance`, and
-// the platform adapter installs the composed sheet as one USER-priority
-// provider. Only the stable consumer link
-// (`$XDG_CONFIG_HOME/ags-clipboard/appearance.css`) is per app; the adapter
-// owns the single watcher, so a runtime repoint reloads without a clipboard
-// request command.
+// Generations v3: palette, skin and mode are one immutable generation behind
+// `$XDG_STATE_HOME/dotfiles/current`. The platform adapter verifies
+// `current/manifest.json`, reads `current/appearance/ags-clipboard.css` plus
+// `tokens.json`, and installs the composed sheet as one USER-priority
+// provider. The adapter owns the single watcher, so a runtime repoint reloads
+// without a clipboard request command.
 const appearance = createAppearance({ configDir: "ags-clipboard" })
 
 // TSX-owned layout token. The accessor is reactive; `peek()` reads it without
 // registering a dependency because `ItemCard` needs a plain pixel number.
 const cardWidth = appearance.value("layout.ags-clipboard.card-width", 260)
 
-// The runtime-owned palette refresh (AD-27), composed with the overlay's
-// existing show/hide/toggle request surface below. `createAppearanceRefreshHandler`
-// re-applies the WHOLE appearance (palette + skin + mode) first, then runs the
-// app-owned work: drop the rasterized-icon texture cache, rebuild the static
-// search icon and rebuild the cards from the SAME in-memory list. The mapped
-// overlay, query, selection and clipboard history are never reset. The helper
-// is idempotent by the opaque appearance hash and answers through the platform
-// helper's single JSON-encoded string.
-const paletteRefresh = createAppearanceRefreshHandler(appearance, () => {
+// The runtime-owned appearance refresh (AD-27), composed with the overlay's
+// existing show/hide/toggle request surface below. The v3 request is
+// `appearance-refresh <genHash>`; `createAppearanceRefreshHandler` resolves and
+// re-applies THAT generation first, then runs the app-owned work: drop the
+// rasterized-icon texture cache, rebuild the static search icon and rebuild
+// the cards from the SAME in-memory list. The mapped overlay, query, selection
+// and clipboard history are never reset. The helper answers once with the
+// generation-bound JSON union (`{"applied":"<genHash>"}`, deferred or failed);
+// a void work result is invalid, so the work returns `applied`.
+const appearanceRefresh = createAppearanceRefreshHandler(appearance, () => {
   refreshClipboardAppearance()
+  return { status: "applied" }
 })
 
 /**
@@ -65,11 +68,11 @@ app.start({
   // `toggle` mirrors the `ags toggle` window command so either spelling works.
   requestHandler(argv: string[], res: (response: string) => void) {
     // One `requestHandler` (AGS exposes a single slot): dispatch the fixed
-    // palette command to the platform helper, everything else to the overlay's
-    // existing controls. `palette-refresh` never falls through to a
-    // show/hide/toggle.
-    if (argv[0] === PALETTE_REFRESH_COMMAND) {
-      paletteRefresh(argv, res)
+    // `appearance-refresh` command to the platform helper, everything else to
+    // the overlay's existing controls. The refresh command never falls through
+    // to a show/hide/toggle, and the retired `palette-refresh` is not accepted.
+    if (argv[0] === APPEARANCE_REFRESH_COMMAND) {
+      appearanceRefresh(argv, res)
       return
     }
     handleRequest(argv, res, {

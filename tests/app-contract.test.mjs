@@ -5,8 +5,8 @@
 // This is the repo-local gate the standalone contract requires:
 //   1. `app.manifest.json` is schema-valid and carries the pilot identity;
 //   2. app.tsx / window / launcher / history paths agree with that identity;
-//   3. the live palette-refresh handler is real (whole-appearance apply, cache
-//      clear, search-icon + card rebuild) and non-destructive;
+//   3. the live appearance-refresh handler is real (generation-bound apply,
+//      cache clear, search-icon + card rebuild) and non-destructive;
 //   4. the shared dev-flow template (AGENTS, tickets, guard, Makefile, CI,
 //      tests, templates/ags-app) is present and the platform's own
 //      `checkAppRepo` template gate passes;
@@ -237,7 +237,7 @@ test("the frozen copyable template is present for the next app", () => {
   }
 });
 
-test("the contracts v0.7.0 manifest schema agrees with the platform", () => {
+test("the contracts v0.8.0 manifest schema agrees with the platform", () => {
   const contractsRoot = findContractsRoot();
   assert.notEqual(contractsRoot, null, "cannot find contracts (set CONTRACTS_ROOT)");
   const schema = JSON.parse(
@@ -256,10 +256,10 @@ test("the contracts v0.7.0 manifest schema agrees with the platform", () => {
   );
 });
 
-test("the Makefile pins the v0.9.0 platform / v0.7.0 contracts tuple", () => {
+test("the Makefile pins the v1.0.0 platform / v0.8.0 contracts tuple", () => {
   const makefile = readText("Makefile");
-  assert.match(makefile, /^AGS_PLATFORM_VERSION := v0\.9\.0$/m);
-  assert.match(makefile, /^CONTRACTS_VERSION := v0\.7\.0$/m);
+  assert.match(makefile, /^AGS_PLATFORM_VERSION := v1\.0\.0$/m);
+  assert.match(makefile, /^CONTRACTS_VERSION := v0\.8\.0$/m);
 });
 
 // ── 3. The live handler is real and non-destructive ────────────────────────
@@ -278,13 +278,21 @@ test("app.tsx registers the real appearance-refresh handler", () => {
     "the platform helper re-applies the appearance before app work",
   );
   assert.match(app, /requestHandler\s*\(/);
+  assert.match(app, /APPEARANCE_REFRESH_COMMAND/, "the v3 command is imported");
   assert.match(
     app,
-    /if \(argv\[0\] === PALETTE_REFRESH_COMMAND\)[\s\S]*paletteRefresh\(argv, res\)/,
-    "palette-refresh dispatches before the show/hide/toggle surface",
+    /if \(argv\[0\] === APPEARANCE_REFRESH_COMMAND\)[\s\S]*appearanceRefresh\(argv, res\)/,
+    "appearance-refresh dispatches before the show/hide/toggle surface",
   );
+  assert.doesNotMatch(app, /PALETTE_REFRESH_COMMAND|ports\/palette-refresh/);
+  assert.doesNotMatch(app, /\{"ok":true\}|\{ ok: true \}/, "v3 acks are generation-bound");
   assert.doesNotMatch(app, /theme\.apply\(\)|\bskin\.apply\(\)/);
   assert.match(app, /refreshClipboardAppearance\(\)/, "the widgets are rebuilt");
+  assert.match(
+    app,
+    /refreshClipboardAppearance\(\)[\s\S]*return \{ status: "applied" \}/,
+    "v1.0.0 rejects a void work result, so the work reports applied",
+  );
 });
 
 test("the refresh clears the rasterized-icon texture cache", () => {

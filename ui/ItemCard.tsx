@@ -86,7 +86,7 @@ const TYPE_LABEL: Record<ItemKind, string> = {
  * Drop every visual cache a palette change invalidates (AD-27).
  *
  * `textureCache` holds rasterized themed glyphs at their old tint. The
- * palette-refresh surface calls this BEFORE rebuilding the cards and the
+ * appearance-refresh surface calls this BEFORE rebuilding the cards and the
  * static search icon, so both read the repointed appearance roles.
  */
 export function clearVisualCaches(): void {

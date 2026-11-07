@@ -1,17 +1,18 @@
 #!/usr/bin/env node
-// v2 Appearance migration gate (REQ-004).
+// Appearance migration gate (REQ-004; Generations v3 in REQ-007).
 //
 // The clipboard app consumes the unified appearance plane without redesigning
 // the overlay: the platform adapter installs one composed provider and owns the
 // single watched hop, while this app only applies it and rebuilds its own
 // derived widgets. These assertions pin the app-side contract so a later change
-// cannot silently re-introduce the split Theme/Skin pair, a second refresh
-// path, or drop the bundled fallback:
+// cannot silently re-introduce the split Theme/Skin pair, the retired v2
+// refresh command, a second refresh path, or drop the bundled fallback:
 //
 //   1. app.tsx declares one createAppearance scoped to ags-clipboard;
 //   2. main() applies the appearance once; no theme/skin call survives;
-//   3. the palette-refresh handler is createAppearanceRefreshHandler(appearance,
-//      work) where work only rebuilds the clipboard surface;
+//   3. the appearance-refresh handler is
+//      createAppearanceRefreshHandler(appearance, work) where work only
+//      rebuilds the clipboard surface and returns the v3 applied result;
 //   4. the card width comes from the layout token, not a hard constant;
 //   5. style.css still carries the bundled glass fallback.
 //
@@ -133,22 +134,28 @@ assert.equal(
 );
 assert.match(
   app,
-  /if \(argv\[0\] === PALETTE_REFRESH_COMMAND\)[\s\S]*paletteRefresh\(argv, res\)/,
-  "the existing palette-refresh dispatch stays first",
+  /if \(argv\[0\] === APPEARANCE_REFRESH_COMMAND\)[\s\S]*appearanceRefresh\(argv, res\)/,
+  "the v3 appearance-refresh dispatch stays first",
 );
 assert.match(
   app,
-  /const paletteRefresh = createAppearanceRefreshHandler\(appearance,/,
-  "the palette-refresh wiring must use createAppearanceRefreshHandler(appearance, work)",
+  /const appearanceRefresh = createAppearanceRefreshHandler\(appearance,/,
+  "the appearance-refresh wiring must use createAppearanceRefreshHandler(appearance, work)",
 );
+assert.doesNotMatch(app, /PALETTE_REFRESH_COMMAND|ports\/palette-refresh/);
 assert.doesNotMatch(app, /skin-refresh|SKIN_REFRESH/);
 assert.doesNotMatch(app, /wallpaper\.state/);
 
-const refreshStart = app.indexOf("const paletteRefresh");
+const refreshStart = app.indexOf("const appearanceRefresh");
 const handlerStart = app.indexOf("requestHandler(");
 assert.ok(refreshStart >= 0 && handlerStart > refreshStart);
 const refresh = app.slice(refreshStart, handlerStart);
 assert.match(refresh, /refreshClipboardAppearance\(\)/, "the clipboard surface is rebuilt");
+assert.match(
+  refresh,
+  /return \{ status: "applied" \}/,
+  "v1.0.0 requires an explicit applied work result",
+);
 assert.doesNotMatch(
   refresh,
   /\b(?:theme|skin)\.apply\(\)/,

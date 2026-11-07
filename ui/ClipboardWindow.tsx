@@ -28,17 +28,18 @@ import { ItemCard, clearVisualCaches, uiIcon } from "./ItemCard"
 export const WINDOW_NAME = "clipboard-window"
 
 //: One refresh surface per monitor overlay, built on first construction. The
-//: palette-refresh handler walks this list; it never reaches for window state,
-//: so an unmapped/visible overlay keeps its exact query, selection and list.
+//: appearance-refresh handler walks this list; it never reaches for window
+//: state, so an unmapped/visible overlay keeps its exact query, selection and
+//: list.
 const appearanceSurfaces: AppearanceSurface[] = []
 
 /**
- * Rebuild every overlay's themed widgets from the current palette pointer.
+ * Rebuild every overlay's themed widgets from the requested generation.
  *
- * Called only by the app-level `palette-refresh` handler after the platform
- * helper re-applies the whole appearance. It deliberately does not read history,
- * change visibility, reset the query or select a card: those belong to the
- * user's open surface, not to the appearance.
+ * Called only by the app-level `appearance-refresh` handler after the platform
+ * helper re-applies the requested generation. It deliberately does not read
+ * history, change visibility, reset the query or select a card: those belong
+ * to the user's open surface, not to the appearance.
  */
 export function refreshClipboardAppearance(): void {
   for (const surface of appearanceSurfaces) applyAppearance(surface)
@@ -313,7 +314,7 @@ export function ClipboardWindow(
     rebuild()
   })
 
-  // The surface the app-level palette-refresh handler drives. `rebuild` here
+  // The surface the app-level appearance-refresh handler drives. `rebuild` here
   // is the FULL card rebuild (no `builtKey` short-circuit), because the old
   // cards hold textures from the previous palette. It keeps `items`, `query`,
   // `selected`, `paused` and `jobId`.

@@ -33,30 +33,33 @@ The daemon performs the one-time migration from the retired namespace; this
 app never reads the old paths. Writable state stays outside the installed tag
 (AD-37).
 
-### `palette-refresh`
+### `appearance-refresh`
 
-The runtime invokes `ags request palette-refresh <appearance-hash> -i clipboard`
-after an appearance change. `createAppearanceRefreshHandler` re-applies the
-whole appearance first, then the app:
+The runtime invokes `ags request appearance-refresh <genHash> -i clipboard`
+after an appearance change. `createAppearanceRefreshHandler` resolves and
+re-applies exactly that generation first, then the app:
 
 1. clears the rasterized-icon texture cache;
 2. rebuilds the static search glyph from the new palette;
 3. rebuilds the visible cards from the **same** in-memory clipboard list.
 
 Overlay visibility, the search query, the selected index and clipboard state
-are never reset. The handler is idempotent by appearance hash and answers with
-exactly one JSON-encoded string (`{"ok":true}` or a protocol failure), via
-`ags-platform/ports/appearance-refresh`. A wallpaper change never restarts the
-process.
+are never reset. The handler is idempotent by generation hash and answers with
+exactly one generation-bound JSON string (`{"applied":"<genHash>"}`,
+`{"deferred":"reason","genHash":"<genHash>"}` or
+`{"failed":"reason","retryable":bool,"genHash":"<genHash>"}`), via
+`ags-platform/ports/appearance-refresh`. The retired v2 `palette-refresh`
+command and its `{"ok":true}` acknowledgement are not accepted. A wallpaper
+change never restarts the process.
 
-### Appearance plane (v2)
+### Appearance plane (Generations v3)
 
 `app.tsx` declares one module-level
 `createAppearance({ configDir: "ags-clipboard" })`; `main()` calls
 `appearance.apply()` once. The adapter watches only
-`$XDG_STATE_HOME/dotfiles/current/appearance` and reads the stable consumer link
-`$XDG_CONFIG_HOME/ags-clipboard/appearance.css` plus its `tokens.json`. The
-runtime composes palette, skin and mode into that one generation, and the
+`$XDG_STATE_HOME/dotfiles/current`, verifies `current/manifest.json`, and reads
+`current/appearance/ags-clipboard.css` plus its `tokens.json`. The runtime
+composes palette, skin and mode into that one immutable generation, and the
 platform installs it as one USER-priority provider over the bundled `style.css`
 glass fallback. Missing artifacts are a no-op, so the bundled fallback keeps
 today's rendering. Card header ink is a static `on_*` role map in `style.css`;
@@ -65,17 +68,17 @@ the app does no palette parsing or luminance math.
 The card width is the TSX-owned layout token
 `layout.ags-clipboard.card-width` (fallback `260`), read through
 `appearance.value(...)` with `peek()` where GTK needs a plain number. No
-skin-refresh request is added; the one fixed `palette-refresh` command is the
-only appearance trigger.
+skin-refresh request is added; the one fixed `appearance-refresh <genHash>`
+command is the only appearance trigger.
 
 ## Local development
 
-The program tuple is `ags-platform` `v0.9.0` / `contracts` `v0.7.0` /
+The program tuple is `ags-platform` `v1.0.0` / `contracts` `v0.8.0` /
 `dotfiles-assets` `v0.12.0`. Those tags are local-only in this run; the local
 gates use a gitignored symlink under `.dev/`.
 
 ```sh
-ln -s ../../../ags-platform .dev/ags-platform/v0.9.0   # or use AGS_PLATFORM_DEV
+ln -s ../../../ags-platform .dev/ags-platform/v1.0.0   # or use AGS_PLATFORM_DEV
 make test          # pure unit + palette-role tests (Node only)
 make conformance   # manifest + handler + template gate
 make drift         # shared event client <-> contracts drift gate
