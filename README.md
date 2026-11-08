@@ -73,12 +73,12 @@ command is the only appearance trigger.
 
 ## Local development
 
-The program tuple is `ags-platform` `v1.0.0` / `contracts` `v0.8.0` /
+The program tuple is `ags-platform` `v1.0.1` / `contracts` `v0.8.0` /
 `dotfiles-assets` `v0.12.0`. Those tags are local-only in this run; the local
 gates use a gitignored symlink under `.dev/`.
 
 ```sh
-ln -s ../../../ags-platform .dev/ags-platform/v1.0.0   # or use AGS_PLATFORM_DEV
+ln -s ../../../ags-platform .dev/ags-platform/v1.0.1   # or use AGS_PLATFORM_DEV
 make test          # pure unit + palette-role tests (Node only)
 make conformance   # manifest + handler + template gate
 make drift         # shared event client <-> contracts drift gate

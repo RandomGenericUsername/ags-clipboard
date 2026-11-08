@@ -154,7 +154,7 @@ assert.match(refresh, /refreshClipboardAppearance\(\)/, "the clipboard surface i
 assert.match(
   refresh,
   /return \{ status: "applied" \}/,
-  "v1.0.0 requires an explicit applied work result",
+  "v1.0.1 requires an explicit applied work result",
 );
 assert.doesNotMatch(
   refresh,

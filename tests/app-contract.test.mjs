@@ -256,9 +256,9 @@ test("the contracts v0.8.0 manifest schema agrees with the platform", () => {
   );
 });
 
-test("the Makefile pins the v1.0.0 platform / v0.8.0 contracts tuple", () => {
+test("the Makefile pins the v1.0.1 platform / v0.8.0 contracts tuple", () => {
   const makefile = readText("Makefile");
-  assert.match(makefile, /^AGS_PLATFORM_VERSION := v1\.0\.0$/m);
+  assert.match(makefile, /^AGS_PLATFORM_VERSION := v1\.0\.1$/m);
   assert.match(makefile, /^CONTRACTS_VERSION := v0\.8\.0$/m);
 });
 
@@ -291,7 +291,7 @@ test("app.tsx registers the real appearance-refresh handler", () => {
   assert.match(
     app,
     /refreshClipboardAppearance\(\)[\s\S]*return \{ status: "applied" \}/,
-    "v1.0.0 rejects a void work result, so the work reports applied",
+    "v1.0.1 rejects a void work result, so the work reports applied",
   );
 });
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.6.1 — 2026-11-07
+
+- Refresh the local platform pin to `ags-platform` `v1.0.1` while keeping
+  `contracts` `v0.8.0`. The Makefile, CI checkout, conformance/validation
+  assertions and README/AGENTS state the `v1.0.1` / `v0.8.0` tuple.
+- Pin parity only: `app.tsx`, `lib/`, `ui/`, `style.css`, the layout token and
+  the `appearance-refresh <genHash>` handler/ack behavior are unchanged. No
+  request command or appearance protocol is added.
+
 ## v0.6.0 — 2026-11-07
 
 - Consume Generations v3 (contracts `v0.8.0` / `ags-platform` `v1.0.0`). The
