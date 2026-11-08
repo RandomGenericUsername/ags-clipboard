@@ -22,10 +22,13 @@ ags list`, and requires `manifest.configDir == the deployed link basename`.
 
 The redesign is the two-mode command surface specified in
 [tickets/REQ-005-overlay-redesign/ticket.md](tickets/REQ-005-overlay-redesign/ticket.md):
-Normal (rail + preview) and Compact (center / left / right). Open
+Normal (a centred floating command window with rail + preview over a sharp
+desktop; no scrim) and Compact (440 px centre, or 400 px full-height
+left/right). Open
 [tickets/REQ-005-overlay-redesign/mock.html](tickets/REQ-005-overlay-redesign/mock.html)
-in a browser (no build step). The bottom card strip described below is the live
-behavior, not the target.
+in a browser (no build step). The mock draws a faux editor behind the Normal
+window only to prove it is a window, not a takeover. The bottom card strip
+described below is the live behavior, not the target.
 
 ## Runtime contract
 
