@@ -12,8 +12,8 @@
  * Usage: node tickets/REQ-009-clipboard-card-modes/harness.mjs
  */
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -33,6 +33,19 @@ function check(name, fn) {
     failed += 1;
   }
 }
+
+async function checkAsync(name, fn) {
+  try {
+    await fn();
+    console.log(`PASS ${name}`);
+    passed += 1;
+  } catch (error) {
+    console.log(`FAIL ${name}: ${error.message}`);
+    failed += 1;
+  }
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /* ── state layer ──────────────────────────────────────────────── */
 
@@ -124,6 +137,48 @@ check("deep links parse all documented keys", () => {
   assert.deepEqual(core.parseDeepLink("?mode=sideways&compact_size=huge"), {});
 });
 
+check("pinned focus defaults to the current pin, else the first pin", () => {
+  const items = core.sampleItems();
+  assert.equal(core.initialPinFocus(items, "repo"), "repo");
+  assert.equal(core.initialPinFocus(items, "creed"), "note");
+  assert.equal(core.initialPinFocus(items, null), "note");
+  assert.equal(core.initialPinFocus([], "note"), null);
+});
+
+check("pinned focus wraps left/right and skips nothing", () => {
+  const items = core.sampleItems();
+  const three = items.map((item) => ({
+    ...item,
+    pinned: ["note", "placement", "dialog"].includes(item.id),
+  }));
+  assert.deepEqual(core.pinnedOrdered(three).map((item) => item.id), ["note", "placement", "dialog"]);
+  assert.equal(core.nextPinFocus(three, "note", 1), "placement");
+  assert.equal(core.nextPinFocus(three, "placement", 1), "dialog");
+  assert.equal(core.nextPinFocus(three, "dialog", 1), "note");
+  assert.equal(core.nextPinFocus(three, "note", -1), "dialog");
+  assert.equal(core.nextPinFocus(three, "dialog", -1), "placement");
+  assert.equal(core.nextPinFocus(three, null, 1), "note");
+  assert.equal(core.nextPinFocus(three, null, -1), "dialog");
+});
+
+check("pinned focus is stable for one pin and empty for none", () => {
+  const one = core.sampleItems().filter((item) => item.id === "note");
+  assert.equal(core.initialPinFocus(one, null), "note");
+  assert.equal(core.nextPinFocus(one, "note", 1), "note");
+  assert.equal(core.nextPinFocus(one, "note", -1), "note");
+  assert.equal(core.pinOpenTarget(one, "note"), "note");
+  assert.equal(core.initialPinFocus([], null), null);
+  assert.equal(core.nextPinFocus([], null, 1), null);
+  assert.equal(core.pinOpenTarget([], "note"), null);
+});
+
+check("pinned focus only opens pinned cards", () => {
+  const items = core.sampleItems();
+  assert.equal(core.pinOpenTarget(items, "repo"), "repo");
+  assert.equal(core.pinOpenTarget(items, "creed"), null);
+  assert.equal(core.pinOpenTarget(items, "missing"), null);
+});
+
 /* ── DOM / source layer ───────────────────────────────────────── */
 
 check("every $('id') reference exists in the markup", () => {
@@ -161,6 +216,8 @@ check("both modes and all settings controls are present", () => {
     'data-size="medium"',
     'data-size="large"',
     "← → cards · ↑ pinned · ↓ back",
+    "← → select · ↵ open · ↓ back",
+    "Click a card to open it in the stage",
     "Pinned · ",
     "$XDG_CONFIG_HOME/clipboard-ui/config.json",
   ]) {

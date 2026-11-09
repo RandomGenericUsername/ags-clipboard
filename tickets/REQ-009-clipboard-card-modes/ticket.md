@@ -47,13 +47,20 @@ record. The live app keeps the current card strip until REQ-009 is implemented.
   code monospace, image large, colour swatch + hex/RGB/HSL, link domain + URL,
   emoji large.
 - `←`/`→` move through all cards with wrap-around. `↑` opens the pinned grid;
-  `↓` or `Esc` returns to the stage. `Enter` copies; `Ctrl+F` pins/unpins;
+  inside the grid `←`/`→` move a focused pin, `Enter` opens it, and `↓`/`Esc`
+  returns to the stage. `Enter` copies from the stage; `Ctrl+F` pins/unpins;
   `Delete` deletes with undo; `Ctrl+Z` undoes; `Esc` closes the overlay.
 - Bottom control bar: `n / total`, current type and time, `Copy`, `Pin`/`Unpin`,
   `Delete`, `Open` (links only), and the hints `← → cards · ↑ pinned · ↓ back`.
 - Pinned grid: a full-window 4-column grid of smaller current-style cards,
-  headed `Pinned · n`. Clicking a pinned card focuses it in the stage and
-  returns. An empty grid says so honestly.
+  headed `Pinned · n` with the hints `← → select · ↵ open · ↓ back`. It keeps a
+  focused-pin state: the current stage card when that card is pinned, otherwise
+  the first pin. `←`/`→` move that focus with wrap-around, a clear type-coloured
+  focus ring and scroll-into-view; they never move the stage deck while the grid
+  is open. `Enter` opens the focused pin in the stage and returns; `↓`/`Esc`/Back
+  return; clicking any pinned card still opens it. With no pins the arrows are
+  no-ops and the empty state is unchanged; with one pin it is focused and
+  `Enter` opens it.
 
 ### Compact mode
 
@@ -99,8 +106,11 @@ does not frame the surface.
       requests) and opens directly in a browser.
 - [x] Full mode matches the card-stage description: dimmed desktop, one focused
       card, side peeks, arrows, count/type/time and the bottom control bar.
-- [x] Pinned grid opens with `↑`/the pill, returns with `↓`/`Esc`/Back, and a
-      card click focuses it in the stage.
+- [x] Pinned grid opens with `↑`/the pill and returns with `↓`/`Esc`/Back. A
+      focused pin (current stage card when pinned, else the first pin) is
+      highlighted; `←`/`→` wrap through the pins, scroll it into view and never
+      move the stage deck; `Enter` opens the focused pin; clicking still works.
+      Empty and single-pin grids behave as specified.
 - [x] Compact mode keeps the current card identity at 220/260/300 px, with
       search, filter, incognito, clear, pin/delete and live updates.
 - [x] Settings apply live and persist through the documented
@@ -108,7 +118,9 @@ does not frame the surface.
 - [x] All documented deep links work: `?mode=full|compact`, `?card=<kind|n>`,
       `?pins=1`, `?settings=1`, `?compact_size=small|medium|large`, `?empty=1`,
       `?closed=1`.
-- [x] A DOM/state harness and `node --check` pass for the mock.
+- [x] A DOM/state harness and `node --check` pass for the mock, including the
+      pinned-grid focus, wrap, open, back, stage-isolation, click, empty and
+      single-pin cases.
 - [ ] Design review green light, then freeze this ticket's contract and the
       mock's sha256 in the same commit.
 - [ ] Implementation in the app: full stage, compact strip, settings adapter,
@@ -142,8 +154,9 @@ node tickets/REQ-009-clipboard-card-modes/harness.mjs
 ```
 
 Try `←`/`→`, `↑`/`↓`, `Enter`, `Ctrl+1..9`, `Ctrl+F`, `Delete`/`Ctrl+Z`, `/`,
-`N` (simulate capture) and the gear. The faux editor behind the overlay makes the
-compact strip's non-takeover behaviour visible.
+`N` (simulate capture) and the gear. In the pinned grid, `←`/`→` move the focused
+pin, `Enter` opens it, and `↓`/`Esc`/Back return. The faux editor behind the
+overlay makes the compact strip's non-takeover behaviour visible.
 
 The mock is the first source of truth for look and interaction. This ticket is
 the source of truth for intent and acceptance. The full contract and hash are

@@ -693,6 +693,7 @@ body.pins-open .control-bar {
 
 .pins-head { flex: 0 0 42px; display: flex; align-items: center; gap: 12px; }
 .pins-title { font-size: 17px; font-weight: 650; letter-spacing: -.01em; }
+.pins-keys { font-size: 10.5px; color: var(--ink-dim); white-space: nowrap; }
 .pins-hint { font-size: 10.5px; color: var(--ink-faint); }
 
 .pins-grid {
@@ -724,6 +725,16 @@ body.pins-open .control-bar {
   border-color: var(--tc);
   box-shadow: 0 24px 64px rgba(0, 0, 0, .44);
 }
+.pin-card.is-focused {
+  border-color: var(--tc);
+  transform: translateY(-2px) scale(1.012);
+  box-shadow:
+    0 0 0 2px var(--tc),
+    0 0 0 7px var(--tc-soft),
+    0 26px 70px rgba(0, 0, 0, .5);
+}
+.pin-card.is-focused:focus-visible { outline: none; }
+.pin-card.is-focused .card-head { box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .18); }
 .pin-card .card-head { height: 38px; padding: 0 12px; gap: 7px; }
 .pin-card .head-glyph { width: 21px; height: 21px; border-radius: 6px; }
 .pin-card .head-type { font-size: 10.5px; }
@@ -1370,6 +1381,7 @@ body.mode-compact .toast { bottom: 318px; }
       </svg>
       Back <kbd>Esc</kbd>
     </button>
+    <span class="pins-keys">← → select · ↵ open · ↓ back</span>
     <span class="spacer"></span>
     <span class="pins-hint">Click a card to open it in the stage</span>
   </header>
@@ -1613,6 +1625,29 @@ function findCardIndex(list, card) {
   return list.findIndex((item) => item.kind === raw);
 }
 
+function pinnedOrdered(list) {
+  return ordered(list).filter((item) => item.pinned);
+}
+
+function initialPinFocus(list, selectedId) {
+  const pinned = pinnedOrdered(list);
+  if (pinned.length === 0) return null;
+  return pinned.some((item) => item.id === selectedId) ? selectedId : pinned[0].id;
+}
+
+function nextPinFocus(list, focusedId, delta) {
+  const pinned = pinnedOrdered(list);
+  if (pinned.length === 0) return null;
+  let index = pinned.findIndex((item) => item.id === focusedId);
+  if (index < 0) return pinned[delta < 0 ? pinned.length - 1 : 0].id;
+  index = (index + delta + pinned.length) % pinned.length;
+  return pinned[index].id;
+}
+
+function pinOpenTarget(list, focusedId) {
+  return pinnedOrdered(list).some((item) => item.id === focusedId) ? focusedId : null;
+}
+
 function removeAt(list, index) {
   const next = list.slice();
   const item = next.splice(index, 1)[0];
@@ -1658,6 +1693,10 @@ const CORE_EXPORTS = {
   ordered,
   filterItems,
   findCardIndex,
+  pinnedOrdered,
+  initialPinFocus,
+  nextPinFocus,
+  pinOpenTarget,
   removeAt,
   insertAt,
   parseDeepLink,
@@ -1748,6 +1787,7 @@ let compactSize = "medium";
 let query = "";
 let filter = "all";
 let pinsOpen = false;
+let focusedPinId = null;
 let settingsOpen = false;
 let settingsAnchor = null;
 let closed = false;
@@ -2011,6 +2051,7 @@ function renderPins() {
   el.pinsTitle.textContent = `Pinned · ${pinned.length}`;
 
   if (pinned.length === 0) {
+    focusedPinId = null;
     el.pinsGrid.innerHTML = `<div class="pins-empty">
       <div class="empty-icon">${icon("pin", 22)}</div>
       <b>No pinned cards</b>
@@ -2019,16 +2060,25 @@ function renderPins() {
     return;
   }
 
+  if (pinsOpen && !pinned.some((item) => item.id === focusedPinId)) {
+    focusedPinId = initialPinFocus(items, selectedId);
+  }
+
+  const keepScroll = el.pinsGrid.scrollTop;
   el.pinsGrid.innerHTML = pinned
     .map((item) => {
       const index = list.indexOf(item) + 1;
-      return `<article class="pin-card kind-${item.kind}" data-id="${item.id}" data-kind="${item.kind}"
-          role="listitem" tabindex="0" aria-label="Open ${escapeHtml(TYPE[item.kind].label)} card in the stage">
+      const focused = item.id === focusedPinId;
+      return `<article class="pin-card kind-${item.kind} ${focused ? "is-focused" : ""}"
+          data-id="${item.id}" data-kind="${item.kind}" role="listitem"
+          tabindex="${focused ? "0" : "-1"}" aria-current="${focused ? "true" : "false"}"
+          aria-label="Open ${escapeHtml(TYPE[item.kind].label)} card in the stage">
         ${headMarkup(item, { index })}
         <div class="pin-body b-${item.kind}">${miniBody(item)}</div>
       </article>`;
     })
     .join("");
+  el.pinsGrid.scrollTop = keepScroll;
 }
 
 /* ── compact strip ────────────────────────────────────────────── */
@@ -2418,24 +2468,71 @@ function toast(message, actionLabel, action, duration = 2200) {
 
 /* ── open / close ─────────────────────────────────────────────── */
 
+function focusedPinCard() {
+  if (!focusedPinId) return null;
+  return el.pinsGrid.querySelector(`.pin-card[data-id="${focusedPinId}"]`);
+}
+
+function scrollFocusedPinIntoView() {
+  const card = focusedPinCard();
+  if (!card) return;
+  const grid = el.pinsGrid;
+  const gridRect = grid.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  let delta = 0;
+  if (cardRect.top < gridRect.top + 6) delta = cardRect.top - gridRect.top - 12;
+  else if (cardRect.bottom > gridRect.bottom - 6) delta = cardRect.bottom - gridRect.bottom + 12;
+  if (delta !== 0) grid.scrollTo({ top: grid.scrollTop + delta, behavior: "smooth" });
+}
+
+function focusFocusedPin() {
+  const card = focusedPinCard();
+  if (card) card.focus({ preventScroll: true });
+  else if (pinsOpen) el.pinsBack.focus();
+}
+
+function movePinnedFocus(delta) {
+  const next = nextPinFocus(items, focusedPinId, delta);
+  if (!next || next === focusedPinId) return;
+  focusedPinId = next;
+  renderPins();
+  requestAnimationFrame(() => {
+    scrollFocusedPinIntoView();
+    focusFocusedPin();
+  });
+}
+
+function openFocusedPin(id = focusedPinId) {
+  const target = pinOpenTarget(items, id);
+  if (!target) return;
+  selectById(target);
+  closePins();
+}
+
 function openPins() {
   if (mode !== "full") return;
   pinsOpen = true;
+  focusedPinId = initialPinFocus(items, selectedId);
   applyMode();
   renderPins();
-  el.pinsBack.focus();
+  requestAnimationFrame(() => {
+    scrollFocusedPinIntoView();
+    focusFocusedPin();
+  });
 }
 
 function closePins() {
   pinsOpen = false;
+  focusedPinId = null;
   applyMode();
   el.stageCard.setAttribute("tabindex", "-1");
-  el.stageCard.focus();
+  el.stageCard.focus({ preventScroll: true });
 }
 
 function closeOverlay() {
   closeSettings();
   pinsOpen = false;
+  focusedPinId = null;
   clearConfirm = false;
   closed = true;
   applyMode();
@@ -2472,15 +2569,14 @@ el.pinsBack.addEventListener("click", closePins);
 el.pinsGrid.addEventListener("click", (event) => {
   const card = event.target.closest(".pin-card");
   if (!card) return;
-  selectById(card.dataset.id);
-  if (pinsOpen) closePins();
+  openFocusedPin(card.dataset.id);
 });
 el.pinsGrid.addEventListener("keydown", (event) => {
   const card = event.target.closest(".pin-card");
   if (!card || (event.key !== "Enter" && event.key !== " ")) return;
   event.preventDefault();
-  selectById(card.dataset.id);
-  if (pinsOpen) closePins();
+  event.stopPropagation();
+  openFocusedPin(card.dataset.id);
 });
 
 el.fullGear.addEventListener("click", () => toggleSettings(el.fullGear));
@@ -2610,6 +2706,25 @@ document.addEventListener("keydown", (event) => {
     return;
   }
 
+  if (pinsOpen) {
+    if (event.key === "ArrowLeft") { event.preventDefault(); movePinnedFocus(-1); return; }
+    if (event.key === "ArrowRight") { event.preventDefault(); movePinnedFocus(1); return; }
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      closePins();
+      return;
+    }
+    if (event.key === "Enter") {
+      const onButton = target && target.closest ? target.closest("button") : null;
+      if (!onButton) {
+        event.preventDefault();
+        openFocusedPin();
+      }
+      return;
+    }
+    return;
+  }
+
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f") {
     event.preventDefault();
     togglePinSelected();
@@ -2627,13 +2742,6 @@ document.addEventListener("keydown", (event) => {
   }
 
   if (mode === "full") {
-    if (pinsOpen) {
-      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        event.preventDefault();
-        closePins();
-      }
-      return;
-    }
     if (event.key === "ArrowUp") { event.preventDefault(); openPins(); return; }
     if (event.key === "ArrowDown") { event.preventDefault(); return; }
     if (event.key === "ArrowLeft") { event.preventDefault(); moveFull(-1); return; }
@@ -2669,7 +2777,6 @@ function boot() {
   }
   if (deep.pins) {
     mode = "full";
-    pinsOpen = true;
   }
   if (deep.card) {
     const list = deck();
@@ -2685,6 +2792,10 @@ function boot() {
 
   if (deep.closed) {
     closeOverlay();
+    return;
+  }
+  if (deep.pins) {
+    openPins();
     return;
   }
   if (deep.settings) {
