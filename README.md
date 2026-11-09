@@ -1,6 +1,6 @@
 # ags-clipboard
 
-Standalone AGS clipboard-history overlay. This is the REQ-009 pilot for the
+Standalone AGS clipboard-history overlay. This is the REQ-001 pilot for the
 standalone app contract: the repo root **is** the app package.
 
 | Field | Value |
@@ -20,12 +20,27 @@ ags list`, and requires `manifest.configDir == the deployed link basename`.
 
 ## Design contract
 
-The redesign is the two-mode command surface specified in
-[tickets/REQ-005-overlay-redesign/ticket.md](tickets/REQ-005-overlay-redesign/ticket.md):
-Normal (rail + preview) and Compact (center / left / right). Open
-[tickets/REQ-005-overlay-redesign/mock.html](tickets/REQ-005-overlay-redesign/mock.html)
-in a browser (no build step). The bottom card strip described below is the live
-behavior, not the target.
+The current design target is the card-centric surface in
+[tickets/REQ-009-clipboard-card-modes/ticket.md](tickets/REQ-009-clipboard-card-modes/ticket.md):
+**Full** (one large card on a dimmed stage, side peeks, pinned grid) and
+**Compact** (the bottom card strip with search/filter). Open
+[tickets/REQ-009-clipboard-card-modes/mock.html](tickets/REQ-009-clipboard-card-modes/mock.html)
+in a browser (no build step). The mock is the first source of truth for look and
+interaction; the ticket is the source of truth for intent and acceptance.
+
+REQ-005's rail + preview design is frozen on `main` and is superseded by
+REQ-009. The live app still renders the bottom card strip described below until
+REQ-009 is implemented.
+
+The overlay settings live at `$XDG_CONFIG_HOME/clipboard-ui/config.json`:
+
+```json
+{ "layout": { "mode": "full", "compact": { "card_size": "medium" } } }
+```
+
+Defaults are `full` / `medium` (card size `small`/`medium`/`large` =
+220/260/300 px). `compact.position` is retired. This file is **not** the
+daemon's `clipboard/config.json` and is not an AGS link.
 
 ## Runtime contract
 
@@ -38,7 +53,8 @@ documents:
 - images: `$XDG_CACHE_HOME/clipboard/`
 - daemon config: `$XDG_CONFIG_HOME/clipboard/config.json`
 - overlay settings: `$XDG_CONFIG_HOME/clipboard-ui/config.json` (the app's
-  Normal/Compact layout; **not** the daemon's `clipboard/config.json`)
+  Full/Compact layout and compact card size; **not** the daemon's
+  `clipboard/config.json`)
 
 The daemon performs the one-time migration from the retired namespace; this
 app never reads the old paths. Writable state stays outside the installed tag
