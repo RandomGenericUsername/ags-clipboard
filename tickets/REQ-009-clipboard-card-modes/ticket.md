@@ -110,6 +110,17 @@ unchanged. The proposal adds two compact-mode refinements.
     current; query, filter and the active-view selection behaviour are
     preserved.
 
+### P3 — compact link Open
+
+- Every link card in compact mode — Recent or Pinned, Bottom/Left/Right — shows
+  a visible `Open` chip under the domain/URL in the card body. It is not
+  hover-only and stays readable at all three card sizes.
+- The chip stops click propagation: the card selection does not change. It calls
+  the same `openLink(item)` path as full mode (the mock keeps the
+  `Would open <domain>` toast simulation) and carries an accessible label/title.
+- Full mode and the full pinned grid are unchanged; their existing Open controls
+  remain.
+
 ### Proposal acceptance (unchecked until green)
 
 - [ ] Settings shows `Compact alignment: Bottom / Left / Right`; card-size and
@@ -134,6 +145,10 @@ unchanged. The proposal adds two compact-mode refinements.
       adapt; query/filter persist; the active view keeps `Ctrl+1..9`.
 - [ ] Full mode is isolated: its `↑`/`↓` pinned-grid behaviour and normal `Tab`
       traversal are unchanged.
+- [ ] Compact link cards show a visible Open chip in both views and every
+      alignment; non-link cards do not. Clicking it does not change selection
+      and invokes the full-mode link-open path; Full mode/full pinned grid are
+      unchanged.
 - [ ] `?compact_view=recent|pinned`, `?compact_align=bottom|left|right` and all
       existing deep links work; the view is not persisted.
 - [ ] Proposal accepted, then the baseline section and `mock.sha256` are updated

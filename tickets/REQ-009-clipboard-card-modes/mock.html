@@ -1166,6 +1166,26 @@ body.compact-align-right .toast { bottom: 24px; }
 .c-card-body .chip-link { display: flex; flex-direction: column; gap: 3px; }
 .c-card-body .chip-link b { font-size: 11px; font-weight: 600; color: #bae6fd; overflow-wrap: anywhere; }
 .c-card-body .chip-link span { font-size: 8.5px; color: var(--ink-faint); overflow-wrap: anywhere; }
+.c-card-body .c-open {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  margin-top: 2px;
+  padding: 0 7px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, .46);
+  background: rgba(56, 189, 248, .14);
+  color: #bae6fd;
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.c-card-body .c-open:hover { background: rgba(56, 189, 248, .26); }
+.c-card-body .c-open:focus-visible { outline: 2px solid #38bdf8; outline-offset: 1px; }
+.c-card-body .c-open svg { flex: 0 0 auto; }
 .c-card-body .chip-emoji { height: 100%; display: grid; place-items: center; font-size: 42px; line-height: 1; }
 
 .pin-body.b-image { padding: 0; display: flex; flex-direction: column; }
@@ -1897,6 +1917,7 @@ const ICONS = {
   copy:  '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
   expand: '<path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5"/>',
   globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z"/>',
+  external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/>',
   clipboard: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/>',
 };
 
@@ -2126,7 +2147,14 @@ function compactBody(item) {
     return `<div class="chip-color"><span class="chip-swatch" style="background:${escapeHtml(item.text || "transparent")}"></span><code>${escapeHtml(item.text || "")}</code></div>`;
   }
   if (item.kind === "link") {
-    return `<div class="chip-link"><b>${escapeHtml(domainOf(item.text || ""))}</b><span>${escapeHtml(item.text || "")}</span></div>`;
+    const domain = domainOf(item.text || "");
+    return `<div class="chip-link">
+      <b>${escapeHtml(domain)}</b>
+      <span>${escapeHtml(item.text || "")}</span>
+      <button class="c-open" type="button" data-open="${item.id}"
+              title="Open ${escapeHtml(item.text || "")}"
+              aria-label="Open ${escapeHtml(domain)} in browser">${icon("external", 10)} Open</button>
+    </div>`;
   }
   if (item.kind === "emoji") return `<div class="chip-emoji">${escapeHtml(item.text || "")}</div>`;
   return "";
@@ -2910,6 +2938,13 @@ el.cSearch.addEventListener("focus", updateCompactHints);
 el.cSearch.addEventListener("blur", () => requestAnimationFrame(updateCompactHints));
 
 el.cList.addEventListener("click", (event) => {
+  const openButton = event.target.closest("[data-open]");
+  if (openButton) {
+    event.stopPropagation();
+    const item = items.find((entry) => entry.id === openButton.dataset.open);
+    if (item) openLink(item);
+    return;
+  }
   const pinButton = event.target.closest("[data-pin]");
   if (pinButton) {
     event.stopPropagation();

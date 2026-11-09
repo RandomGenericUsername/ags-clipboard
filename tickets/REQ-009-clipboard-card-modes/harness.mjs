@@ -316,6 +316,18 @@ check("compact view switch replaces one carousel and never keeps a shelf", () =>
   assert.doesNotMatch(switchBody, /localStorage|saveSettings/);
 });
 
+check("compact link cards expose a visible Open chip", () => {
+  const start = html.indexOf("function compactBody");
+  const end = html.indexOf("\nfunction headMarkup", start);
+  assert.ok(start > 0 && end > start, "compactBody must exist");
+  const body = html.slice(start, end);
+  assert.match(body, /class="c-open"/);
+  assert.match(body, /data-open="\$\{item\.id\}"/);
+  assert.match(body, /aria-label="Open /);
+  assert.match(html, /\.c-card-body \.c-open/);
+  assert.ok(html.includes("external: '<path d=\"M14 4h6v6M20 4l-9 9\""), "external icon must exist");
+});
+
 check("all six kinds have body renderers and type tokens", () => {
   for (const kind of core.TYPE_ORDER) {
     assert.ok(html.includes(`.kind-${kind}`), `missing kind class ${kind}`);
@@ -903,6 +915,106 @@ async function runDomChecks(chrome) {
       assert.equal(prevented, false);
       assert.equal(await evaluate("compactView"), "recent");
       await evaluate(`setMode("compact")`);
+      await sleep(140);
+    });
+
+    await checkAsync("compact link cards expose Open in every view/alignment/size", async () => {
+      await resetSample();
+      const readLink = (id, otherId) => evaluate(`(() => {
+        const card = document.querySelector('#cList .c-card[data-id="${id}"]');
+        const other = document.querySelector('#cList .c-card[data-id="${otherId}"]');
+        const button = card ? card.querySelector(".c-open") : null;
+        const rect = button ? button.getBoundingClientRect() : null;
+        const cardRect = card ? card.getBoundingClientRect() : null;
+        return {
+          card: Boolean(card),
+          exists: Boolean(button),
+          visible: Boolean(rect && rect.width > 0 && rect.height > 0),
+          within: Boolean(rect && cardRect && rect.left >= cardRect.left - 1 && rect.right <= cardRect.right + 1),
+          label: button ? button.getAttribute("aria-label") : null,
+          title: button ? button.getAttribute("title") : null,
+          nonLink: Boolean(other && other.querySelector(".c-open")),
+        };
+      })()`);
+
+      for (const align of ["bottom", "left", "right"]) {
+        await evaluate(`setCompactAlign("${align}")`);
+        await sleep(140);
+        await evaluate(`compactView = "recent"; renderCompact()`);
+        let state = await readLink("gtk", "creed");
+        assert.equal(state.card, true, `${align} recent link card missing`);
+        assert.equal(state.exists, true, `${align} recent Open missing`);
+        assert.equal(state.visible, true, `${align} recent Open invisible`);
+        assert.equal(state.within, true, `${align} recent Open overflow`);
+        assert.match(state.label, /Open developer\.gnome\.org/);
+        assert.match(state.title, /developer\.gnome\.org/);
+        assert.equal(state.nonLink, false, `${align} non-link got Open`);
+
+        await evaluate(`compactView = "pinned"; renderCompact()`);
+        await sleep(120);
+        state = await readLink("repo", "note");
+        assert.equal(state.card, true, `${align} pinned link card missing`);
+        assert.equal(state.exists, true, `${align} pinned Open missing`);
+        assert.equal(state.visible, true, `${align} pinned Open invisible`);
+        assert.equal(state.within, true, `${align} pinned Open overflow`);
+        assert.match(state.label, /Open github\.com/);
+        assert.match(state.title, /github\.com/);
+        assert.equal(state.nonLink, false, `${align} pinned non-link got Open`);
+      }
+
+      for (const size of ["small", "medium", "large"]) {
+        await evaluate(`setCompactAlign("bottom"); setCompactSize("${size}"); compactView = "recent"; renderCompact()`);
+        await sleep(140);
+        const state = await readLink("gtk", "creed");
+        assert.equal(state.visible, true, `${size} Open invisible`);
+        assert.equal(state.within, true, `${size} Open overflow`);
+      }
+      await evaluate(`setCompactSize("medium"); setCompactAlign("bottom"); renderAll()`);
+      await sleep(120);
+    });
+
+    await checkAsync("compact Open stops selection and invokes the link-open path", async () => {
+      await resetSample();
+      await evaluate(`selectById("creed")`);
+      await sleep(120);
+      let before = await evaluate("selectedId");
+      await click("#cList .c-card[data-id='gtk'] .c-open");
+      await sleep(140);
+      let state = await evaluate(`({
+        selected: selectedId,
+        toast: document.getElementById("toast").textContent,
+        closed: document.body.classList.contains("is-closed"),
+        selectedCard: document.querySelector("#cList .c-card.is-selected")?.dataset.id || null,
+      })`);
+      assert.equal(state.selected, before);
+      assert.equal(state.selectedCard, "creed");
+      assert.match(state.toast, /Would open developer\.gnome\.org/);
+      assert.equal(state.closed, false);
+
+      await click("#cPinnedTab");
+      await sleep(140);
+      before = await evaluate("selectedId");
+      assert.equal(before, "note");
+      await click("#cList .c-card[data-id='repo'] .c-open");
+      await sleep(140);
+      state = await evaluate(`({
+        selected: selectedId,
+        toast: document.getElementById("toast").textContent,
+        closed: document.body.classList.contains("is-closed"),
+        selectedCard: document.querySelector("#cList .c-card.is-selected")?.dataset.id || null,
+      })`);
+      assert.equal(state.selected, "note");
+      assert.equal(state.selectedCard, "note");
+      assert.match(state.toast, /Would open github\.com/);
+      assert.equal(state.closed, false);
+
+      await evaluate(`setMode("full"); selectById("repo")`);
+      await sleep(140);
+      assert.equal(await evaluate(`document.getElementById("openBtn").hidden`), false);
+      await evaluate(`openPins()`);
+      await sleep(120);
+      assert.equal(await evaluate(`Boolean(document.querySelector("#pinsGrid .c-open"))`), false);
+      await evaluate(`closePins(); setMode("compact")`);
       await sleep(140);
     });
 
