@@ -23,7 +23,8 @@ ags list`, and requires `manifest.configDir == the deployed link basename`.
 The current design target is the card-centric surface in
 [tickets/REQ-009-clipboard-card-modes/ticket.md](tickets/REQ-009-clipboard-card-modes/ticket.md):
 **Full** (one large card on a dimmed stage, side peeks, pinned grid) and
-**Compact** (the bottom card strip with search/filter). Open
+**Compact** (the card strip with search/filter, Bottom/Left/Right alignment, a
+Recent/Pinned view, keyboard view switching and compact link `Open`). Open
 [tickets/REQ-009-clipboard-card-modes/mock.html](tickets/REQ-009-clipboard-card-modes/mock.html)
 in a browser (no build step). The mock is the first source of truth for look and
 interaction; the ticket is the source of truth for intent and acceptance.
@@ -35,11 +36,12 @@ REQ-009 is implemented.
 The overlay settings live at `$XDG_CONFIG_HOME/clipboard-ui/config.json`:
 
 ```json
-{ "layout": { "mode": "full", "compact": { "card_size": "medium" } } }
+{ "layout": { "mode": "full", "compact": { "card_size": "medium", "alignment": "bottom" } } }
 ```
 
-Defaults are `full` / `medium` (card size `small`/`medium`/`large` =
-220/260/300 px). `compact.position` is retired. This file is **not** the
+Defaults are `full` / `medium` / `bottom` (card size `small`/`medium`/`large` =
+220/260/300 px; alignment `bottom`/`left`/`right`). `compact.position` is
+retired. This file is **not** the
 daemon's `clipboard/config.json` and is not an AGS link.
 
 ## Runtime contract
