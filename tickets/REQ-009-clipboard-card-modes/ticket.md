@@ -72,26 +72,27 @@ unchanged. The proposal adds two compact-mode refinements.
 - New review link: `?compact_align=bottom|left|right` (all existing links keep
   working, including `?compact_size=small|medium|large`).
 
-### P2 — pinned section in compact
+### P2 — Recent / Pinned carousel view
 
-- Every compact alignment shows `Pinned · n` when pins exist. Bottom: a
-  horizontal pinned shelf above the recent card row, with a divider. Left/Right:
-  a pinned group at the top of the column, then the divider, then the main card
-  list.
-- Pinned cards use the current card identity (type-coloured header + compact
-  preview). The section hides entirely when there are no pins.
-- The pinned section is a quick-copy shortlist: clicking a pinned card or
-  pressing `Enter` on it copies that item and collapses the whole overlay,
-  matching the full pinned grid. Regular compact cards keep select,
-  double-click and `Enter` copy behaviour. The distinction is visible in the
-  shelf header (`Click copies`) and the card aria labels.
-- The main compact list excludes pinned cards and is labelled `Recent · n` when
-  the pinned section is visible, so the two groups never duplicate. Pinned cards
-  remain visible regardless of the recent-list search/filter; the filter applies
-  to Recent. This is the chosen assumption for review.
-- The pinned shelf must not change the bottom strip beyond growing it upward,
-  and it must not block the vertical strip's own recent-list scroll; many pins
-  scroll inside the pinned group.
+- There is **no separate pinned shelf or group**. The compact strip keeps one
+  card list; a `Recent | Pinned (n)` tab control sits at the carousel header
+  (where the old Recent label lived) in Bottom, Left and Right alignments.
+- The active view replaces the card list; only one list is shown. `Recent` shows
+  non-pinned cards, `Pinned` shows only pinned cards. If there are zero pins the
+  Pinned tab is hidden/disabled and Recent remains active.
+- Both views use the same compact card identity and card size; the alignment and
+  card-size settings still apply. The strip height and width do not jump when
+  switching views.
+- Search and type filters apply to the active view, and switching views keeps
+  the current query and filter. `Ctrl+1..9` addresses the active view. An
+  active Pinned view with no filtered matches shows an honest empty state.
+- Pinned cards in this carousel use the same compact behaviour as Recent:
+  select, then `Enter` or double-click copies. They are **not** quick-copy cards.
+  The full pinned grid remains copy-and-collapse and is unchanged.
+- The view defaults to Recent when the overlay opens or the session starts; it
+  is not persisted. New review link:
+  `?compact_view=recent|pinned` (alongside `?compact_align` and
+  `?compact_size`).
 
 ### Proposal acceptance (unchecked until green)
 
@@ -102,14 +103,17 @@ unchanged. The proposal adds two compact-mode refinements.
 - [ ] Left/Right render a full-work-area vertical column with 12 px inset and
       width derived from the card size; controls adapt; up/down (keys and
       affordances) navigate; left/right stay for Bottom.
-- [ ] Compact shows `Pinned · n` in every alignment, using the card identity;
-      it hides with no pins.
-- [ ] Pinned cards quick-copy on click or `Enter` and collapse the overlay;
-      regular compact cards keep select / double-click / `Enter` copy.
-- [ ] The main list excludes pinned cards and is labelled `Recent · n` when the
-      pinned section is visible.
-- [ ] `?compact_align=bottom|left|right` and all existing deep links work; the
-      DOM/state harness passes.
+- [ ] Compact shows a `Recent | Pinned (n)` view switch at the carousel header
+      in every alignment; the active view replaces the card list and both views
+      use the same card identity and size with no height/width jump.
+- [ ] Recent excludes pinned cards; Pinned shows only pinned cards; zero pins
+      hides/disables Pinned and keeps Recent.
+- [ ] Search and filters apply to the active view and survive view switches;
+      `Ctrl+1..9` addresses the active view; filtered-empty states are honest.
+- [ ] Pinned carousel cards use the same select / `Enter` / double-click copy
+      behaviour as Recent; the full pinned grid keeps copy-and-collapse.
+- [ ] `?compact_view=recent|pinned`, `?compact_align=bottom|left|right` and all
+      existing deep links work; the view is not persisted.
 - [ ] Proposal accepted, then the baseline section and `mock.sha256` are updated
       together. No merge/freeze before that.
 
@@ -205,7 +209,7 @@ does not frame the surface.
       empty and single-pin cases.
 - [x] Baseline design approved and frozen: commit `d9ed130`, sha256
       `06820b4b54e5ddfc83f367d9a2b7de0015201a6a6b2da971ea01006e6bd05037`.
-      The compact alignment + pinned-section proposal is pending review.
+      The compact alignment + carousel view proposal is pending review.
 - [ ] Implementation in the app: full stage, compact strip, settings adapter,
       persistence, all preserved behaviours.
 - [ ] `make ci` / `make gates` pass; the composition pin is bumped.
@@ -230,8 +234,8 @@ Review deep links (append to the file URL):
 ?empty=1        ?closed=1
 ```
 
-Pending proposal adds `?compact_align=bottom|left|right` (for review only until
-green-lit).
+Pending proposal adds `?compact_align=bottom|left|right` and
+`?compact_view=recent|pinned` (for review only until green-lit).
 
 State/DOM harness (Node only; also `node --check`s the inline script and drives
 the compact layouts through headless Chrome when available):

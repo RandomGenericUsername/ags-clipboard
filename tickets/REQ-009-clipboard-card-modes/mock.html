@@ -934,67 +934,32 @@ body.pins-open .control-bar {
 .c-list::-webkit-scrollbar { height: 6px; }
 .c-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 3px; }
 
-/* Pinned shelf / group (proposal): quick-copy shortlist above the recents. */
-.c-pinned { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
-.c-pinned-head { display: flex; align-items: center; gap: 8px; height: 16px; }
-.c-pinned-title { font-size: 10.5px; font-weight: 650; color: var(--ink-dim); }
-.c-pinned-hint { margin-left: auto; font-size: 9.5px; color: var(--ink-faint); white-space: nowrap; }
-.c-pinned-list {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding: 2px 2px 5px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, .18) transparent;
-}
-.c-pinned-list::-webkit-scrollbar { height: 5px; }
-.c-pinned-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 3px; }
-
-.c-pin-card {
-  flex: 0 0 clamp(150px, calc(var(--compact-card-w) * .68), 210px);
-  width: clamp(150px, calc(var(--compact-card-w) * .68), 210px);
-  height: 82px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 11px;
-  border: 1px solid var(--hairline);
-  background: rgba(14, 14, 21, .9);
-  cursor: pointer;
-  transition: border-color .16s, transform .16s, box-shadow .16s;
-}
-.c-pin-card:hover, .c-pin-card:focus-visible {
-  border-color: var(--tc);
-  transform: translateY(-1px);
-}
-.c-pin-card:focus-visible { outline: 2px solid var(--tc); outline-offset: 1px; }
-.c-pin-card .card-head { height: 27px; padding: 0 8px; gap: 5px; }
-.c-pin-card .head-index { display: none; }
-.c-pin-card .head-glyph { width: 17px; height: 17px; border-radius: 5px; }
-.c-pin-card .head-type { font-size: 9px; }
-.c-pin-card .head-time { font-size: 8px; }
-.c-pin-card .c-card-body { padding: 6px 8px; }
-.c-pin-card .chip-text { font-size: 9.5px; line-height: 1.4; -webkit-line-clamp: 3; }
-.c-pin-card .chip-code { font-size: 8px; line-height: 1.4; -webkit-line-clamp: 4; }
-.c-pin-card .chip-color { flex-direction: row; align-items: center; gap: 6px; }
-.c-pin-card .chip-swatch { width: 24px; height: 24px; flex: 0 0 24px; }
-.c-pin-card .chip-color code { font-size: 8px; }
-.c-pin-card .chip-link b { font-size: 9.5px; }
-.c-pin-card .chip-link span { display: none; }
-.c-pin-card .chip-emoji { font-size: 30px; }
-
-.c-recent-label {
+/* View switch: the carousel header replaces the old Recent label. */
+.c-viewbar {
   flex: 0 0 auto;
-  height: 18px;
   display: flex;
   align-items: center;
-  border-top: 1px solid var(--hairline);
-  padding-top: 4px;
-  font-size: 9.5px;
-  font-weight: 600;
-  color: var(--ink-dim);
+  gap: 2px;
+  height: 24px;
+  border-bottom: 1px solid var(--hairline);
 }
+.c-view-tab {
+  height: 24px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.c-view-tab:hover { color: var(--ink); }
+.c-view-tab.is-active { color: var(--ink); border-bottom-color: var(--accent); }
+.c-view-tab:disabled { opacity: .42; cursor: default; }
+body.compact-align-left .c-viewbar,
+body.compact-align-right .c-viewbar { width: 100%; }
 
 /* Vertical compact: full work-area height, 12 px inset, width from card size. */
 body.compact-align-left #compact,
@@ -1034,21 +999,6 @@ body.compact-align-right .c-filters {
 body.compact-align-left .c-actions,
 body.compact-align-right .c-actions { justify-content: flex-end; }
 
-body.compact-align-left .c-pinned-list,
-body.compact-align-right .c-pinned-list {
-  flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
-  max-height: 34vh;
-  padding: 2px;
-}
-body.compact-align-left .c-pin-card,
-body.compact-align-right .c-pin-card {
-  flex: 0 0 86px;
-  width: 100%;
-  height: 86px;
-}
-
 body.compact-align-left .c-strip,
 body.compact-align-right .c-strip {
   flex: 1 1 auto;
@@ -1075,12 +1025,6 @@ body.compact-align-right .c-card {
   width: 100%;
   height: 148px;
   scroll-snap-align: start;
-}
-body.compact-align-left .c-pin-card,
-body.compact-align-right .c-pin-card {
-  flex: 0 0 86px;
-  width: 100%;
-  height: 86px;
 }
 body.compact-align-left .strip-arrow,
 body.compact-align-right .strip-arrow {
@@ -1594,15 +1538,12 @@ body.mode-compact .toast { bottom: 318px; }
     </div>
   </div>
 
-  <div class="c-pinned" id="cPinned" hidden>
-    <div class="c-pinned-head">
-      <span class="c-pinned-title" id="cPinnedTitle">Pinned · 2</span>
-      <span class="c-pinned-hint">Click copies</span>
-    </div>
-    <div class="c-pinned-list" id="cPinnedList" role="listbox"
-         aria-label="Pinned cards — click or press Enter to copy and close"></div>
+  <div class="c-viewbar" id="cViewBar" role="tablist" aria-label="Compact view">
+    <button class="c-view-tab is-active" id="cRecentTab" data-view="recent"
+            role="tab" aria-selected="true">Recent</button>
+    <button class="c-view-tab" id="cPinnedTab" data-view="pinned"
+            role="tab" aria-selected="false">Pinned (2)</button>
   </div>
-  <div class="c-recent-label" id="cRecentLabel" hidden>Recent · 10</div>
 
   <div class="c-strip">
     <button class="strip-arrow" id="cUp" aria-label="Previous card" hidden>
@@ -1658,7 +1599,7 @@ body.mode-compact .toast { bottom: 318px; }
     </div>
   </div>
   <div class="sp-row" id="alignRow">
-    <div class="sp-label">Compact alignment<span class="sp-desc">Bottom shelf, or a full-height side column.</span></div>
+    <div class="sp-label">Compact alignment<span class="sp-desc">Bottom strip, or a full-height side column.</span></div>
     <div class="seg" id="segAlign">
       <button data-align="bottom">Bottom</button>
       <button data-align="left">Left</button>
@@ -1688,6 +1629,7 @@ const TYPE = {
 const TYPE_ORDER = ["text", "link", "code", "image", "color", "emoji"];
 const COMPACT_SIZES = { small: 220, medium: 260, large: 300 };
 const COMPACT_ALIGNMENTS = ["bottom", "left", "right"];
+const COMPACT_VIEWS = ["recent", "pinned"];
 
 const ART_DRAGON = "radial-gradient(90% 80% at 22% 12%, #5b2f8a 0%, transparent 58%), radial-gradient(70% 70% at 78% 28%, #c23a72 0%, transparent 55%), radial-gradient(60% 50% at 52% 92%, #ff7a59 0%, transparent 60%), linear-gradient(155deg, #0d0716 0%, #241033 45%, #090510 100%)";
 const ART_AURORA = "radial-gradient(80% 70% at 18% 78%, #14532d 0%, transparent 60%), radial-gradient(70% 60% at 62% 22%, #2dd4bf 0%, transparent 55%), radial-gradient(55% 45% at 88% 66%, #3b82f6 0%, transparent 58%), linear-gradient(160deg, #03100f 0%, #072422 52%, #020b0a 100%)";
@@ -1814,7 +1756,17 @@ function filterRecentItems(list, query, filter) {
   return filterItems(list, query, filter).filter((item) => !item.pinned);
 }
 
-function moveRecentSelection(list, selectedId, delta) {
+function filterPinnedItems(list, query, filter) {
+  return filterItems(list, query, filter).filter((item) => item.pinned);
+}
+
+function filterCompactView(list, query, filter, view) {
+  return view === "pinned"
+    ? filterPinnedItems(list, query, filter)
+    : filterRecentItems(list, query, filter);
+}
+
+function moveCompactSelection(list, selectedId, delta) {
   if (list.length === 0) return null;
   let index = list.findIndex((item) => item.id === selectedId);
   if (index < 0) return list[0].id;
@@ -1857,10 +1809,6 @@ function pinCopyTarget(list, focusedId) {
   return pinnedOrdered(list).some((item) => item.id === focusedId) ? focusedId : null;
 }
 
-function quickCopyTarget(list, id) {
-  return pinnedOrdered(list).some((item) => item.id === id) ? id : null;
-}
-
 function removeAt(list, index) {
   const next = list.slice();
   const item = next.splice(index, 1)[0];
@@ -1883,6 +1831,8 @@ function parseDeepLink(search) {
   if (Object.prototype.hasOwnProperty.call(COMPACT_SIZES, size)) out.compactSize = size;
   const align = params.get("compact_align");
   if (COMPACT_ALIGNMENTS.includes(align)) out.compactAlign = align;
+  const view = params.get("compact_view");
+  if (COMPACT_VIEWS.includes(view)) out.compactView = view;
   const card = params.get("card");
   if (card) out.card = card;
   if (params.get("pins") === "1") out.pins = true;
@@ -1897,6 +1847,7 @@ const CORE_EXPORTS = {
   TYPE_ORDER,
   COMPACT_SIZES,
   COMPACT_ALIGNMENTS,
+  COMPACT_VIEWS,
   ART_DRAGON,
   ART_AURORA,
   sampleItems,
@@ -1909,14 +1860,15 @@ const CORE_EXPORTS = {
   ordered,
   filterItems,
   filterRecentItems,
-  moveRecentSelection,
+  filterPinnedItems,
+  filterCompactView,
+  moveCompactSelection,
   compactIsVertical,
   findCardIndex,
   pinnedOrdered,
   initialPinFocus,
   nextPinFocus,
   pinCopyTarget,
-  quickCopyTarget,
   removeAt,
   insertAt,
   parseDeepLink,
@@ -1994,10 +1946,9 @@ const el = {
   cNext: $("cNext"),
   cUp: $("cUp"),
   cDown: $("cDown"),
-  cPinned: $("cPinned"),
-  cPinnedTitle: $("cPinnedTitle"),
-  cPinnedList: $("cPinnedList"),
-  cRecentLabel: $("cRecentLabel"),
+  cViewBar: $("cViewBar"),
+  cRecentTab: $("cRecentTab"),
+  cPinnedTab: $("cPinnedTab"),
   cStatus: $("cStatus"),
   cNewBadge: $("cNewBadge"),
   cHints: $("cHints"),
@@ -2014,6 +1965,7 @@ let selectedId = items[0] ? items[0].id : null;
 let mode = "full";
 let compactSize = "medium";
 let compactAlign = "bottom";
+let compactView = "recent";
 let query = "";
 let filter = "all";
 let pinsOpen = false;
@@ -2066,7 +2018,7 @@ function deck() {
 }
 
 function compactList() {
-  return filterRecentItems(items, query, filter);
+  return filterCompactView(items, query, filter, compactView);
 }
 
 function activeList() {
@@ -2315,20 +2267,12 @@ function renderPins() {
 
 function compactCard(item, index) {
   const selected = item.id === selectedId;
+  const pinned = compactView === "pinned";
   return `<article class="c-card kind-${item.kind} ${selected ? "is-selected" : ""}"
       data-id="${item.id}" data-kind="${item.kind}" role="option" aria-selected="${selected}"
-      tabindex="0" style="--tc:${TYPE[item.kind].color}">
+      tabindex="0" style="--tc:${TYPE[item.kind].color}"
+      aria-label="${pinned ? "Pinned" : "Recent"} ${escapeHtml(TYPE[item.kind].label)} card">
     ${headMarkup(item, { index: index + 1, pinButton: true })}
-    <div class="c-card-body b-${item.kind}">${compactBody(item)}</div>
-  </article>`;
-}
-
-function pinnedCompactCard(item) {
-  return `<article class="c-card c-pin-card kind-${item.kind}"
-      data-id="${item.id}" data-kind="${item.kind}" data-pin-copy="1"
-      role="button" tabindex="0" style="--tc:${TYPE[item.kind].color}"
-      aria-label="Copy pinned ${escapeHtml(TYPE[item.kind].label)} card and close">
-    ${headMarkup(item)}
     <div class="c-card-body b-${item.kind}">${compactBody(item)}</div>
   </article>`;
 }
@@ -2373,8 +2317,12 @@ function updateSettingsSegments() {
 }
 
 function renderCompact() {
+  const pinnedTotal = items.filter((item) => item.pinned).length;
+  if (compactView === "pinned" && pinnedTotal === 0) {
+    compactView = "recent";
+    ensureSelection();
+  }
   const list = compactList();
-  const pinned = pinnedOrdered(items);
   const keepLeft = el.cList.scrollLeft;
   const keepTop = el.cList.scrollTop;
 
@@ -2382,27 +2330,28 @@ function renderCompact() {
     chip.classList.toggle("selected", chip.dataset.filter === filter);
   }
 
-  el.cPinned.hidden = pinned.length === 0;
-  el.cRecentLabel.hidden = pinned.length === 0;
-  if (pinned.length > 0) {
-    el.cPinnedTitle.textContent = `Pinned · ${pinned.length}`;
-    el.cPinnedList.innerHTML = pinned.map(pinnedCompactCard).join("");
-    el.cRecentLabel.textContent = `Recent · ${list.length}`;
-  } else {
-    el.cPinnedList.innerHTML = "";
-  }
+  el.cPinnedTab.hidden = pinnedTotal === 0;
+  el.cPinnedTab.disabled = pinnedTotal === 0;
+  el.cPinnedTab.textContent = `Pinned (${pinnedTotal})`;
+  el.cPinnedTab.classList.toggle("is-active", compactView === "pinned");
+  el.cPinnedTab.setAttribute("aria-selected", String(compactView === "pinned"));
+  el.cRecentTab.classList.toggle("is-active", compactView === "recent");
+  el.cRecentTab.setAttribute("aria-selected", String(compactView === "recent"));
 
+  const viewLabel = compactView === "pinned" ? "pinned" : "recent";
   if (items.length === 0) {
     el.cList.innerHTML = `<div class="c-empty"><b>Clipboard is empty</b><span>Copy something and it will appear here.</span></div>`;
   } else if (list.length === 0) {
-    el.cList.innerHTML = `<div class="c-empty"><b>No recent cards</b><span>${pinned.length ? "Pinned cards are in the shelf above." : "Try another search or filter."}</span></div>`;
+    el.cList.innerHTML = compactView === "pinned"
+      ? `<div class="c-empty"><b>No pinned matches</b><span>Try another search or filter.</span></div>`
+      : `<div class="c-empty"><b>No recent matches</b><span>Try another search or filter.</span></div>`;
   } else {
     el.cList.innerHTML = list.map((item, index) => compactCard(item, index)).join("");
   }
 
   el.cList.scrollLeft = keepLeft;
   el.cList.scrollTop = keepTop;
-  el.cStatus.textContent = `${list.length} recent${pinned.length ? ` · ${pinned.length} pinned` : ""}`;
+  el.cStatus.textContent = `${list.length} ${viewLabel}`;
   updateIncognito();
   updateClear();
   updateBadges();
@@ -2500,7 +2449,10 @@ function setMode(next) {
   if (next !== "full" && next !== "compact") return;
   if (next === mode) return;
   mode = next;
-  if (mode === "compact") pinsOpen = false;
+  if (mode === "compact") {
+    pinsOpen = false;
+    compactView = "recent";
+  }
   saveSettings();
   ensureSelection();
   applyMode();
@@ -2536,6 +2488,18 @@ function setCompactAlign(next) {
   applyMode();
   renderCompact();
   if (settingsOpen) requestAnimationFrame(positionSettingsPop);
+}
+
+function setCompactView(next) {
+  if (!COMPACT_VIEWS.includes(next)) return;
+  if (next === "pinned" && !items.some((item) => item.pinned)) return;
+  if (next === compactView) return;
+  compactView = next;
+  ensureSelection();
+  renderCompact();
+  el.cList.scrollLeft = 0;
+  el.cList.scrollTop = 0;
+  requestAnimationFrame(scrollSelectedIntoView);
 }
 
 /* ── selection / copy / pin / delete ─────────────────────────── */
@@ -2577,14 +2541,14 @@ function moveFull(delta) {
 
 function moveCompact(delta) {
   const list = compactList();
-  const next = moveRecentSelection(list, selectedId, delta);
+  const next = moveCompactSelection(list, selectedId, delta);
   if (next) selectById(next, { scroll: true });
 }
 
 function flashCard(id) {
   const card = mode === "full"
     ? (selectedId === id ? el.stageCard : null)
-    : (el.cList.querySelector(`[data-id="${id}"]`) || el.cPinnedList.querySelector(`[data-id="${id}"]`));
+    : el.cList.querySelector(`[data-id="${id}"]`);
   if (!card) return;
   card.classList.remove("is-copied");
   void card.offsetWidth;
@@ -2607,15 +2571,6 @@ function copyNth(position) {
   const item = list[position];
   if (!item) return;
   copyItem(item);
-}
-
-function quickCopyPinned(id) {
-  const target = quickCopyTarget(items, id);
-  if (!target) return;
-  const item = items.find((entry) => entry.id === target);
-  if (!item) return;
-  copyItem(item);
-  closeOverlay();
 }
 
 function togglePin(id) {
@@ -2849,6 +2804,7 @@ function closeOverlay() {
 
 function openOverlay() {
   closed = false;
+  compactView = "recent";
   applyMode();
   renderAll();
   if (mode === "compact") el.cSearch.focus();
@@ -2910,6 +2866,7 @@ el.cFilters.addEventListener("click", (event) => {
   ensureSelection();
   renderCompact();
   el.cList.scrollLeft = 0;
+  el.cList.scrollTop = 0;
   scrollSelectedIntoView();
 });
 
@@ -2918,6 +2875,7 @@ el.cSearch.addEventListener("input", () => {
   ensureSelection();
   renderCompact();
   el.cList.scrollLeft = 0;
+  el.cList.scrollTop = 0;
 });
 
 el.cList.addEventListener("click", (event) => {
@@ -2938,17 +2896,9 @@ el.cList.addEventListener("dblclick", (event) => {
   if (item) copyItem(item);
 });
 
-el.cPinnedList.addEventListener("click", (event) => {
-  const card = event.target.closest("[data-pin-copy]");
-  if (card) quickCopyPinned(card.dataset.id);
-});
-
-el.cPinnedList.addEventListener("keydown", (event) => {
-  const card = event.target.closest("[data-pin-copy]");
-  if (!card || (event.key !== "Enter" && event.key !== " ")) return;
-  event.preventDefault();
-  event.stopPropagation();
-  quickCopyPinned(card.dataset.id);
+el.cViewBar.addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-view]");
+  if (tab && !tab.disabled) setCompactView(tab.dataset.view);
 });
 
 el.cPrev.addEventListener("click", () => moveCompact(-1));
@@ -3104,6 +3054,7 @@ function boot() {
   if (deep.mode) mode = deep.mode;
   if (deep.compactSize) compactSize = deep.compactSize;
   if (deep.compactAlign) compactAlign = deep.compactAlign;
+  if (deep.compactView) compactView = deep.compactView;
   if (deep.empty) {
     items = [];
     selectedId = null;

@@ -108,36 +108,37 @@ check("compact filter matches type and query", () => {
   assert.equal(core.filterItems(items, "zzz", "all").length, 0);
 });
 
-check("recent list excludes pinned cards and keeps pinned visible", () => {
+check("recent and pinned views are disjoint filtered lists", () => {
   const items = core.sampleItems();
   const recent = core.filterRecentItems(items, "", "all");
   assert.deepEqual(recent.map((item) => item.id), [
     "creed", "placement", "screenshot", "accent", "rocket",
     "rules", "setcmd", "preview", "gtk", "dialog",
   ]);
-  assert.deepEqual(core.pinnedOrdered(items).map((item) => item.id), ["note", "repo"]);
+  assert.deepEqual(core.filterPinnedItems(items, "", "all").map((item) => item.id), ["note", "repo"]);
   assert.equal(core.filterRecentItems(items, "github", "all").length, 0);
   assert.equal(core.filterRecentItems(items, "gtk4", "all")[0].id, "gtk");
   assert.equal(core.filterRecentItems(items, "", "link").length, 1);
-  assert.equal(core.filterRecentItems([], "", "all").length, 0);
+  assert.equal(core.filterPinnedItems(items, "", "link")[0].id, "repo");
+  assert.equal(core.filterPinnedItems(items, "orchestrator", "all")[0].id, "note");
+  assert.equal(core.filterPinnedItems(items, "zzz", "all").length, 0);
+  assert.deepEqual(core.filterCompactView(items, "", "all", "recent"), recent);
+  assert.deepEqual(core.filterCompactView(items, "", "all", "pinned"), core.filterPinnedItems(items, "", "all"));
+  assert.equal(core.filterCompactView([], "", "all", "recent").length, 0);
+  assert.equal(core.filterCompactView([], "", "all", "pinned").length, 0);
 });
 
-check("recent selection moves up/down with clamping and no pinned items", () => {
+check("active-view selection moves with clamping", () => {
   const recent = core.filterRecentItems(core.sampleItems(), "", "all");
-  assert.equal(core.moveRecentSelection(recent, "creed", 1), "placement");
-  assert.equal(core.moveRecentSelection(recent, "placement", -1), "creed");
-  assert.equal(core.moveRecentSelection(recent, "dialog", 1), "dialog");
-  assert.equal(core.moveRecentSelection(recent, "creed", -1), "creed");
-  assert.equal(core.moveRecentSelection(recent, null, 1), "creed");
-  assert.equal(core.moveRecentSelection([], "creed", 1), null);
-});
-
-check("pinned quick-copy only targets pinned cards", () => {
-  const items = core.sampleItems();
-  assert.equal(core.quickCopyTarget(items, "note"), "note");
-  assert.equal(core.quickCopyTarget(items, "repo"), "repo");
-  assert.equal(core.quickCopyTarget(items, "creed"), null);
-  assert.equal(core.quickCopyTarget([], "note"), null);
+  assert.equal(core.moveCompactSelection(recent, "creed", 1), "placement");
+  assert.equal(core.moveCompactSelection(recent, "placement", -1), "creed");
+  assert.equal(core.moveCompactSelection(recent, "dialog", 1), "dialog");
+  assert.equal(core.moveCompactSelection(recent, "creed", -1), "creed");
+  assert.equal(core.moveCompactSelection(recent, null, 1), "creed");
+  assert.equal(core.moveCompactSelection([], "creed", 1), null);
+  const pinned = core.filterPinnedItems(core.sampleItems(), "", "all");
+  assert.equal(core.moveCompactSelection(pinned, "note", 1), "repo");
+  assert.equal(core.moveCompactSelection(pinned, "repo", 1), "repo");
 });
 
 check("deep-link card resolves by kind and 1-based index", () => {
@@ -160,7 +161,7 @@ check("delete + undo round-trips the exact index", () => {
 
 check("deep links parse all documented keys", () => {
   const deep = core.parseDeepLink(
-    "?mode=compact&card=code&pins=1&settings=1&compact_size=large&compact_align=left&empty=1&closed=1",
+    "?mode=compact&card=code&pins=1&settings=1&compact_size=large&compact_align=left&compact_view=pinned&empty=1&closed=1",
   );
   assert.deepEqual(deep, {
     mode: "compact",
@@ -169,10 +170,12 @@ check("deep links parse all documented keys", () => {
     settings: true,
     compactSize: "large",
     compactAlign: "left",
+    compactView: "pinned",
     empty: true,
     closed: true,
   });
-  assert.deepEqual(core.parseDeepLink("?mode=sideways&compact_size=huge&compact_align=diagonal"), {});
+  assert.deepEqual(core.parseDeepLink("?mode=sideways&compact_size=huge&compact_align=diagonal&compact_view=other"), {});
+  assert.deepEqual(core.COMPACT_VIEWS, ["recent", "pinned"]);
 });
 
 check("pinned focus defaults to the current pin, else the first pin", () => {
@@ -255,9 +258,11 @@ check("both modes and all settings controls are present", () => {
     'id="pinsPanel"',
     'id="stageCard"',
     'id="pinsGrid"',
-    'id="cPinned"',
-    'id="cPinnedList"',
-    'id="cRecentLabel"',
+    'id="cViewBar"',
+    'id="cRecentTab"',
+    'id="cPinnedTab"',
+    'data-view="recent"',
+    'data-view="pinned"',
     'id="cUp"',
     'id="cDown"',
     'id="settingsPop"',
@@ -273,9 +278,8 @@ check("both modes and all settings controls are present", () => {
     'data-align="left"',
     'data-align="right"',
     "Compact alignment",
-    "Click copies",
-    "Recent · ",
     "compact_align",
+    "compact_view",
     "← → cards · ↑ pinned · ↓ back",
     "← → select · ↵ copy · ↓ back",
     "Click a card to copy it",
@@ -286,15 +290,23 @@ check("both modes and all settings controls are present", () => {
   }
 });
 
-check("compact pinned shelf is a copy-and-collapse shortlist", () => {
-  const start = html.indexOf("function quickCopyPinned");
-  const end = html.indexOf("\nfunction togglePin", start);
-  assert.ok(start > 0 && end > start, "quickCopyPinned must exist");
+check("compact view switch replaces one carousel and never keeps a shelf", () => {
+  assert.ok(!html.includes("cPinnedList"), "no pinned shelf list");
+  assert.ok(!html.includes("c-pin-card"), "no pinned shelf cards");
+  assert.ok(!html.includes("quickCopyPinned"), "no quick-copy path");
+  const start = html.indexOf("function renderCompact");
+  const end = html.indexOf("\nfunction renderAll", start);
+  assert.ok(start > 0 && end > start, "renderCompact must exist");
   const body = html.slice(start, end);
-  assert.match(body, /quickCopyTarget\(items, id\)/);
-  assert.match(body, /copyItem\(item\)/);
-  assert.match(body, /closeOverlay\(\)/);
-  assert.doesNotMatch(body, /selectById/);
+  assert.match(body, /compactView/);
+  assert.match(body, /el\.cPinnedTab\.hidden = pinnedTotal === 0/);
+  assert.match(body, /el\.cList\.innerHTML/);
+  const switchStart = html.indexOf("function setCompactView");
+  const switchEnd = html.indexOf("\nfunction selectById", switchStart);
+  assert.ok(switchStart > 0 && switchEnd > switchStart, "setCompactView must exist");
+  const switchBody = html.slice(switchStart, switchEnd);
+  assert.match(switchBody, /compactView = next/);
+  assert.doesNotMatch(switchBody, /localStorage|saveSettings/);
 });
 
 check("all six kinds have body renderers and type tokens", () => {
@@ -446,12 +458,16 @@ async function runDomChecks(chrome) {
         classes: document.body.className,
         align: document.body.dataset.compactAlign,
         size: document.body.dataset.compactSize,
-        pinnedHidden: document.getElementById("cPinned").hidden,
-        pinnedTitle: document.getElementById("cPinnedTitle").textContent,
-        pinned: [...document.querySelectorAll("#cPinnedList .c-pin-card")].map((card) => card.dataset.id),
-        recentHidden: document.getElementById("cRecentLabel").hidden,
-        recentLabel: document.getElementById("cRecentLabel").textContent,
-        recents: [...document.querySelectorAll("#cList .c-card")].map((card) => card.dataset.id),
+        view: compactView,
+        viewBarHidden: document.getElementById("cViewBar").hidden,
+        recentActive: document.getElementById("cRecentTab").classList.contains("is-active"),
+        pinnedActive: document.getElementById("cPinnedTab").classList.contains("is-active"),
+        pinnedHidden: document.getElementById("cPinnedTab").hidden,
+        pinnedDisabled: document.getElementById("cPinnedTab").disabled,
+        pinnedLabel: document.getElementById("cPinnedTab").textContent,
+        cards: [...document.querySelectorAll("#cList .c-card")].map((card) => card.dataset.id),
+        pinnedTotal: items.filter((item) => item.pinned).length,
+        recentTotal: items.filter((item) => !item.pinned).length,
         selected: selectedId,
         upHidden: document.getElementById("cUp").hidden,
         downHidden: document.getElementById("cDown").hidden,
@@ -459,35 +475,44 @@ async function runDomChecks(chrome) {
         nextHidden: document.getElementById("cNext").hidden,
         status: document.getElementById("cStatus").textContent,
         scrollTop: document.getElementById("cList").scrollTop,
+        scrollLeft: document.getElementById("cList").scrollLeft,
         overflow: panel.scrollHeight > panel.clientHeight + 1,
-        pinnedScrollable: document.getElementById("cPinnedList").scrollHeight > document.getElementById("cPinnedList").clientHeight,
         rect: { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height },
         viewport: { width: window.innerWidth, height: window.innerHeight },
       };
     })()`);
 
+    const setSearch = (value) => evaluate(`document.getElementById("cSearch").value = ${JSON.stringify(value)};
+      document.getElementById("cSearch").dispatchEvent(new Event("input", { bubbles: true }))`);
+    const setFilter = (value) => evaluate(`document.querySelector(${JSON.stringify(`#cFilters [data-filter="${value}"]`)}).click()`);
+    const pressCtrl = (key) => evaluate(`document.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(key)}, ctrlKey: true, bubbles: true }))`);
+
     const resetSample = async () => {
-      await evaluate(`items = sampleItems(); selectedId = "creed"; query = ""; filter = "all";
+      await evaluate(`items = sampleItems(); compactView = "recent"; selectedId = "creed"; query = ""; filter = "all";
         document.getElementById("cSearch").value = ""; setMode("compact"); setCompactAlign("bottom");
         renderAll()`);
       await sleep(120);
     };
 
-    await waitFor(`Boolean(document.getElementById("cPinned")) && Boolean(document.getElementById("cList").children.length)`, "compact boot");
+    await waitFor(`Boolean(document.getElementById("cViewBar")) && Boolean(document.getElementById("cList").children.length)`, "compact boot");
 
-    await checkAsync("bottom compact: pinned shelf above recents, recents exclude pins", async () => {
+    await checkAsync("bottom recent view: non-pinned carousel with Pinned tab", async () => {
       await resetSample();
       const state = await readCompact();
       assert.equal(state.align, "bottom");
+      assert.equal(state.view, "recent");
+      assert.equal(state.viewBarHidden, false);
+      assert.equal(state.recentActive, true);
+      assert.equal(state.pinnedActive, false);
       assert.equal(state.pinnedHidden, false);
-      assert.equal(state.pinnedTitle, "Pinned · 2");
-      assert.deepEqual(state.pinned, ["note", "repo"]);
-      assert.equal(state.recentHidden, false);
-      assert.equal(state.recentLabel, "Recent · 10");
-      assert.equal(state.recents.length, 10);
-      assert.equal(state.recents.includes("note"), false);
-      assert.equal(state.recents.includes("repo"), false);
-      assert.equal(state.recents[0], "creed");
+      assert.equal(state.pinnedDisabled, false);
+      assert.equal(state.pinnedLabel, "Pinned (2)");
+      assert.equal(state.cards.length, 10);
+      assert.equal(state.cards.includes("note"), false);
+      assert.equal(state.cards.includes("repo"), false);
+      assert.equal(state.cards[0], "creed");
+      assert.equal(state.pinnedTotal, 2);
+      assert.equal(state.status, "10 recent");
       assert.equal(state.upHidden, true);
       assert.equal(state.downHidden, true);
       assert.equal(state.prevHidden, false);
@@ -498,11 +523,31 @@ async function runDomChecks(chrome) {
       assert.equal(state.overflow, false);
     });
 
-    await checkAsync("left compact: full-height 12 px inset column, vertical arrows", async () => {
-      await evaluate(`setCompactAlign("left")`);
+    await checkAsync("bottom pinned view replaces the carousel without a height jump", async () => {
+      const before = await readCompact();
+      await click("#cPinnedTab");
       await sleep(160);
       const state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.equal(state.pinnedActive, true);
+      assert.equal(state.recentActive, false);
+      assert.deepEqual(state.cards, ["note", "repo"]);
+      assert.equal(state.selected, "note");
+      assert.equal(state.status, "2 pinned");
+      assert.equal(state.rect.height, before.rect.height);
+      assert.equal(state.rect.top, before.rect.top);
+      const closed = await evaluate(`document.body.classList.contains("is-closed")`);
+      assert.equal(closed, false);
+      const toast = await evaluate(`document.getElementById("toast").textContent`);
+      assert.doesNotMatch(toast, /Copied/);
+    });
+
+    await checkAsync("left compact: full-height column, view persists, no height jump", async () => {
+      await evaluate(`setCompactAlign("left")`);
+      await sleep(160);
+      let state = await readCompact();
       assert.equal(state.align, "left");
+      assert.equal(state.view, "pinned");
       assert.equal(state.rect.left, 12);
       assert.equal(state.rect.top, 52);
       assert.equal(state.rect.bottom, state.viewport.height - 12);
@@ -512,25 +557,42 @@ async function runDomChecks(chrome) {
       assert.equal(state.downHidden, false);
       assert.equal(state.prevHidden, true);
       assert.equal(state.nextHidden, true);
-      assert.deepEqual(state.pinned, ["note", "repo"]);
+      assert.deepEqual(state.cards, ["note", "repo"]);
+      const pinnedHeight = state.rect.height;
+      await click("#cRecentTab");
+      await sleep(160);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(state.cards.length, 10);
+      assert.equal(state.rect.height, pinnedHeight);
+      await click("#cPinnedTab");
+      await sleep(160);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.equal(state.rect.height, pinnedHeight);
     });
 
-    await checkAsync("right compact mirrors the column inset", async () => {
+    await checkAsync("right compact mirrors the column and keeps the pinned view", async () => {
       await evaluate(`setCompactAlign("right")`);
       await sleep(160);
       const state = await readCompact();
       assert.equal(state.align, "right");
+      assert.equal(state.view, "pinned");
       assert.equal(state.rect.right, 1588);
       assert.equal(state.rect.left, 1300);
       assert.equal(state.rect.top, 52);
       assert.equal(state.rect.bottom, state.viewport.height - 12);
       assert.equal(state.rect.width, 288);
+      assert.deepEqual(state.cards, ["note", "repo"]);
     });
 
-    await checkAsync("vertical navigation uses up/down and leaves left/right inert", async () => {
-      await evaluate(`setCompactAlign("left"); selectById("creed")`);
+    await checkAsync("vertical navigation follows the active view and leaves left/right inert", async () => {
+      await evaluate(`setCompactAlign("left")`);
       await sleep(160);
+      await click("#cRecentTab");
+      await sleep(140);
       let state = await readCompact();
+      assert.equal(state.view, "recent");
       assert.equal(state.selected, "creed");
       await press("ArrowDown");
       await sleep(120);
@@ -556,31 +618,92 @@ async function runDomChecks(chrome) {
       await sleep(120);
       state = await readCompact();
       assert.equal(state.selected, "creed");
+
+      await click("#cPinnedTab");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.equal(state.selected, "note");
+      await press("ArrowDown");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.selected, "repo");
+      await press("ArrowUp");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.selected, "note");
+      await press("ArrowRight");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.selected, "note");
     });
 
-    await checkAsync("pinned quick-copy copies and collapses, regular cards do not", async () => {
-      await click("#cPinnedList .c-pin-card[data-id='repo']");
-      await sleep(160);
-      let closedState = await evaluate(`({
-        closed: document.body.classList.contains("is-closed"),
-        reopenHidden: document.getElementById("reopen").hidden,
-        toast: document.getElementById("toast").textContent,
-      })`);
-      assert.equal(closedState.closed, true);
-      assert.equal(closedState.reopenHidden, false);
-      assert.match(closedState.toast, /Copied link card/);
-      await click("#reopen");
-      await sleep(160);
-      await click("#cList .c-card");
-      await press("Enter");
+    await checkAsync("filters and search apply to the active view and survive switching", async () => {
+      await click("#cPinnedTab");
+      await sleep(140);
+      await setSearch("github");
+      await sleep(140);
+      let state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.deepEqual(state.cards, ["repo"]);
+      assert.equal(state.status, "1 pinned");
+      await click("#cRecentTab");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.deepEqual(state.cards, []);
+      const emptyText = await evaluate(`document.querySelector("#cList .c-empty").textContent`);
+      assert.match(emptyText, /No recent matches/);
+      assert.equal(await evaluate(`document.getElementById("cSearch").value`), "github");
+      await click("#cPinnedTab");
+      await sleep(140);
+      state = await readCompact();
+      assert.deepEqual(state.cards, ["repo"]);
+
+      await setSearch("");
+      await setFilter("link");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.deepEqual(state.cards, ["repo"]);
+      await click("#cRecentTab");
+      await sleep(140);
+      state = await readCompact();
+      assert.deepEqual(state.cards, ["gtk"]);
+      assert.equal(await evaluate(`document.querySelector("#cFilters .chip.selected").dataset.filter`), "link");
+
+      await click("#cPinnedTab");
+      await sleep(140);
+      await setSearch("zzz");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.deepEqual(state.cards, []);
+      const pinnedEmpty = await evaluate(`document.querySelector("#cList .c-empty").textContent`);
+      assert.match(pinnedEmpty, /No pinned matches/);
+      assert.equal(state.pinnedHidden, false);
+    });
+
+    await checkAsync("Ctrl+1..9 addresses the active view", async () => {
+      await resetSample();
+      await evaluate(`setCompactAlign("left")`);
+      await sleep(140);
+      await click("#cPinnedTab");
+      await sleep(140);
+      await pressCtrl("2");
       await sleep(120);
-      closedState = await evaluate(`({
-        closed: document.body.classList.contains("is-closed"),
-        selected: selectedId,
-        toast: document.getElementById("toast").textContent,
-      })`);
-      assert.equal(closedState.closed, false);
-      assert.match(closedState.toast, /Copied/);
+      let toast = await evaluate(`document.getElementById("toast").textContent`);
+      assert.match(toast, /Copied link card/);
+      let closed = await evaluate(`document.body.classList.contains("is-closed")`);
+      assert.equal(closed, false);
+      await click("#cRecentTab");
+      await sleep(140);
+      await pressCtrl("2");
+      await sleep(120);
+      toast = await evaluate(`document.getElementById("toast").textContent`);
+      assert.match(toast, /Copied code card/);
+      closed = await evaluate(`document.body.classList.contains("is-closed")`);
+      assert.equal(closed, false);
     });
 
     await checkAsync("settings rows disable in Full and enable in Compact", async () => {
@@ -633,76 +756,138 @@ async function runDomChecks(chrome) {
     });
 
     await checkAsync("alignment preserves query, filter and selection and persists", async () => {
-      await evaluate(`query = "gtk4"; filter = "link"; document.getElementById("cSearch").value = query;
+      await evaluate(`query = "gtk4"; filter = "link"; document.getElementById("cSearch").value = query; compactView = "recent";
         selectById("gtk"); setCompactAlign("left")`);
       await sleep(160);
       const state = await readCompact();
       assert.equal(state.align, "left");
+      assert.equal(state.view, "recent");
       assert.equal(state.selected, "gtk");
-      assert.equal(state.recents.length, 1);
-      assert.equal(state.recents[0], "gtk");
-      assert.equal(state.pinned.length, 2);
+      assert.deepEqual(state.cards, ["gtk"]);
+      assert.equal(state.pinnedLabel, "Pinned (2)");
       const stored = await evaluate(`JSON.parse(localStorage.getItem("clipboard-ui.settings"))`);
       assert.equal(stored.layout.mode, "compact");
       assert.equal(stored.layout.compact.alignment, "left");
       assert.equal(stored.layout.compact.card_size, "medium");
+      assert.equal("view" in stored.layout.compact, false);
     });
 
-    await checkAsync("no pins hides the compact pinned section and label", async () => {
-      await evaluate(`query = ""; filter = "all"; document.getElementById("cSearch").value = "";
+    await checkAsync("zero pins hides/disables the Pinned tab and forces Recent", async () => {
+      await evaluate(`compactView = "pinned"; query = ""; filter = "all"; document.getElementById("cSearch").value = "";
         items = sampleItems().map((item) => ({ ...item, pinned: false })); selectedId = items[0].id;
         renderAll()`);
       await sleep(160);
       const state = await readCompact();
+      assert.equal(state.view, "recent");
       assert.equal(state.pinnedHidden, true);
-      assert.equal(state.recentHidden, true);
-      assert.equal(state.pinned.length, 0);
-      assert.equal(state.recents.length, 12);
+      assert.equal(state.pinnedDisabled, true);
+      assert.equal(state.pinnedLabel, "Pinned (0)");
+      assert.equal(state.recentActive, true);
+      assert.equal(state.cards.length, 12);
+      assert.equal(state.viewBarHidden, false);
     });
 
-    await checkAsync("single pin stays visible and quick-copies", async () => {
+    await checkAsync("single pin is available and uses the normal compact card interaction", async () => {
       await evaluate(`items = sampleItems(); items.forEach((item) => { item.pinned = item.id === "note"; });
-        selectedId = "creed"; query = ""; filter = "all"; renderAll()`);
+        compactView = "recent"; selectedId = "creed"; query = ""; filter = "all"; renderAll()`);
       await sleep(160);
+      await click("#cPinnedTab");
+      await sleep(140);
       let state = await readCompact();
-      assert.equal(state.pinnedTitle, "Pinned · 1");
-      assert.deepEqual(state.pinned, ["note"]);
-      await click("#cPinnedList .c-pin-card[data-id='note']");
-      await sleep(160);
-      const closed = await evaluate(`document.body.classList.contains("is-closed")`);
-      assert.equal(closed, true);
-      await click("#reopen");
-      await sleep(160);
+      assert.equal(state.view, "pinned");
+      assert.equal(state.pinnedLabel, "Pinned (1)");
+      assert.deepEqual(state.cards, ["note"]);
+      assert.equal(state.selected, "note");
+      await press("Enter");
+      await sleep(120);
+      let closed = await evaluate(`document.body.classList.contains("is-closed")`);
+      let toast = await evaluate(`document.getElementById("toast").textContent`);
+      assert.equal(closed, false);
+      assert.match(toast, /Copied text card/);
+      await evaluate(`document.querySelector("#cList .c-card").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }))`);
+      await sleep(120);
+      closed = await evaluate(`document.body.classList.contains("is-closed")`);
+      assert.equal(closed, false);
+
+      await click("#cRecentTab");
+      await sleep(140);
+      await evaluate(`document.querySelector("#cList .c-card").dispatchEvent(new MouseEvent("dblclick", { bubbles: true }))`);
+      await sleep(120);
+      closed = await evaluate(`document.body.classList.contains("is-closed")`);
+      assert.equal(closed, false);
     });
 
-    await checkAsync("vertical strip and pinned group scroll independently", async () => {
+    await checkAsync("vertical strip scrolls the active view without a height jump", async () => {
       await evaluate(`items = Array.from({ length: 26 }, (_, index) => ({
           ...sampleItems()[index % 12],
           id: "scroll-" + index,
           pinned: index < 8,
-        })); selectedId = "scroll-25"; query = ""; filter = "all";
+        })); compactView = "recent"; selectedId = "scroll-25"; query = ""; filter = "all";
         setCompactAlign("left"); renderAll(); selectById("scroll-25", { scroll: true })`);
       await sleep(500);
-      const state = await readCompact();
-      assert.equal(state.pinned.length, 8);
-      assert.equal(state.recents.length, 18);
+      let state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(state.cards.length, 18);
       assert.equal(state.selected, "scroll-25");
       assert.ok(state.scrollTop > 0, `recent list scrollTop was ${state.scrollTop}`);
-      assert.equal(state.pinnedScrollable, true);
+      const recentHeight = state.rect.height;
+      await click("#cPinnedTab");
+      await sleep(200);
+      await evaluate(`selectById("scroll-7", { scroll: true })`);
+      await sleep(500);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.equal(state.cards.length, 8);
+      assert.equal(state.selected, "scroll-7");
+      assert.ok(state.scrollTop > 0, `pinned list scrollTop was ${state.scrollTop}`);
+      assert.equal(state.rect.height, recentHeight);
     });
 
-    await checkAsync("deep link selects right / large", async () => {
-      await send("Page.navigate", { url: `${MOCK.href}?mode=compact&compact_align=right&compact_size=large` });
-      await waitFor(`document.body.dataset.compactAlign === "right" && !document.getElementById("compact").hidden`, "compact alignment deep link");
+    await checkAsync("deep links select the pinned view and preserve alignment/size", async () => {
+      await send("Page.navigate", { url: `${MOCK.href}?mode=compact&compact_view=pinned` });
+      await waitFor(`compactView === "pinned" && !document.getElementById("compact").hidden`, "compact view deep link");
       await sleep(160);
-      const state = await readCompact();
-      assert.equal(state.align, "right");
+      let state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.equal(state.pinnedActive, true);
+      assert.deepEqual(state.cards, ["note", "repo"]);
+      assert.equal(state.selected, "note");
+
+      await send("Page.navigate", { url: `${MOCK.href}?mode=compact&compact_align=left&compact_view=pinned&compact_size=large` });
+      await waitFor(`document.body.dataset.compactAlign === "left" && document.body.dataset.compactSize === "large" && compactView === "pinned"`, "compact pinned left/large deep link");
+      await sleep(160);
+      state = await readCompact();
+      assert.equal(state.align, "left");
       assert.equal(state.size, "large");
+      assert.equal(state.view, "pinned");
       assert.equal(state.rect.width, 328);
-      assert.equal(state.rect.right, 1588);
-      assert.equal(state.pinnedHidden, false);
-      assert.equal(state.upHidden, false);
-      assert.equal(state.prevHidden, true);
+      assert.equal(state.rect.left, 12);
+      assert.deepEqual(state.cards, ["note", "repo"]);
+      const height = state.rect.height;
+      await click("#cRecentTab");
+      await sleep(160);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(state.rect.height, height);
+    });
+
+    await checkAsync("view is not persisted and resets to Recent on reopen", async () => {
+      await send("Page.navigate", { url: `${MOCK.href}?mode=compact` });
+      await waitFor(`compactView === "recent" && !document.getElementById("compact").hidden`, "recent default after reload");
+      await sleep(160);
+      let state = await readCompact();
+      assert.equal(state.view, "recent");
+      const stored = await evaluate(`JSON.parse(localStorage.getItem("clipboard-ui.settings"))`);
+      assert.equal("view" in stored.layout.compact, false);
+      await click("#cPinnedTab");
+      await sleep(140);
+      await evaluate("closeOverlay()");
+      await sleep(140);
+      await click("#reopen");
+      await sleep(160);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(state.recentActive, true);
     });
   } finally {
     if (ws) ws.close();
