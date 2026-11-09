@@ -17,56 +17,35 @@ branch: ticket/REQ-005-overlay-redesign
 
 Replace the bottom horizontal card strip with a desktop command surface:
 
-- **Normal (default):** a **1040 × 680 floating command window**, centred over a
-  sharp desktop. The window has a single command-bar row (search, filters,
-  incognito, clear, gear) with a bottom hairline, a 340 px history rail with a
-  right divider, and a flexible preview column. A row click previews,
-  `Enter`/Copy commits. There is **no full-screen scrim and no blurred/dimmed
-  desktop**: the desktop stays sharp and a click outside the window closes it
-  through a transparent catcher.
-- **Compact (unchanged):** a 440 px centre panel or a 400 px full-height
-  left/right bar; search, filter, list, footer, no preview; a row click copies.
-  The desktop stays sharp with the existing light dim.
+- **Normal:** a top command bar, a history rail and a large item preview; a
+  row click previews, `Enter`/Copy commits.
+- **Compact:** a 440 px centre panel or a 400 px full-height left/right bar;
+  search, filter, list, footer, no preview; a row click copies.
 - The layout mode and compact position are persisted through the capture-tool
-  settings pattern at `$XDG_CONFIG_HOME/clipboard-ui/config.json`. Normal is
-  fixed centred; only the compact position is configurable.
+  settings pattern at `$XDG_CONFIG_HOME/clipboard-ui/config.json`.
 - Pin, delete (with undo), clear (with confirm), incognito, live updates
   without stealing selection, and `Ctrl+1..9` are preserved.
 
 The normative mock is [`mock.html`](./mock.html); this ticket is the app-local
-implementation contract and the canonical record. The composition draft number
-was `docs/107-clipboard-overlay.md`, but master now uses `107` for the
-generations v3 RFC, so the clipboard redesign lives only here (no separate 107
-document is required).
+implementation contract. The batch-level composition record was drafted as
+`dotfiles-v3/docs/107-clipboard-overlay.md`; that number is now the generations
+v3 RFC, so it is held on the design branch pending renumbering. This ticket is
+self-contained and canonical.
+
+## Design revision pending
+
+This design is **not frozen**. A change was requested after the initial
+contract. Do not merge this branch or add a `mock.sha256` until the revision is
+applied and the acceptance criteria are rechecked.
 
 ## Acceptance
 
-Design deliverable (frozen by this ticket + the mock):
-
-- [x] `mock.html` is one self-contained file with no external assets and no
-      build step; it opens directly in a browser and `node --check` passes on
-      its script.
-- [x] Normal is a 1040 × 680 window (max 90vw × 84vh), centred, radius 20,
-      glass `rgba(9,9,13,.88)` + blur, 1 px hairline and one soft shadow.
-- [x] Normal has no scrim and no page layer: the wallpaper stays sharp, a faux
-      editor window sits behind the clipboard, and the editor is not dimmed.
-      A transparent catcher closes the window on outside click.
-- [x] The command bar is a single row at the top of the window with a bottom
-      hairline, not a separate floating glass bar.
-- [x] The rail is a 340 px column with a right divider; the preview is a
-      flexible column. The window is the surface; there are no nested glass
-      panels or cards.
-- [x] Compact is exactly the previous design: 440 px centre panel, 400 px
-      full-height left/right bars, sharp desktop, 16 % dim, same header/list/
-      footer and same settings rows.
-- [x] Search, filters, type stripes, preview types, footer actions, selection,
-      pin/delete/undo, clear confirm, incognito, live-new and deep links still
-      work in the mock.
-- [x] Switching Normal ↔ Compact or Compact center/left/right preserves query,
-      filter and selection without a reload.
-
-Implementation acceptance is tracked in
-[Implementation acceptance (follow-up)](#implementation-acceptance-follow-up).
+- [ ] The overlay implements the contract in this ticket.
+- [ ] Normal and Compact (center/left/right) match the mock at 1600×1000 and
+      1920×1080.
+- [ ] `layout.mode` and `layout.compact.position` persist at
+      `$XDG_CONFIG_HOME/clipboard-ui/config.json` and degrade safely.
+- [ ] `make ci` and `make gates` pass; the composition pin is bumped.
 
 ## Mock (normative)
 
@@ -77,53 +56,19 @@ xdg-open tickets/REQ-005-overlay-redesign/mock.html
 ```
 
 Try: `↑`/`↓`, `Enter`, `Ctrl+1..9`, `Ctrl+F`, `Delete`/Undo, `Esc`, `/`, `N`;
-click outside the Normal window to close it; the gear → Layout
-(Normal/Compact) and Compact position (Center/Left/Right).
-Deep links: `?mode=normal` (default), `?mode=compact&pos=center`,
-`?mode=compact&pos=left`, `?mode=compact&pos=right`,
-`?mode=compact&settings=1`, `?mode=normal&settings=1`, `?view=clear`,
-`?filter=link&q=github`, `?new=1`, `?closed=1`.
+the gear → Layout (Normal/Compact) and Compact position (Center/Left/Right).
+Deep links: `?mode=compact&pos=left`, `?mode=compact&pos=right`,
+`?mode=compact&settings=1`, `?view=clear`, `?new=1`, `?closed=1`.
 
 The mock is the first source of truth for look and interaction; this ticket is
 the source of truth for invariants, settings, architecture and acceptance.
-
-## Source of truth and drift rule
-
-- Normative mock: `mock.html`; sha256
-  `cd1a19f29632c915e1356a07a2a9ff23e12a9a0260f3f146f9dd1e575c8652ea`
-  (also recorded in `mock.sha256`).
-- This ticket is the **criteria** source of truth; the mock is the **look and
-  interaction** source of truth.
-- Any change to `mock.html` must update this ticket's requirement, acceptance
-  or contract **and** `mock.sha256` in the same commit. Any criteria change
-  must update the mock in the same commit. If they disagree, fix one before
-  merging.
-- The app-local ticket + mock are canonical; the composition docs are the
-  batch-level record, and there is no second clipboard contract.
-
-## Design verification
-
-- `node --check` on the mock's extracted script: pass.
-- Headless Chrome DOM/state harness at 1600×1000: **25/25** checks pass,
-  including the 1040 × 680 centred window, radius 20, no scrim, sharp
-  wallpaper, visible undimmed background app, transparent catcher, 340 px rail,
-  command-row bottom hairline, state preservation across both mode switches,
-  outside-click close, Compact 440 centre / 400 left inset, deep links, live
-  no-steal, pin/delete/undo, clear confirm, incognito and gear sensitivity.
-- `make ci AGS_PLATFORM_DEV=… CONTRACTS_ROOT=…`: exit 0 (13 unit + 13
-  conformance + event-contract drift).
-- Visual review at 1600×1000 (Normal, Compact centre, Compact left) and
-  1920×1080 (Normal). The faux editor is mock-only.
 
 ## Design contract
 
 ## 0.1 Inherited visual contract (restated)
 
-1. Content is the surface. In Normal the **window** is the one surface; the
-   rail and preview are divided columns, not nested cards. In Compact the
-   panel is the surface.
+1. Content is the surface; chrome floats.
 2. One chrome layer: glass + 1 px hairline + one soft shadow. No accent frame.
-   Normal uses a floating window; Compact uses its panel.
 3. Accent is a state colour (copy/selection/focus/progress); live is green;
    type hues annotate only.
 4. Type scale ~10.5 / 11.5 / 13 / 15–16 / 21–30; sentence case; no uppercase
@@ -138,9 +83,8 @@ the source of truth for invariants, settings, architecture and acceptance.
    `layout.mode` and `layout.compact.position`.
 
 Core tokens: ink `#f6f5f8`, dim 62 %, faint 40 %; hairline
-`rgba(255,255,255,.12)`; Normal window glass `rgba(9,9,13,.88)` with a 30 px
-blur; Compact glass `rgba(9,9,13,.74)` with a 28 px blur; live `#4ade80`;
-accent from the generated palette; on-accent from the palette.
+`rgba(255,255,255,.12)`; glass `rgba(9,9,13,.55)`; live `#4ade80`; accent from
+the generated palette; on-accent from the palette.
 
 ---
 
@@ -149,11 +93,8 @@ accent from the generated palette; on-accent from the palette.
 **In scope**
 
 - The clipboard overlay: command bar, history rail, item preview.
-- Two layouts: **Normal** (a floating 1040 × 680 command window) and **Compact**
-  (a 440 px centre panel, or a 400 px full-height left/right bar), selected in
-  settings.
-- The sharp desktop in Normal (no scrim/backdrop) and the existing light dim in
-  Compact.
+- Two layouts: **Normal** (full command surface) and **Compact** (a 440 px
+  centre panel, or a 400 px full-height left/right bar), selected in settings.
 - Selection/preview vs copy-back (commit), pinning, deletion, clear, incognito.
 - Live clipboard updates and the no-steal-selection rule.
 - The app-repo architecture needed to ship it.
@@ -163,13 +104,11 @@ accent from the generated palette; on-accent from the palette.
 - The daemon/history writer and the event contract (unchanged).
 - Cross-app UI orchestration (see 106 §7.7 / D12).
 - Appearance token changes. The app keeps the v2 appearance adapter.
-- Normal-mode placement/move/resize settings. The overlay persists
-  `layout.mode` and the compact position; Normal is fixed centred and is not
-  draggable or configurable. If Normal placement ever becomes configurable it
-  joins the same file and 106's placement math.
+- Normal-mode placement settings. The overlay persists `layout.mode` and the
+  compact position; the normal command bar stays top, the desktop bar stays
+  visible. If normal placement becomes configurable it joins the same file and
+  106's placement math.
 - Multi-monitor placement; see 106 §10.1.
-- A shipped faux background app. The mock draws one only to prove the window
-  relationship; the real app floats over the user's actual desktop.
 
 ---
 
@@ -186,10 +125,8 @@ The current `ags-clipboard` overlay is a bottom-anchored, full-width strip:
   `Ctrl+1..9` copies by position (`ui/ClipboardWindow.tsx:233-280`);
 - search + incognito + clear in a top row; incognito is driven by the daemon
   job through the event hub (`ClipboardWindow.tsx:299-312`);
-- per-type header backgrounds now use **static role-based ink** in CSS
-  (REQ-006; `.kind-* .clipboard-head`, `style.css:131-161`). The old runtime
-  luminance picker is gone, but the full coloured header bar remains
-  (`ui/ItemCard.tsx:73-75,122-133`);
+- per-type palette roles drive the header ink via luminance math
+  (`ui/ItemCard.tsx:84-147`);
 - appearance via `createAppearance({ configDir: "ags-clipboard" })`
   (`app.tsx:19-26`);
 - one window per monitor, anchored bottom (`app.tsx:70-76`).
@@ -202,17 +139,9 @@ Why it reads old:
    long text and bad at scale;
 3. there is no preview: an image is a 236×118 crop, code is five lines of a
    label, a link is a truncated line;
-4. every card repeats chrome (header + border + radius); the coloured header
-   still repeats on every card. REQ-006 already replaced the old runtime
-   luminance picker with static role-based ink, so this redesign changes the
-   **gesture** (a 3 px stripe + glyph tint) and the layout, not the contrast
-   mechanism. No runtime contrast math returns.
-
-**REQ-006 reconciliation.** `ItemCard` no longer reads `colors.css` or computes
-relative luminance; each kind's header uses the Material `on_*` ink for its
-fill (`style.css:131-161`). The redesign keeps that principle — role, not hex —
-and moves the type signal to the row stripe/glyph. It adds no runtime contrast
-math and no new palette read.
+4. every card repeats chrome (header + border + radius);
+5. per-type hue math in the app is a workaround the appearance plane should
+   own (explicit ink tokens), not app-side luminance.
 
 What must survive:
 
@@ -232,31 +161,29 @@ What must survive:
 
 | ID | Decision | Why | Consequence |
 | --- | --- | --- | --- |
-| **C1** | The overlay opens as a **floating command window**, not a full-monitor surface and not a bottom card strip. Normal is a 1040 × 680 window (max 90vw × 84vh), centred, radius 20, glass + 1 px hairline + soft shadow. | The desktop and your windows must stay visible; a clipboard is a tool, not a takeover. A takeover hides exactly the context you are copying from. | A normal window over a sharp desktop; a transparent outside-click catcher; no scrim, no blurred wallpaper, no dark page layer. |
-| **C2** | Two-pane layout: **history rail (left) + item preview (right)**. The preview is the content; the rail is the index. | Text, code, images and links need room. A preview is the missing feature. | Rail 340 px with a right divider; preview flexible; one selection drives both. |
-| **C3** | One **command-bar row** at the top of the window: search, type filters, incognito, clear, gear, closed by a bottom hairline. | Everything global lives in one place; the content stays clean. | It is part of the window surface, not a second floating glass bar. |
+| **C1** | The overlay is a **full-monitor command surface**, not a bottom card strip. A dimmed, blurred desktop sits behind it; the content owns the screen. | Clipboard is a focus task; the old strip made every item equal and hid the content. | Full-screen window; a command bar at the top; two content columns below. |
+| **C2** | Two-pane layout: **history rail (left) + item preview (right)**. The preview is the surface; the rail is the index. | Text, code, images and links need room. A preview is the missing feature. | Rail 420 px; preview flexible; one selection drives both. |
+| **C3** | One **command bar** at the top, below the desktop bar: search, type filters, incognito, clear. | Everything global lives in one place; the content stays clean. | The bar respects the desktop bar's reserved strip; no second settings bar. |
 | **C4** | **Browse ≠ commit.** Selecting a row previews it. `Enter` / **Copy** puts it on the clipboard. `Ctrl+1..9` is the direct-copy power path. | The old click-to-copy had no preview; the new model makes reading free and copying explicit. | `copyItem` is only called from the commit actions. |
 | **C5** | Type is a **3 px stripe + glyph tint**, not a full coloured header. | The type should annotate the content, not outshine it. | Palette roles still tint the type; no luminance math in the app. |
 | **C6** | **Pinned items group first**, then Today / Yesterday / Older. Pin/unpin from the row or the preview footer. | Pins are the user's deliberate shortlist; they should not scroll away. | A pinned toggle; section headers; selection survives the move. |
 | **C7** | **Delete is undoable** (toast with Undo); **Clear requires an inline confirm**. | Destructive actions need a way back; clear also deletes cached images. | Delete removes + toast; Clear turns the button into `Clear all? Yes / No`. |
 | **C8** | **Incognito is a visible state**, not a hidden mode: a pill in the command bar and a “captures paused” note in the rail. | Pausing capture is important; the user must see it. | Driven by `clipboard.state`; tinted active state; no config file. |
 | **C9** | **Live updates never steal the selection.** New items appear at the top; if the user is elsewhere, a `N new` pill appears. | The old overlay jumped the selection to the newest item mid-browse. | A `new` marker + a jump-to-top pill; selection preserved. |
-| **C10** | Copy success **closes the window immediately**; copy failure keeps it open with an error. Opening a link closes and hands off to `xdg-open`. | Speed is the point of a clipboard; a failure must not look like success. | `copyItem().then(hide).catch(keep open)`. |
-| **C11** | Normal placement is fixed: a centred 1040 × 680 window, not draggable and not configurable. The **layout mode** and **compact position** are configurable. | The review asked for a window, not a takeover; a fixed centre keeps the gesture predictable and avoids new placement keys before the orchestrator defines them. | Normal is fixed centred; only the compact side is a setting. If Normal placement becomes configurable, reuse 106's placement settings and the same `config.json`. |
+| **C10** | Copy success **closes the overlay immediately**; copy failure keeps it open with an error. Opening a link closes and hands off to `xdg-open`. | Speed is the point of a clipboard; a failure must not look like success. | `copyItem().then(hide).catch(keep open)`. |
+| **C11** | Normal-mode placement is fixed: the desktop bar stays visible (reserved strip respected), the command bar top. The **layout mode** and **compact position** are configurable. | Avoid normal-placement keys before the orchestrator defines the cross-app grammar; the compact mode genuinely needs its mode and side. | If normal placement becomes configurable, reuse 106's placement settings and the same `config.json`. |
 | **C12** | **Virtualize the rail** (`Gtk.ListView` + model) or otherwise keep map/show off the card-build path. | The measured full-history card build is ~430 ms; a richer preview list must not regress it. | Model-driven rows; async image decode; search filters the model, not a widget rebuild. |
 | **C13** | Appearance v2 stays the one provider; the preview/list state survives a refresh. | Live palette changes must not reset the user's place. | Rebuild type tints/icons; preserve query, filter, selection, incognito, scroll. |
 | **C14** | Inherit 106's visual rules: one chrome layer, accent for state, 8 px rhythm, 40–44 px targets, sentence case, no uppercase micro-labels. | The batch must feel like one system. | New CSS; no coloured header bars; no accent frames. |
-| **C15** | Two layouts: **Normal** (a floating 1040 × 680 command window, default) and **Compact**. Compact is a **440 px centre panel** or a **400 px full-height left/right bar**, with search, filter, list and footer; no preview. Normal previews; compact retrieves. | The floating window keeps the desktop visible for reading and judging context; a clipboard is often a quick grab, and the side of the screen is valuable real estate. | Mode + compact position are settings; data, filters, selection and actions are shared. Compact row click = copy; normal row click = preview. |
+| **C15** | Two layouts: **Normal** (full command surface, default) and **Compact**. Compact is a **440 px centre panel** or a **400 px full-height left/right bar**, with search, filter, list and footer; no preview. Normal previews; compact retrieves. | The full surface is great for reading and judging; a clipboard is often a quick grab, and the side of the screen is valuable real estate. | Mode + compact position are settings; data, filters, selection and actions are shared. Compact row click = copy; normal row click = preview. |
 | **C16** | The layout mode and compact position are persisted in an app-owned JSON file using the capture-tool settings pattern. | One settings grammar across apps; the choice must survive restart. | `$XDG_CONFIG_HOME/clipboard-ui/config.json`, pure domain + port + GLib adapter, save-on-change. |
 
 ### 2.1 Defaults
 
 - Layout: **Normal**.
-- Normal: 1040 × 680 window, fixed centred, clamped to max 90vw × 84vh; no
-  scrim and no backdrop treatment.
 - Compact position: **Center**.
-- Desktop bar visible; the normal window floats over the work area.
-- Command bar row at the top of the window.
+- Desktop bar visible (reserved top strip respected).
+- Command bar top.
 - Filter `All`.
 - Selection = first item in the filtered list.
 
@@ -268,25 +195,25 @@ What must survive:
 
 | State | What is on screen | Primary action |
 | --- | --- | --- |
-| `closed` | The desktop; no window | — |
-| `browsing` | Floating window: command bar + rail + preview, selection focused; desktop sharp behind | `Enter` copy |
+| `closed` | The desktop; no overlay | — |
+| `browsing` | Command bar + rail + preview, selection focused | `Enter` copy |
 | `searching` | Same, search focused, filtered list | `Enter` copy first/selected |
-| `clear-confirm` | `Clear all? Yes / No` inline in the command bar | Yes clears |
-| `copied` | Window fading out + toast | — |
-| `opening` | Window fading out + toast | — |
+| `clear-confirm` | `Clear all? Yes / No` inline | Yes clears |
+| `copied` | Overlay fading out + toast | — |
+| `opening` | Overlay fading out + toast | — |
 | `empty` | Empty rail + empty preview | — |
 | `incognito` | Browsing with `Incognito on` + paused note | Toggle off |
 
-Both layouts share these states. In `browsing`, Normal renders the window with
-rail + preview; Compact renders the compact panel. Selection and filters are
-shared; the only interaction difference is that **a compact row click commits**
-(copies), while a normal row click previews (C15).
+Both layouts share these states. In `browsing`, Normal renders rail + preview;
+Compact renders the compact list. Selection and filters are shared; the only
+interaction difference is that **a compact row click commits** (copies), while
+a normal row click previews (C15).
 
 ### 3.2 Transitions
 
 | From | Event | To | Notes |
 | --- | --- | --- | --- |
-| `closed` | `show` / keybind | `browsing` | Hydrate history; reset filter All; select first; focus search; Normal opens the window centred. |
+| `closed` | `show` / keybind | `browsing` | Hydrate history; reset filter All; select first; focus search. |
 | `browsing` | `↑`/`↓` | `browsing` | Move selection; preview follows; scroll into view. |
 | `browsing` | type | `searching` | Filter by text; selection moves to first match. |
 | `browsing` | filter chip | `browsing` | Filter by kind; selection first match. |
@@ -299,11 +226,10 @@ shared; the only interaction difference is that **a compact row click commits**
 | `clear-confirm` | No / `Esc` | `browsing` | No write. |
 | `browsing` | link + right-click / Open | `opening` | Hide; `openUrl`. |
 | `browsing` | `Esc` | `closed` | Hide; no write. |
-| `browsing` (Normal) | click outside the window | `closed` | Transparent catcher; the desktop/app behind stays visible. |
 | `browsing` (Normal) | row click | `browsing` | Preview only; no copy. |
 | `browsing` (Compact) | row click | `copied` | Retrieve-first: copy and close. |
-| `browsing` (Compact) | expand icon | `browsing` (Normal) | Persist the mode; same selection; the window opens centred. |
-| `browsing` (either) | gear → Layout | `browsing` (other) | Persist; resolve the window/panel; preserve query/filter/selection. |
+| `browsing` (Compact) | expand icon | `browsing` (Normal) | Persist the mode; same selection. |
+| `browsing` (either) | gear → Layout | `browsing` (other) | Persist; re-render; preserve query/filter/selection. |
 | `browsing` (Compact) | gear → Compact position | `browsing` (same mode) | Persist; move the panel live; keep selection; popover follows the gear. |
 | `browsing` | incognito pill | `incognito` | `control(job, pause/resume)`. |
 | `incognito` | incognito pill | `browsing` | Resume. |
@@ -313,8 +239,8 @@ shared; the only interaction difference is that **a compact row click commits**
 ### 3.3 Copy/open semantics
 
 - `copyItem(item)` is the only clipboard write. It already handles image/png
-  vs text. On success: hide the window, show a success toast.
-- On failure: keep the window open, show the error in the command bar/status,
+  vs text. On success: hide the overlay, show a success toast.
+- On failure: keep the overlay open, show the error in the command bar/status,
   keep the selection.
 - Link open (`openUrl`) only on an explicit Open or right-click; hide only
   after the URL is valid.
@@ -325,37 +251,54 @@ shared; the only interaction difference is that **a compact row click commits**
 
 ## 4. Layout specification
 
-### 4.1 Normal window
+### 4.1 Anatomy
 
-| Property | Value |
-| --- | --- |
-| Position | fixed centred horizontally and vertically; not draggable |
-| Size | default 1040 × 680; clamped to `min(1040px, 90vw) × min(680px, 84vh)` |
-| Surface | glass `rgba(9,9,13,.88)`, 30 px backdrop blur, 1 px `rgba(255,255,255,.13)` hairline, radius 20 |
-| Shadow | one soft shadow, e.g. `0 44px 110px rgba(0,0,0,.58)` |
-| Desktop | sharp: no scrim, no wallpaper blur, no dark page layer |
-| Behind the window | the real desktop/apps; the mock draws a faux editor titlebar/tabs/code only to prove the window relationship (not shipped) |
-| Outside click | a transparent, full-viewport catcher closes the window; the desktop/app behind stays visible |
-| Structure | one command-bar row with a bottom hairline; below it a 340 px rail with a right divider and a flexible preview column |
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  desktop bar (your normal bar; visible)                      │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │ ⌕ Search clipboard…   All Text Links Code …  ⏸  Clear  │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌──────────────────────┐  ┌───────────────────────────────┐  │
+│  │ History        12    │  │ Text             2 min ago    │  │
+│  │ Pinned               │  │                               │  │
+│  │  ▌ note…             │  │  The actual copied content    │  │
+│  │  ▌ link…             │  │  gets the room it deserves.   │  │
+│  │ Today                │  │                               │  │
+│  │  ▌ text…             │  │                               │  │
+│  │  ▌ code…             │  │  [Pin] [Delete]      [Copy ↵] │  │
+│  └──────────────────────┘  └───────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
 
-The window is the **only** surface. The rail and preview are divided columns,
-not nested glass panels: dividers, row fills, and content-level insets only.
+Compact (440 px, top centre, sharp desktop behind):
 
-Compact stays as designed: a 440 px centre panel at `top: 10vh` (max-height
-64vh), or a 400 px full-height left/right bar inset 12 px below the desktop
-bar. The desktop is sharp with the existing very light 16 % dim.
+```text
+┌──────────────────────────────────────────┐
+│ ⌕ Search…                  All ▾      ⚙  │
+├──────────────────────────────────────────┤
+│ Pinned                                   │
+│ ▌ note…                          12m  ⚲  │
+│ ▌ github.com                     28m  ⚲  │
+│ ──────────────────────────────────────── │
+│ ▌ Browse is free…                 1m     │
+│ ▌ export function…                3m     │
+│ ▌ screenshot…                     5m     │
+│ …                                        │
+├──────────────────────────────────────────┤
+│ 12 items       Incognito off  Clear   ⤢  │
+└──────────────────────────────────────────┘
+```
 
 ### 4.2 Command bar
 
-- One row at the top of the window, 54 px high, full window width, with a
-  bottom hairline; transparent inside the window (no own glass, radius or
-  shadow).
-- Search: icon + `Gtk.Entry`, flexible with a 200 px minimum inside the
-  window; `/` keycap; placeholder `Search clipboard…`.
+- Full content width, 60 px high, top 16 px below the reserved desktop strip;
+  glass `rgba(9,9,13,.55)`, 1 px hairline, radius 16, 24 px blur.
+- Search: icon + `Gtk.Entry`, flexible with a 380 px minimum; `/` keycap;
+  placeholder `Search clipboard…`.
 - Filters: `All`, `Text`, `Links`, `Code`, `Images`, `Colors`, `Emoji` as
   segmented chips, 28 px high, 11 px / 600. Each type chip carries a 6 px dot
-  in its type hue. Selected = white 14 % fill (not the global accent). Chips
-  scroll horizontally when the window is narrow.
+  in its type hue. Selected = white 14 % fill (not the global accent).
 - Incognito: pill with a pause glyph; `Incognito off` neutral, `Incognito on`
   in the global accent tint with a dot.
 - Clear: quiet destructive text button (`trash` + `Clear`), red ink on hover.
@@ -364,11 +307,10 @@ bar. The desktop is sharp with the existing very light 16 % dim.
 
 ### 4.3 History rail
 
-- 340 px wide (320/300 px at narrower viewports), full content height; a right
-  divider (`1px rgba(255,255,255,.08)`), no background/border/radius/shadow of
-  its own.
+- 420 px wide (360–480 responsive), full content height, glass panel,
+  radius 18, 1 px hairline, 24 px blur.
 - Header: `History` 15 / 650, count pill, `N new` accent pill (only when the
-  user is not at the top); 50 px high with a hairline bottom.
+  user is not at the top).
 - Sections: `Pinned`, `Today`, `Yesterday`, `Older`; 10.5 / 600 faint;
   sticky within the scroll area.
 - Row: 64 px high, 12 px horizontal padding, 3 px type stripe at the left,
@@ -383,32 +325,30 @@ bar. The desktop is sharp with the existing very light 16 % dim.
 
 ### 4.4 Preview
 
-- Flexible width; it shares the window surface. No tint block, border or
-  radius of its own; the rail divider separates the columns.
+- Flexible width; no heavy panel. A very subtle tint
+  `rgba(9,9,13,.30)` with radius 18; no border. The content is the surface.
 - Header: type chip (glyph + label in the type hue) + relative time (+ line
   count for code); 11.5 dim. Size/dimensions live in the footer, not twice.
 - Body (per kind):
   - **text**: 15 px / 1.7, max width 820, `white-space: pre-wrap`; scrolls.
-  - **code**: 12.5 px monospace / 1.65 in a content-level inset
-    `rgba(255,255,255,.035)` block (radius 10, no border); line count in the
-    header; horizontal scroll.
+  - **code**: 12.5 px monospace / 1.65 in an inset `rgba(255,255,255,.04)`
+    block, radius 12, padding 18; line count in the header; horizontal scroll.
   - **image**: contain-fit preview, radius 14, max height ~420;
     dimensions in the header. A missing file shows a broken-image state.
   - **color**: 100 % × 220 px swatch, radius 16; hex 28 / 650 below;
     RGB/HSL 11.5 dim. Copy copies the hex.
   - **link**: globe badge, domain 18 / 650, full URL 12 / dim; an Open
-    secondary action in the footer. The globe is a badge, not a card.
+    secondary action in the footer.
   - **emoji**: 120 px glyph centered; caption.
-- Footer: hairline top, 14 px 22 px; left = size (and image dimensions) plus a
+- Footer: hairline top, 14 px 24 px; left = size (and image dimensions) plus a
   10 px hint line (`↑↓ browse · ↵ copy · ⌫ delete · Ctrl+F pin`); right =
   `Pin`, `Delete` (destructive ghost), optional `Open`, and `Copy` (accent
   pill with `↵`).
 - The footer is local to the item; it is not a second global bar.
 
-
 ### 4.5 Toasts
 
-- Bottom centre of the viewport, clear of the Normal window; glass pill.
+- Bottom centre, above the overlay edge; glass pill.
 - `Copied · <title>` with a green dot; `Deleted · Undo` with an accent
   `Undo` text button (5 s); `History cleared`; `Opening <domain>…`;
   copy failure `Could not copy: <reason>` (error ink).
@@ -417,8 +357,7 @@ bar. The desktop is sharp with the existing very light 16 % dim.
 
 ### 4.6 Type hues
 
-Palette roles, not fixed app math (REQ-006 already retired the runtime
-luminance picker; the static header ink map stays):
+Palette roles, not fixed app math (the v1 luminance workaround retires):
 
 | Kind | Role (proposal) | Use |
 | --- | --- | --- |
@@ -435,11 +374,8 @@ No app-side luminance/contrast math.
 
 ### 4.7 Responsive safety
 
-- The Normal window is clamped to `90vw × 84vh` and stays centred; it never
-  becomes full-screen.
-- `< 1180 px` viewport: rail 320 px; filter chips scroll horizontally.
-- `< 980 px`: rail 300 px; preview header metadata wraps; the keyboard hint
-  line hides.
+- `< 1200 px`: rail 360 px; filter chips scroll horizontally.
+- `< 980 px`: rail 320 px; preview header metadata wraps.
 - The target is a desktop monitor; no mobile layout.
 
 ### 4.8 Accessibility
@@ -464,8 +400,8 @@ No app-side luminance/contrast math.
   edge-to-edge; the desktop bar stays visible above them.
 - Glass `rgba(9,9,13,.74)` + 28 px blur, radius 18, strong shadow.
 - The desktop stays **sharp** (`#wall` unblurred, full brightness) with a very
-  light `rgba(0, 0, 0, .16)` dim; the panel floats. Normal does **not** use
-  this dim or any backdrop treatment: it is a sharp window (4.1).
+  light `rgba(0,0,0,.16)` dim; the panel floats. The normal mode keeps the
+  blurred/dimmed desktop and the full scrim.
 - Header (50 px): search field (flex), a compact type `<select>` (84 px max),
   a 30 px gear.
 - List (48 px rows): 2 px type stripe, 26 px glyph or image thumb (or a
@@ -476,13 +412,12 @@ No app-side luminance/contrast math.
 - Footer (36 px): `N items`, optional `N new`, spacer, `Incognito off/on`,
   `Clear`, expand-to-normal icon. In clear-confirm, the row becomes
   `Clear all? Yes / No`.
-- No preview pane. The row is the item; the normal window is the place to read.
+- No preview pane. The row is the item; the normal mode is the place to read.
 - Empty: centred `Clipboard is empty` / `No matches` inside the list.
-- The panel is a **content surface inside the same transparent input host**
-  (for outside-click/keyboard capture), not a separate dialog. Position changes
-  only re-apply the panel's anchor/size; the host, model, selection and focus
-  survive. The host is full-screen for input, but the visible surface is
-  440 px (centre) or 400 px (side bar).
+- The panel is a **content surface inside the same full-screen transparent
+  window** (for outside-click/keyboard capture), not a separate dialog.
+  Position changes only re-apply the panel's anchor/size; the window, model,
+  selection and focus survive.
 
 ---
 
@@ -523,7 +458,6 @@ No app-side luminance/contrast math.
 | Delete (Normal footer) | Delete + Undo toast |
 | Gear (both) | Layout popover |
 | Compact expand icon | Switch to Normal; persist |
-| Outside the Normal window | Close via the transparent catcher (desktop/app stays visible) |
 | Row right-click (link) | Open URL |
 
 ### 5.3 Live updates
@@ -562,7 +496,7 @@ No app-side luminance/contrast math.
 - Empty history: rail `Clipboard is empty`; preview `Copy something and it
   will appear here.`; Copy disabled; search still available.
 - No matches: rail `No matches for “…”`; preview empty; `Esc` clears.
-- Copy failure: window stays open; error in the command bar/status; selection
+- Copy failure: overlay stays open; error in the command bar/status; selection
   unchanged; Copy re-enabled.
 - Image missing: broken-image placeholder in the preview; Copy disabled;
   Delete available.
@@ -597,7 +531,7 @@ No app-side luminance/contrast math.
   UI built from the same row grammar (segmented pills, save-on-change).
   Missing file → silent defaults; corrupt → loud log + defaults; save failure
   keeps the in-memory value and shows the error.
-- **UI:** a gear in the Normal command bar and in the compact header. The
+- **UI:** a gear in the normal command bar and in the compact header. The
   popover has **Layout: Normal / Compact** and **Compact position: Center /
   Left / Right** (the position row is disabled unless Layout is Compact, the
   same sensitivity rule as the capture tool's Top offset), plus
@@ -605,13 +539,11 @@ No app-side luminance/contrast math.
   icon; all paths write the same keys.
 - **Apply:** the mode and position change live, preserving query, filter,
   selected item and scroll where possible; focus moves to the active search.
-  Switching to Normal opens the fixed centred 1040 × 680 window; switching to
-  Compact re-anchors the 440/400 px panel. The settings popover follows the
-  gear. No restart, no window recreate.
-- **Placement is not a setting here** (C11): Normal is fixed centred and not
-  draggable/resizable. Compact only chooses center/left/right. If Normal
-  placement becomes configurable, it joins this file and the 106 placement
-  math; the orchestrator later resolves cross-app conflicts.
+  The position change moves the panel without recreating the window; the
+  settings popover follows the gear. No restart.
+- **Placement is not a setting here** (C11). If it becomes one, it joins this
+  file and the 106 placement math; the orchestrator later resolves cross-app
+  conflicts.
 - The mock persists the same shape in `localStorage`; the real app writes the
   JSON file above.
 
@@ -637,21 +569,16 @@ The launcher toggles the window; the instance name stays `clipboard`.
 domain/settings.ts          ClipboardSettings, defaults, merge, validate
 ports/settings-store.ts     load()/save()
 adapters/glib-settings-store.ts   $XDG_CONFIG_HOME/clipboard-ui/config.json
-ui/OverlayHost.tsx          full-screen transparent input host (both modes)
-ui/CommandWindow.tsx        centred 1040 × 680 window (Normal)
-ui/CommandBar.tsx           one command row inside the window
-ui/HistoryRail.tsx          Gtk.ListView + model + sections; 340 px divided rail
+ui/OverlayWindow.tsx        full-screen transparent host window
+ui/CommandBar.tsx           search, filters, incognito, clear, settings gear
+ui/HistoryRail.tsx          Gtk.ListView + model + sections (Normal)
 ui/PreviewPane.tsx          per-kind preview + footer actions (Normal)
-ui/CompactPanel.tsx         440 px / 400 px quick panel (Compact)
+ui/CompactPanel.tsx         440 px quick panel (Compact)
 ui/SettingsPopover.tsx      Layout: Normal / Compact
 lib/preview-model.ts        pure: filters, grouping, selection, title/domain
 lib/type-roles.ts           palette role per kind (no luminance math)
 style.css                   rewritten around the new classes
 ```
-
-The faux editor window in the mock (`bg-app`) is **mock-only evidence**: it
-shows that the clipboard floats over another app. It is not a shipped widget;
-the real app floats over the actual desktop.
 
 Reuse: `lib/history.ts` (`copyItem`, `deleteItem`, `clearHistory`,
 `toggleFavorite`, `openUrl`), `lib/clipboard-types.ts`, `lib/requests.ts`,
@@ -662,23 +589,18 @@ Reuse: `lib/history.ts` (`copyItem`, `deleteItem`, `clearHistory`,
 - One `Astal.Window` per focused monitor (same multi-monitor question as 106
   §10.1); `layer = OVERLAY`, anchor all edges, `exclusivity = IGNORE`,
   `keymode = ON_DEMAND`, `margin_top = reservedTop` (desktop bar visible).
-  The host stays full-screen and transparent in **both** modes so outside
-  clicks and the key controller work; the **visible surfaces** are the
-  centred 1040 × 680 window (Normal) and the 440/400 px panel (Compact).
-- **Normal:** sharp desktop, no scrim and no backdrop treatment. The host draws
-  the window centred; a transparent catcher around it closes on outside click.
-  The real app behind the window is the user's desktop, not a faux app.
-- **Compact:** sharp desktop with the existing very light 16 % dim; a 440 px
-  centre panel or a 400 px full-height left/right bar; the command bar/rail/
-  preview are hidden. The panel is a child of the same host, not a second
-  dialog. The side bars sit below the desktop bar (top 52 px) with a 12 px
-  inset.
-- Mode/position switch: hide/show the content trees, resolve the window/panel
-  surface and anchor/size, preserve query/filter/selection/scroll, and focus
-  the active search. No window recreate, no process restart, no desktop
-  treatment change beyond Compact's existing dim.
-- Command bar: one `Gtk.Box`/`Gtk.CenterBox` row at the top of the window with
-  a bottom hairline; not a separate glass container.
+  The window stays full-screen and transparent in **both** modes so outside
+  clicks and the key controller work; only the drawn content changes.
+- **Normal:** dimmed/blurred desktop, command bar + rail + preview.
+- **Compact:** sharp desktop (or a very light dim); a 440 px centre panel or a
+  400 px full-height left/right bar; the command bar/rail/preview are hidden.
+  The panel is a child of the same window, not a second dialog. The side bars
+  sit below the desktop bar (top 52 px) with a 12 px inset.
+- Mode/position switch: hide/show the content trees, re-apply the
+  wallpaper/scrim treatment and the panel anchor/size, preserve
+  query/filter/selection/scroll, and focus the active search. No window
+  recreate, no process restart.
+- Command bar: `Gtk.Box`/`Gtk.CenterBox` in a glass container.
 - Rail: `Gtk.ListView` with a `Gio.ListStore` (or a `Gtk.FilterListModel` +
   `Gtk.SortListModel`) so 140+ items do not build 140 widget trees. Sections
   are either a `Gtk.ListView` with section headers or a `Gtk.ColumnView` with
@@ -709,12 +631,7 @@ Add/rewrite:
 - `mode-flow.test.mjs`: normal row click does **not** copy; compact row click
   does; switching mode preserves query/filter/selection; the compact expand
   and the gear both write the same key.
-- `window-backdrop.test.mjs`: Normal draws a centred 1040 × 680 surface with no
-  scrim/backdrop dim; the clamp holds at small viewports; an outside click
-  closes; Compact keeps its 440/400 px surface and 16 % dim only.
-- `type-roles.test.mjs`: role mapping, no hex/luminance math in the app; the
-  dynamic stripe/glyph inherits the role, the static REQ-006 header map stays
-  untouched.
+- `type-roles.test.mjs`: role mapping, no hex/luminance math in the app.
 - `copy-flow.test.mjs`: browse never calls `copyItem`; Enter/Copy do; success
   hides; failure keeps the overlay; link open only on explicit Open.
 - `update-no-steal.test.mjs`: a live update does not change the selection;
@@ -736,35 +653,22 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
 
 ## 7. Acceptance criteria
 
-**Normal window**
+**Visual**
 
-- [ ] Normal opens as a 1040 × 680 floating window, centred, radius 20, glass
-      `rgba(9,9,13,.88)` + blur, 1 px hairline and one soft shadow; it clamps to
-      90vw × 84vh and never becomes full-screen.
-- [ ] The desktop is sharp: no scrim, no wallpaper blur, no dark page layer.
-      A background app stays visible and undimmed around the window; the mock's
-      faux editor proves the relationship.
-- [ ] A click outside the window closes it through a transparent catcher; the
-      desktop/app behind stays visible the whole time.
-- [ ] The command bar is one row at the top of the window with a bottom
-      hairline, not a separate floating glass bar.
-- [ ] The rail is 340 px with a right divider; the preview is a flexible
-      column; the window is the only surface (no nested glass panels/cards).
+- [ ] The overlay reads as one command surface: one command bar, a rail, a
+      preview; no coloured header bars, no accent frames.
 - [ ] Type is a 3 px stripe + glyph tint; the content dominates.
-- [ ] The selected row, preview header/footer, and empty/no-match states match
-      the mock at 1600×1000 and 1920×1080.
+- [ ] The selected row, the preview header/footer, and the empty/no-match
+      states match the mock at 1600×1000 and 1920×1080.
 - [ ] Pin, delete, clear-confirm, incognito-on and copied states are distinct.
-
-**Compact (unchanged)**
-
-- [ ] Compact is a 440 px centre panel or a 400 px full-height left/right bar
-      on a sharp desktop with its existing 16 % dim; the Normal window is
-      hidden; the panel does not read as a dialog/card.
+- [ ] Compact mode is a 440 px centre panel or a 400 px full-height left/right
+      bar on a sharp desktop; the full surface is hidden; the panel does not
+      read as a dialog/card.
 - [ ] Compact rows are 48 px with a stripe, glyph/thumb, title, age and pin;
       the footer has count, incognito, clear and expand.
-- [ ] Switching Normal ↔ Compact or Center/Left/Right preserves query, filter
-      and selection and does not restart the app; the side bars span the
-      work-area height below the desktop bar.
+- [ ] Switching Normal ↔ Compact or Center/Left/Right preserves query, filter,
+      selection and does not restart the app; the side bars span the work-area
+      height below the desktop bar.
 
 **Interaction**
 
@@ -777,25 +681,23 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
 - [ ] Delete is undoable; Clear requires the inline confirm.
 - [ ] A live update never steals the selection; `N new` appears in both modes.
 - [ ] Incognito reflects the daemon state, not an optimistic label.
-- [ ] Copy success closes; failure keeps the window with an error.
-- [ ] Every pointer action has a keyboard equivalent, including closing the
-      Normal window (`Esc`).
+- [ ] Copy success closes; failure keeps the overlay with an error.
+- [ ] Every pointer action has a keyboard equivalent.
 
 **Settings**
 
 - [ ] `$XDG_CONFIG_HOME/clipboard-ui/config.json` persists `layout.mode` and
       `layout.compact.position`; missing/corrupt degrades to
-      `normal`/`center`; the window still opens.
+      `normal`/`center`; the overlay still opens.
 - [ ] The gear in both modes opens the same Layout popover; the Compact
       position row is disabled unless Layout is Compact; changes apply live
       and survive a restart.
 - [ ] The compact expand icon and the gear write the same mode key.
-- [ ] Normal is fixed centred: no placement/move/resize key is written.
 
 **Performance**
 
 - [ ] Opening with 140+ items does not build 140 widget trees on the map path;
-      the window presents immediately.
+      the overlay presents immediately.
 - [ ] Search/filter updates the model, not the widget tree.
 - [ ] Image previews decode asynchronously; no jank on selection.
 - [ ] The preview updates on selection change only.
@@ -806,42 +708,17 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
 - [ ] History format unchanged; copy/delete/clear/pin use the existing
       functions.
 - [ ] Appearance refresh preserves query/filter/selection/incognito/scroll.
-- [ ] The static REQ-006 header ink map is untouched; no runtime luminance or
-      palette read returns.
 - [ ] `make ci` + `make gates` pass; the composition gates pass after the tag
       bump.
 
 ---
 
-## Implementation acceptance (follow-up)
-
-- [ ] Normal implemented as the centred 1040 × 680 window (max 90vw × 84vh),
-      radius 20, glass + hairline + soft shadow; no scrim/backdrop dim and a
-      sharp desktop behind it.
-- [ ] The transparent input host closes on outside click; the desktop/app
-      behind is never dimmed or blurred by Normal.
-- [ ] Command bar is one row inside the window with a bottom hairline; the rail
-      is a 340 px divided column; the preview shares the window surface.
-- [ ] Compact (440 centre / 400 left/right) is unchanged visually and
-      behaviourally from the approved design, including the 16 % dim.
-- [ ] Mode switch resolves window ↔ panel, preserves query/filter/selection/
-      scroll, and writes `layout.mode`; Normal stays fixed centred.
-- [ ] Existing pin/delete/undo, clear confirm, incognito, live-new, search/
-      filter, settings gear and deep links work in the implemented app.
-- [ ] `$XDG_CONFIG_HOME/clipboard-ui/config.json` schema/degradation and the
-      capture-tool pattern are implemented; the daemon's `clipboard/config.json`
-      is never written.
-- [ ] `make ci` and `make gates` pass; the composition pin is bumped after the
-      tag.
-
----
-
 ## 8. Open questions
 
-1. **Normal placement.** Normal is fixed centred (1040 × 680) per the revision.
-   Should it later become draggable/resizable, and join the same settings file
-   as 106's `control_bar` / `desktop_bar` keys? (Recommend: only if it proves
-   useful; the orchestrator will own cross-app conflicts.)
+1. **Placement.** This design keeps the desktop bar visible, the command bar at
+   the top, and the compact panel top-centre. Should placement later join the
+   same settings file as 106's `control_bar` / `desktop_bar` keys? (Recommend:
+   only if it proves useful; the orchestrator will own cross-app conflicts.)
 2. **Compact size/position.** Positions are decided: centre 440 px, left/right
    400 px full work-area height, 12 px inset below the desktop bar. Still open:
    should the width be adjustable, and should the side bars be edge-to-edge
@@ -855,13 +732,11 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
    make compact the default (the setting already allows it), or should the
    first run choose based on history size?
 6. **Multi-monitor.** Same as 106 §10.1; currently one window per monitor,
-   bottom-anchored. Decide focused-monitor vs primary; Normal should then be
-   centred on the focused monitor.
+   bottom-anchored. Decide focused-monitor vs primary.
 7. **Virtualized rail.** `Gtk.ListView` vs `Gtk.ColumnView` with sections;
    pick the one that gives sticky section headers and cheap updates.
-8. **Type-role map.** The redesign reuses the static REQ-006 role ink for the
-   row stripe/glyph; no runtime luminance math. Confirm the final role names
-   against the v2 appearance tokens at implementation time.
+8. **Type-role map.** Final palette roles for text/code/image/color/link/
+   emoji against the v2 appearance tokens; no luminance math.
 9. **Clear undo.** Clear deletes cached images; if the runtime can defer
    deletion, an Undo could be added later.
 10. **Pinned ordering.** Pinned items first by recency vs manual order; this
@@ -873,17 +748,15 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
 
 Current app:
 
-- `ags-clipboard/app.tsx:24` — `createAppearance`.
-- `ags-clipboard/app.tsx:88-91` — one window per monitor.
+- `ags-clipboard/app.tsx:19-26` — `createAppearance`.
+- `ags-clipboard/app.tsx:70-76` — one window per monitor, bottom anchor.
 - `ags-clipboard/ui/ClipboardWindow.tsx:117-131` — horizontal 260 px cards.
 - `ags-clipboard/ui/ClipboardWindow.tsx:233-280` — keyboard copy/delete/pin.
 - `ags-clipboard/ui/ClipboardWindow.tsx:299-312` — incognito via event hub.
-- `ags-clipboard/ui/ItemCard.tsx:73-75,122-133` — static role-based header ink
-  (REQ-006; no runtime luminance math).
+- `ags-clipboard/ui/ItemCard.tsx:84-147` — palette luminance header math.
 - `ags-clipboard/ui/ItemCard.tsx:120-170` — coloured header bar.
 - `ags-clipboard/ui/Preview.tsx` — 236×118 image, colour swatch, text lines.
-- `ags-clipboard/style.css:70-180` — card/header styling; `:131-161` is the
-  static per-kind fill + `on_*` ink map.
+- `ags-clipboard/style.css:11-17,70,124-180` — panel/card/header styling.
 - `ags-clipboard/lib/history.ts` — copy/delete/clear/pin/open.
 - `ags-clipboard/lib/clipboard-types.ts` — item model, kinds, search.
 
