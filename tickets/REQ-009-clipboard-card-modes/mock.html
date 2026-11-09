@@ -1381,9 +1381,9 @@ body.mode-compact .toast { bottom: 318px; }
       </svg>
       Back <kbd>Esc</kbd>
     </button>
-    <span class="pins-keys">← → select · ↵ open · ↓ back</span>
+    <span class="pins-keys">← → select · ↵ copy · ↓ back</span>
     <span class="spacer"></span>
-    <span class="pins-hint">Click a card to open it in the stage</span>
+    <span class="pins-hint">Click a card to copy it</span>
   </header>
   <div class="pins-grid" id="pinsGrid" role="list"></div>
 </section>
@@ -1644,7 +1644,7 @@ function nextPinFocus(list, focusedId, delta) {
   return pinned[index].id;
 }
 
-function pinOpenTarget(list, focusedId) {
+function pinCopyTarget(list, focusedId) {
   return pinnedOrdered(list).some((item) => item.id === focusedId) ? focusedId : null;
 }
 
@@ -1696,7 +1696,7 @@ const CORE_EXPORTS = {
   pinnedOrdered,
   initialPinFocus,
   nextPinFocus,
-  pinOpenTarget,
+  pinCopyTarget,
   removeAt,
   insertAt,
   parseDeepLink,
@@ -2502,11 +2502,14 @@ function movePinnedFocus(delta) {
   });
 }
 
-function openFocusedPin(id = focusedPinId) {
-  const target = pinOpenTarget(items, id);
+function copyFocusedPin(id = focusedPinId) {
+  const target = pinCopyTarget(items, id);
   if (!target) return;
-  selectById(target);
+  const item = items.find((entry) => entry.id === target);
+  if (!item) return;
+  copyItem(item);
   closePins();
+  closeOverlay();
 }
 
 function openPins() {
@@ -2569,14 +2572,14 @@ el.pinsBack.addEventListener("click", closePins);
 el.pinsGrid.addEventListener("click", (event) => {
   const card = event.target.closest(".pin-card");
   if (!card) return;
-  openFocusedPin(card.dataset.id);
+  copyFocusedPin(card.dataset.id);
 });
 el.pinsGrid.addEventListener("keydown", (event) => {
   const card = event.target.closest(".pin-card");
   if (!card || (event.key !== "Enter" && event.key !== " ")) return;
   event.preventDefault();
   event.stopPropagation();
-  openFocusedPin(card.dataset.id);
+  copyFocusedPin(card.dataset.id);
 });
 
 el.fullGear.addEventListener("click", () => toggleSettings(el.fullGear));
@@ -2718,7 +2721,7 @@ document.addEventListener("keydown", (event) => {
       const onButton = target && target.closest ? target.closest("button") : null;
       if (!onButton) {
         event.preventDefault();
-        openFocusedPin();
+        copyFocusedPin();
       }
       return;
     }

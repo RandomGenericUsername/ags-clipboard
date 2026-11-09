@@ -166,17 +166,27 @@ check("pinned focus is stable for one pin and empty for none", () => {
   assert.equal(core.initialPinFocus(one, null), "note");
   assert.equal(core.nextPinFocus(one, "note", 1), "note");
   assert.equal(core.nextPinFocus(one, "note", -1), "note");
-  assert.equal(core.pinOpenTarget(one, "note"), "note");
+  assert.equal(core.pinCopyTarget(one, "note"), "note");
   assert.equal(core.initialPinFocus([], null), null);
   assert.equal(core.nextPinFocus([], null, 1), null);
-  assert.equal(core.pinOpenTarget([], "note"), null);
+  assert.equal(core.pinCopyTarget([], "note"), null);
 });
 
-check("pinned focus only opens pinned cards", () => {
+check("pinned focus only copies pinned cards", () => {
   const items = core.sampleItems();
-  assert.equal(core.pinOpenTarget(items, "repo"), "repo");
-  assert.equal(core.pinOpenTarget(items, "creed"), null);
-  assert.equal(core.pinOpenTarget(items, "missing"), null);
+  assert.equal(core.pinCopyTarget(items, "repo"), "repo");
+  assert.equal(core.pinCopyTarget(items, "creed"), null);
+  assert.equal(core.pinCopyTarget(items, "missing"), null);
+});
+
+check("pinned selection copies and collapses the overlay, not the stage", () => {
+  const start = html.indexOf("function copyFocusedPin");
+  const end = html.indexOf("\nfunction openPins", start);
+  assert.ok(start > 0 && end > start, "copyFocusedPin must exist");
+  const body = html.slice(start, end);
+  assert.match(body, /copyItem\(item\)/, "must copy the pinned item");
+  assert.match(body, /closeOverlay\(\)/, "must collapse the whole overlay");
+  assert.doesNotMatch(body, /selectById/, "must not switch the stage card");
 });
 
 /* ── DOM / source layer ───────────────────────────────────────── */
@@ -216,8 +226,8 @@ check("both modes and all settings controls are present", () => {
     'data-size="medium"',
     'data-size="large"',
     "← → cards · ↑ pinned · ↓ back",
-    "← → select · ↵ open · ↓ back",
-    "Click a card to open it in the stage",
+    "← → select · ↵ copy · ↓ back",
+    "Click a card to copy it",
     "Pinned · ",
     "$XDG_CONFIG_HOME/clipboard-ui/config.json",
   ]) {
