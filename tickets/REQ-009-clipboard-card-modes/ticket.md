@@ -93,6 +93,22 @@ unchanged. The proposal adds two compact-mode refinements.
   is not persisted. New review link:
   `?compact_view=recent|pinned` (alongside `?compact_align` and
   `?compact_size`).
+- Keyboard key map (compact only; Full keeps its existing `↑`/`↓` pinned-grid
+  behaviour):
+  - `Tab` / `Shift+Tab`: toggle Recent/Pinned in every alignment. Default focus
+    traversal is prevented while compact so the keys act as the view switch;
+    search and list stay usable. The settings popover and clear confirmation are
+    exempt so their controls remain keyboard-reachable. With zero pins the
+    Pinned view cannot be selected, so the view is unchanged.
+  - Bottom: `↑` / `↓` also toggle Recent/Pinned; `←` / `→` still move cards.
+  - Left/Right: `←` / `→` also toggle Recent/Pinned when the search field is
+    not focused; `↑` / `↓` still move cards. When search is focused, `←` / `→`
+    move the text cursor normally (Tab still toggles).
+  - Hints adapt: Bottom shows `↑↓ view` + `Tab view`; Left/Right shows
+    `←→ view` + `Tab view` when not typing, and omits `←→ view` while search is
+    focused. The active tab updates immediately and keeps `aria-selected`
+    current; query, filter and the active-view selection behaviour are
+    preserved.
 
 ### Proposal acceptance (unchecked until green)
 
@@ -112,6 +128,12 @@ unchanged. The proposal adds two compact-mode refinements.
       `Ctrl+1..9` addresses the active view; filtered-empty states are honest.
 - [ ] Pinned carousel cards use the same select / `Enter` / double-click copy
       behaviour as Recent; the full pinned grid keeps copy-and-collapse.
+- [ ] Keyboard view switching works: `Tab`/`Shift+Tab` in every compact
+      alignment, Bottom `↑`/`↓`, and Left/Right `←`/`→` only when search is not
+      focused (search editing wins). Zero pins make the switch a no-op; hints
+      adapt; query/filter persist; the active view keeps `Ctrl+1..9`.
+- [ ] Full mode is isolated: its `↑`/`↓` pinned-grid behaviour and normal `Tab`
+      traversal are unchanged.
 - [ ] `?compact_view=recent|pinned`, `?compact_align=bottom|left|right` and all
       existing deep links work; the view is not persisted.
 - [ ] Proposal accepted, then the baseline section and `mock.sha256` are updated

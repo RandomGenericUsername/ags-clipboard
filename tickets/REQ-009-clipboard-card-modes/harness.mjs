@@ -141,6 +141,13 @@ check("active-view selection moves with clamping", () => {
   assert.equal(core.moveCompactSelection(pinned, "repo", 1), "repo");
 });
 
+check("next compact view toggles and respects zero pins", () => {
+  assert.equal(core.nextCompactView("recent", true), "pinned");
+  assert.equal(core.nextCompactView("pinned", true), "recent");
+  assert.equal(core.nextCompactView("recent", false), "recent");
+  assert.equal(core.nextCompactView("pinned", false), "recent");
+});
+
 check("deep-link card resolves by kind and 1-based index", () => {
   const deck = core.ordered(core.sampleItems());
   assert.equal(deck[core.findCardIndex(deck, "code")].id, "placement");
@@ -449,6 +456,17 @@ async function runDomChecks(chrome) {
     }
 
     const press = (key) => evaluate(`document.dispatchEvent(new KeyboardEvent("keydown", { key: ${JSON.stringify(key)}, bubbles: true }))`);
+    const pressEvent = (key, opts = {}, selector = null) => evaluate(`(() => {
+      const target = ${selector ? `document.querySelector(${JSON.stringify(selector)})` : "document"};
+      const event = new KeyboardEvent("keydown", {
+        key: ${JSON.stringify(key)},
+        bubbles: true,
+        cancelable: true,
+        shiftKey: ${Boolean(opts.shiftKey)},
+      });
+      target.dispatchEvent(event);
+      return event.defaultPrevented;
+    })()`);
     const click = (selector) => evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
 
     const readCompact = () => evaluate(`(() => {
@@ -586,7 +604,7 @@ async function runDomChecks(chrome) {
       assert.deepEqual(state.cards, ["note", "repo"]);
     });
 
-    await checkAsync("vertical navigation follows the active view and leaves left/right inert", async () => {
+    await checkAsync("vertical up/down navigation follows the active view", async () => {
       await evaluate(`setCompactAlign("left")`);
       await sleep(160);
       await click("#cRecentTab");
@@ -599,14 +617,6 @@ async function runDomChecks(chrome) {
       state = await readCompact();
       assert.equal(state.selected, "placement");
       await press("ArrowUp");
-      await sleep(120);
-      state = await readCompact();
-      assert.equal(state.selected, "creed");
-      await press("ArrowRight");
-      await sleep(120);
-      state = await readCompact();
-      assert.equal(state.selected, "creed");
-      await press("ArrowLeft");
       await sleep(120);
       state = await readCompact();
       assert.equal(state.selected, "creed");
@@ -629,10 +639,6 @@ async function runDomChecks(chrome) {
       state = await readCompact();
       assert.equal(state.selected, "repo");
       await press("ArrowUp");
-      await sleep(120);
-      state = await readCompact();
-      assert.equal(state.selected, "note");
-      await press("ArrowRight");
       await sleep(120);
       state = await readCompact();
       assert.equal(state.selected, "note");
@@ -704,6 +710,200 @@ async function runDomChecks(chrome) {
       assert.match(toast, /Copied code card/);
       closed = await evaluate(`document.body.classList.contains("is-closed")`);
       assert.equal(closed, false);
+    });
+
+    await checkAsync("Tab / Shift+Tab toggle the view and prevent compact traversal", async () => {
+      await resetSample();
+      let prevented = await pressEvent("Tab");
+      await sleep(140);
+      let state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "pinned");
+      assert.equal(state.pinnedActive, true);
+      assert.equal(state.selected, "note");
+      const hint = await evaluate(`document.getElementById("cHints").textContent`);
+      assert.match(hint, /↑↓ view/);
+      assert.match(hint, /Tab view/);
+      prevented = await pressEvent("Tab", { shiftKey: true });
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "recent");
+      assert.equal(state.recentActive, true);
+      assert.equal(state.selected, "creed");
+    });
+
+    await checkAsync("bottom up/down toggle the view; left/right still move cards", async () => {
+      await resetSample();
+      let prevented = await pressEvent("ArrowDown");
+      await sleep(140);
+      let state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "pinned");
+      assert.equal(state.selected, "note");
+      prevented = await pressEvent("ArrowUp");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "recent");
+      assert.equal(state.selected, "creed");
+      await pressEvent("ArrowRight");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(state.selected, "placement");
+      await pressEvent("ArrowLeft");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(state.selected, "creed");
+
+      await evaluate(`document.getElementById("cSearch").focus()`);
+      await pressEvent("ArrowDown", {}, "#cSearch");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.equal(await evaluate(`document.activeElement.id`), "cSearch");
+      await pressEvent("ArrowUp", {}, "#cSearch");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.equal(await evaluate(`document.activeElement.id`), "cSearch");
+      await evaluate(`document.getElementById("cSearch").blur()`);
+    });
+
+    await checkAsync("vertical left/right toggle the view unless search is focused", async () => {
+      await resetSample();
+      await evaluate(`setCompactAlign("left"); document.getElementById("cSearch").blur()`);
+      await sleep(160);
+      let state = await readCompact();
+      assert.equal(state.view, "recent");
+      let hint = await evaluate(`document.getElementById("cHints").textContent`);
+      assert.match(hint, /←→ view/);
+      assert.match(hint, /Tab view/);
+      let prevented = await pressEvent("ArrowRight");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "pinned");
+      await pressEvent("ArrowRight");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      await pressEvent("ArrowLeft");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "pinned");
+      await pressEvent("ArrowLeft");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+
+      await evaluate(`(() => {
+        const search = document.getElementById("cSearch");
+        search.focus();
+        search.value = "abcdef";
+        search.setSelectionRange(2, 2);
+      })()`);
+      await sleep(80);
+      hint = await evaluate(`document.getElementById("cHints").textContent`);
+      assert.match(hint, /Tab view/);
+      assert.doesNotMatch(hint, /←→ view/);
+      prevented = await pressEvent("ArrowRight", {}, "#cSearch");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(prevented, false);
+      assert.equal(state.view, "recent");
+      assert.equal(await evaluate(`document.activeElement.id`), "cSearch");
+      assert.equal(await evaluate(`document.getElementById("cSearch").value`), "abcdef");
+      prevented = await pressEvent("ArrowLeft", {}, "#cSearch");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(prevented, false);
+      assert.equal(state.view, "recent");
+      prevented = await pressEvent("Tab", {}, "#cSearch");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "pinned");
+      assert.equal(await evaluate(`document.activeElement.id`), "cSearch");
+      prevented = await pressEvent("Tab", { shiftKey: true }, "#cSearch");
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "recent");
+      await evaluate(`document.getElementById("cSearch").blur()`);
+    });
+
+    await checkAsync("query and filter survive view toggles", async () => {
+      await resetSample();
+      await setSearch("https");
+      await setFilter("link");
+      await sleep(140);
+      await evaluate(`selectById("gtk")`);
+      await sleep(120);
+      await pressEvent("Tab");
+      await sleep(140);
+      let state = await readCompact();
+      assert.equal(state.view, "pinned");
+      assert.deepEqual(state.cards, ["repo"]);
+      assert.equal(state.selected, "repo");
+      assert.equal(await evaluate(`document.getElementById("cSearch").value`), "https");
+      assert.equal(await evaluate(`document.querySelector("#cFilters .chip.selected").dataset.filter`), "link");
+      await pressEvent("Tab", { shiftKey: true });
+      await sleep(140);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      assert.deepEqual(state.cards, ["gtk"]);
+      assert.equal(state.selected, "gtk");
+      assert.equal(await evaluate(`document.getElementById("cSearch").value`), "https");
+    });
+
+    await checkAsync("zero pins makes keyboard view switching a no-op", async () => {
+      await evaluate(`items = sampleItems().map((item) => ({ ...item, pinned: false }));
+        compactView = "recent"; selectedId = items[0].id; query = ""; filter = "all";
+        document.getElementById("cSearch").value = ""; renderAll()`);
+      await sleep(160);
+      let state = await readCompact();
+      assert.equal(state.pinnedHidden, true);
+      assert.equal(state.view, "recent");
+      let prevented = await pressEvent("Tab");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(prevented, true);
+      assert.equal(state.view, "recent");
+      await pressEvent("ArrowDown");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      await evaluate(`setCompactAlign("left")`);
+      await sleep(140);
+      await pressEvent("ArrowRight");
+      await sleep(120);
+      state = await readCompact();
+      assert.equal(state.view, "recent");
+      const hint = await evaluate(`document.getElementById("cHints").textContent`);
+      assert.doesNotMatch(hint, /view/);
+    });
+
+    await checkAsync("full mode keeps its own up/down and Tab traversal", async () => {
+      await resetSample();
+      await evaluate(`setMode("full")`);
+      await sleep(140);
+      let prevented = await pressEvent("ArrowUp");
+      await sleep(140);
+      assert.equal(prevented, true);
+      assert.equal(await evaluate("pinsOpen"), true);
+      assert.equal(await evaluate("compactView"), "recent");
+      await pressEvent("Escape");
+      await sleep(120);
+      assert.equal(await evaluate("pinsOpen"), false);
+      prevented = await pressEvent("Tab");
+      await sleep(120);
+      assert.equal(prevented, false);
+      assert.equal(await evaluate("compactView"), "recent");
+      await evaluate(`setMode("compact")`);
+      await sleep(140);
     });
 
     await checkAsync("settings rows disable in Full and enable in Compact", async () => {

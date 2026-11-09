@@ -1540,9 +1540,9 @@ body.mode-compact .toast { bottom: 318px; }
 
   <div class="c-viewbar" id="cViewBar" role="tablist" aria-label="Compact view">
     <button class="c-view-tab is-active" id="cRecentTab" data-view="recent"
-            role="tab" aria-selected="true">Recent</button>
+            role="tab" aria-selected="true" aria-controls="cList">Recent</button>
     <button class="c-view-tab" id="cPinnedTab" data-view="pinned"
-            role="tab" aria-selected="false">Pinned (2)</button>
+            role="tab" aria-selected="false" aria-controls="cList">Pinned (2)</button>
   </div>
 
   <div class="c-strip">
@@ -1774,6 +1774,11 @@ function moveCompactSelection(list, selectedId, delta) {
   return list[index].id;
 }
 
+function nextCompactView(view, hasPins) {
+  if (view === "pinned") return "recent";
+  return hasPins ? "pinned" : "recent";
+}
+
 function compactIsVertical(alignment) {
   return alignment === "left" || alignment === "right";
 }
@@ -1863,6 +1868,7 @@ const CORE_EXPORTS = {
   filterPinnedItems,
   filterCompactView,
   moveCompactSelection,
+  nextCompactView,
   compactIsVertical,
   findCardIndex,
   pinnedOrdered,
@@ -2335,8 +2341,11 @@ function renderCompact() {
   el.cPinnedTab.textContent = `Pinned (${pinnedTotal})`;
   el.cPinnedTab.classList.toggle("is-active", compactView === "pinned");
   el.cPinnedTab.setAttribute("aria-selected", String(compactView === "pinned"));
+  el.cPinnedTab.tabIndex = compactView === "pinned" ? 0 : -1;
   el.cRecentTab.classList.toggle("is-active", compactView === "recent");
   el.cRecentTab.setAttribute("aria-selected", String(compactView === "recent"));
+  el.cRecentTab.tabIndex = compactView === "recent" ? 0 : -1;
+  updateCompactHints();
 
   const viewLabel = compactView === "pinned" ? "pinned" : "recent";
   if (items.length === 0) {
@@ -2394,9 +2403,7 @@ function applyMode() {
   el.cNext.hidden = vertical;
   el.cUp.hidden = !vertical;
   el.cDown.hidden = !vertical;
-  el.cHints.textContent = vertical
-    ? "↑ ↓ · ↵ copy · Esc"
-    : "← → · ↵ copy · Del · Ctrl+1..9 · Esc";
+  updateCompactHints();
 }
 
 function positionSettingsPop() {
@@ -2500,6 +2507,27 @@ function setCompactView(next) {
   el.cList.scrollLeft = 0;
   el.cList.scrollTop = 0;
   requestAnimationFrame(scrollSelectedIntoView);
+}
+
+function toggleCompactView() {
+  const next = nextCompactView(compactView, items.some((item) => item.pinned));
+  if (next === compactView) return false;
+  setCompactView(next);
+  return true;
+}
+
+function updateCompactHints() {
+  const hasPins = items.some((item) => item.pinned);
+  const typing = document.activeElement === el.cSearch;
+  if (compactIsVertical(compactAlign)) {
+    el.cHints.textContent = hasPins
+      ? (typing ? "↑↓ cards · Tab view" : "↑↓ cards · ←→ view · Tab view")
+      : "↑↓ cards · ↵ copy";
+  } else {
+    el.cHints.textContent = hasPins
+      ? "← → cards · ↑↓ view · Tab view · ↵ copy · Esc"
+      : "← → cards · ↵ copy · Esc";
+  }
 }
 
 /* ── selection / copy / pin / delete ─────────────────────────── */
@@ -2878,6 +2906,9 @@ el.cSearch.addEventListener("input", () => {
   el.cList.scrollTop = 0;
 });
 
+el.cSearch.addEventListener("focus", updateCompactHints);
+el.cSearch.addEventListener("blur", () => requestAnimationFrame(updateCompactHints));
+
 el.cList.addEventListener("click", (event) => {
   const pinButton = event.target.closest("[data-pin]");
   if (pinButton) {
@@ -2959,6 +2990,21 @@ document.addEventListener("keydown", (event) => {
     return;
   }
 
+  if (mode === "compact" && event.key === "Tab" && !settingsOpen && !clearConfirm) {
+    event.preventDefault();
+    if (toggleCompactView()) updateCompactHints();
+    return;
+  }
+
+  if (mode === "compact" && !compactIsVertical(compactAlign)
+      && (event.key === "ArrowUp" || event.key === "ArrowDown")
+      && !settingsOpen && !clearConfirm) {
+    event.preventDefault();
+    toggleCompactView();
+    updateCompactHints();
+    return;
+  }
+
   if (typing) {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -3026,7 +3072,13 @@ document.addEventListener("keydown", (event) => {
   } else if (compactIsVertical(compactAlign)) {
     if (event.key === "ArrowUp") { event.preventDefault(); moveCompact(-1); return; }
     if (event.key === "ArrowDown") { event.preventDefault(); moveCompact(1); return; }
-    if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); return; }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      if (settingsOpen || clearConfirm) return;
+      event.preventDefault();
+      toggleCompactView();
+      updateCompactHints();
+      return;
+    }
   } else {
     if (event.key === "ArrowLeft") { event.preventDefault(); moveCompact(-1); return; }
     if (event.key === "ArrowRight") { event.preventDefault(); moveCompact(1); return; }
