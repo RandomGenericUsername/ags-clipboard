@@ -44,6 +44,75 @@ This is the approved card-stage iteration and the **intent** for the feature:
 - The mock and this ticket are the baseline; any later mock additions are a
   proposal until this section is updated to the new commit/hash.
 
+## Proposal (pending green)
+
+This proposal extends the frozen baseline; it is **not intent yet**. The working
+mock carries it for review, and `mock.sha256` stays at the baseline hash
+`06820b4…` until the proposal is green-lit. The frozen section above is
+unchanged. The proposal adds two compact-mode refinements.
+
+### P1 — compact alignment
+
+- Settings adds `Compact alignment: Bottom / Left / Right` (default `Bottom`).
+  The compact alignment and card-size rows are disabled while Layout is Full,
+  following the capture-tool sensitivity rule; they enable live when Layout is
+  Compact.
+- `Bottom` is the current horizontal bottom strip.
+- `Left`/`Right` is a vertical compact strip at that edge: full work-area height
+  below the desktop bar with a 12 px inset, width derived from the card size plus
+  padding. Search, filters, incognito, clear and gear adapt to the narrow column;
+  cards stack vertically. Up/down keys and visible up/down affordances navigate
+  the vertical strip; left/right remain the bottom-strip navigation. Alignment
+  applies live and preserves mode, query, filter and selection. The desktop stays
+  visible.
+- The real settings shape becomes
+  `{ "layout": { "mode": "full", "compact": { "card_size": "medium", "alignment": "bottom" } } }`.
+  Defaults remain `full` / `medium` / `bottom`; unknown values degrade to those
+  defaults. The mock uses `localStorage`.
+- New review link: `?compact_align=bottom|left|right` (all existing links keep
+  working, including `?compact_size=small|medium|large`).
+
+### P2 — pinned section in compact
+
+- Every compact alignment shows `Pinned · n` when pins exist. Bottom: a
+  horizontal pinned shelf above the recent card row, with a divider. Left/Right:
+  a pinned group at the top of the column, then the divider, then the main card
+  list.
+- Pinned cards use the current card identity (type-coloured header + compact
+  preview). The section hides entirely when there are no pins.
+- The pinned section is a quick-copy shortlist: clicking a pinned card or
+  pressing `Enter` on it copies that item and collapses the whole overlay,
+  matching the full pinned grid. Regular compact cards keep select,
+  double-click and `Enter` copy behaviour. The distinction is visible in the
+  shelf header (`Click copies`) and the card aria labels.
+- The main compact list excludes pinned cards and is labelled `Recent · n` when
+  the pinned section is visible, so the two groups never duplicate. Pinned cards
+  remain visible regardless of the recent-list search/filter; the filter applies
+  to Recent. This is the chosen assumption for review.
+- The pinned shelf must not change the bottom strip beyond growing it upward,
+  and it must not block the vertical strip's own recent-list scroll; many pins
+  scroll inside the pinned group.
+
+### Proposal acceptance (unchecked until green)
+
+- [ ] Settings shows `Compact alignment: Bottom / Left / Right`; card-size and
+      alignment rows are disabled in Full and enabled in Compact.
+- [ ] Bottom/Left/Right apply live, persist through the extended settings shape,
+      and preserve mode, query, filter and selection.
+- [ ] Left/Right render a full-work-area vertical column with 12 px inset and
+      width derived from the card size; controls adapt; up/down (keys and
+      affordances) navigate; left/right stay for Bottom.
+- [ ] Compact shows `Pinned · n` in every alignment, using the card identity;
+      it hides with no pins.
+- [ ] Pinned cards quick-copy on click or `Enter` and collapse the overlay;
+      regular compact cards keep select / double-click / `Enter` copy.
+- [ ] The main list excludes pinned cards and is labelled `Recent · n` when the
+      pinned section is visible.
+- [ ] `?compact_align=bottom|left|right` and all existing deep links work; the
+      DOM/state harness passes.
+- [ ] Proposal accepted, then the baseline section and `mock.sha256` are updated
+      together. No merge/freeze before that.
+
 ## Interaction
 
 ### Full mode
@@ -161,7 +230,11 @@ Review deep links (append to the file URL):
 ?empty=1        ?closed=1
 ```
 
-State/DOM harness (Node only; also `node --check`s the inline script):
+Pending proposal adds `?compact_align=bottom|left|right` (for review only until
+green-lit).
+
+State/DOM harness (Node only; also `node --check`s the inline script and drives
+the compact layouts through headless Chrome when available):
 
 ```sh
 node tickets/REQ-009-clipboard-card-modes/harness.mjs

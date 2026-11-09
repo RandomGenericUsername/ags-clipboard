@@ -934,6 +934,164 @@ body.pins-open .control-bar {
 .c-list::-webkit-scrollbar { height: 6px; }
 .c-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 3px; }
 
+/* Pinned shelf / group (proposal): quick-copy shortlist above the recents. */
+.c-pinned { flex: 0 0 auto; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.c-pinned-head { display: flex; align-items: center; gap: 8px; height: 16px; }
+.c-pinned-title { font-size: 10.5px; font-weight: 650; color: var(--ink-dim); }
+.c-pinned-hint { margin-left: auto; font-size: 9.5px; color: var(--ink-faint); white-space: nowrap; }
+.c-pinned-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 2px 5px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .18) transparent;
+}
+.c-pinned-list::-webkit-scrollbar { height: 5px; }
+.c-pinned-list::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 3px; }
+
+.c-pin-card {
+  flex: 0 0 clamp(150px, calc(var(--compact-card-w) * .68), 210px);
+  width: clamp(150px, calc(var(--compact-card-w) * .68), 210px);
+  height: 82px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 11px;
+  border: 1px solid var(--hairline);
+  background: rgba(14, 14, 21, .9);
+  cursor: pointer;
+  transition: border-color .16s, transform .16s, box-shadow .16s;
+}
+.c-pin-card:hover, .c-pin-card:focus-visible {
+  border-color: var(--tc);
+  transform: translateY(-1px);
+}
+.c-pin-card:focus-visible { outline: 2px solid var(--tc); outline-offset: 1px; }
+.c-pin-card .card-head { height: 27px; padding: 0 8px; gap: 5px; }
+.c-pin-card .head-index { display: none; }
+.c-pin-card .head-glyph { width: 17px; height: 17px; border-radius: 5px; }
+.c-pin-card .head-type { font-size: 9px; }
+.c-pin-card .head-time { font-size: 8px; }
+.c-pin-card .c-card-body { padding: 6px 8px; }
+.c-pin-card .chip-text { font-size: 9.5px; line-height: 1.4; -webkit-line-clamp: 3; }
+.c-pin-card .chip-code { font-size: 8px; line-height: 1.4; -webkit-line-clamp: 4; }
+.c-pin-card .chip-color { flex-direction: row; align-items: center; gap: 6px; }
+.c-pin-card .chip-swatch { width: 24px; height: 24px; flex: 0 0 24px; }
+.c-pin-card .chip-color code { font-size: 8px; }
+.c-pin-card .chip-link b { font-size: 9.5px; }
+.c-pin-card .chip-link span { display: none; }
+.c-pin-card .chip-emoji { font-size: 30px; }
+
+.c-recent-label {
+  flex: 0 0 auto;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  border-top: 1px solid var(--hairline);
+  padding-top: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+/* Vertical compact: full work-area height, 12 px inset, width from card size. */
+body.compact-align-left #compact,
+body.compact-align-right #compact {
+  top: 52px;
+  bottom: 12px;
+  left: 12px;
+  right: auto;
+  width: var(--compact-col-w);
+  padding: 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+  min-height: 0;
+  overflow: hidden;
+}
+body.compact-align-right #compact { left: auto; right: 12px; }
+
+body.compact-align-left .c-top,
+body.compact-align-right .c-top {
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-height: 0;
+}
+body.compact-align-left .c-search,
+body.compact-align-right .c-search { flex: 0 0 auto; width: 100%; }
+body.compact-align-left .c-filters,
+body.compact-align-right .c-filters {
+  flex: 0 0 auto;
+  width: 100%;
+  flex-wrap: wrap;
+  overflow: visible;
+  row-gap: 4px;
+}
+body.compact-align-left .c-actions,
+body.compact-align-right .c-actions { justify-content: flex-end; }
+
+body.compact-align-left .c-pinned-list,
+body.compact-align-right .c-pinned-list {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 34vh;
+  padding: 2px;
+}
+body.compact-align-left .c-pin-card,
+body.compact-align-right .c-pin-card {
+  flex: 0 0 86px;
+  width: 100%;
+  height: 86px;
+}
+
+body.compact-align-left .c-strip,
+body.compact-align-right .c-strip {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+body.compact-align-left .c-list,
+body.compact-align-right .c-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  padding: 2px;
+}
+body.compact-align-left .c-card,
+body.compact-align-right .c-card {
+  flex: 0 0 148px;
+  width: 100%;
+  height: 148px;
+  scroll-snap-align: start;
+}
+body.compact-align-left .c-pin-card,
+body.compact-align-right .c-pin-card {
+  flex: 0 0 86px;
+  width: 100%;
+  height: 86px;
+}
+body.compact-align-left .strip-arrow,
+body.compact-align-right .strip-arrow {
+  width: 100%;
+  height: 30px;
+  border-radius: 8px;
+}
+
+body.compact-align-left .toast,
+body.compact-align-right .toast { bottom: 24px; }
+
 .c-card {
   flex: 0 0 var(--compact-card-w);
   width: var(--compact-card-w);
@@ -1093,6 +1251,8 @@ body.pins-open .control-bar {
   padding: 11px 2px;
   border-top: 1px solid rgba(255, 255, 255, .08);
 }
+.sp-row.is-disabled { opacity: .42; }
+.sp-row.is-disabled .seg { pointer-events: none; }
 .sp-label { flex: 1; min-width: 0; font-size: 11.5px; font-weight: 550; }
 .sp-desc { display: block; margin-top: 3px; font-size: 9.5px; font-weight: 400; color: var(--ink-faint); }
 .seg {
@@ -1434,18 +1594,40 @@ body.mode-compact .toast { bottom: 318px; }
     </div>
   </div>
 
+  <div class="c-pinned" id="cPinned" hidden>
+    <div class="c-pinned-head">
+      <span class="c-pinned-title" id="cPinnedTitle">Pinned · 2</span>
+      <span class="c-pinned-hint">Click copies</span>
+    </div>
+    <div class="c-pinned-list" id="cPinnedList" role="listbox"
+         aria-label="Pinned cards — click or press Enter to copy and close"></div>
+  </div>
+  <div class="c-recent-label" id="cRecentLabel" hidden>Recent · 10</div>
+
   <div class="c-strip">
+    <button class="strip-arrow" id="cUp" aria-label="Previous card" hidden>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 14.5 6-6 6 6"></path>
+      </svg>
+    </button>
     <button class="strip-arrow" id="cPrev" aria-label="Scroll cards left">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="m14.5 6-6 6 6 6"></path>
       </svg>
     </button>
-    <div class="c-list" id="cList" role="listbox" aria-label="Clipboard history"></div>
+    <div class="c-list" id="cList" role="listbox" aria-label="Recent clipboard cards"></div>
     <button class="strip-arrow" id="cNext" aria-label="Scroll cards right">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="m9.5 6 6 6-6 6"></path>
+      </svg>
+    </button>
+    <button class="strip-arrow" id="cDown" aria-label="Next card" hidden>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="m6 9.5 6 6 6-6"></path>
       </svg>
     </button>
   </div>
@@ -1461,18 +1643,26 @@ body.mode-compact .toast { bottom: 318px; }
 <div class="settings-pop" id="settingsPop" hidden role="dialog" aria-label="Settings">
   <div class="sp-head"><span class="sp-title">Settings</span><span class="sp-sub">Layout</span></div>
   <div class="sp-row">
-    <div class="sp-label">Layout<span class="sp-desc">Full stage or bottom strip.</span></div>
+    <div class="sp-label">Layout<span class="sp-desc">Full stage or compact strip.</span></div>
     <div class="seg" id="segLayout">
       <button data-layout="full">Full</button>
       <button data-layout="compact">Compact</button>
     </div>
   </div>
-  <div class="sp-row">
+  <div class="sp-row" id="sizeRow">
     <div class="sp-label">Compact card size<span class="sp-desc">220 / 260 / 300 px.</span></div>
     <div class="seg" id="segSize">
       <button data-size="small">Small</button>
       <button data-size="medium">Medium</button>
       <button data-size="large">Large</button>
+    </div>
+  </div>
+  <div class="sp-row" id="alignRow">
+    <div class="sp-label">Compact alignment<span class="sp-desc">Bottom shelf, or a full-height side column.</span></div>
+    <div class="seg" id="segAlign">
+      <button data-align="bottom">Bottom</button>
+      <button data-align="left">Left</button>
+      <button data-align="right">Right</button>
     </div>
   </div>
   <div class="sp-foot">
@@ -1497,6 +1687,7 @@ const TYPE = {
 };
 const TYPE_ORDER = ["text", "link", "code", "image", "color", "emoji"];
 const COMPACT_SIZES = { small: 220, medium: 260, large: 300 };
+const COMPACT_ALIGNMENTS = ["bottom", "left", "right"];
 
 const ART_DRAGON = "radial-gradient(90% 80% at 22% 12%, #5b2f8a 0%, transparent 58%), radial-gradient(70% 70% at 78% 28%, #c23a72 0%, transparent 55%), radial-gradient(60% 50% at 52% 92%, #ff7a59 0%, transparent 60%), linear-gradient(155deg, #0d0716 0%, #241033 45%, #090510 100%)";
 const ART_AURORA = "radial-gradient(80% 70% at 18% 78%, #14532d 0%, transparent 60%), radial-gradient(70% 60% at 62% 22%, #2dd4bf 0%, transparent 55%), radial-gradient(55% 45% at 88% 66%, #3b82f6 0%, transparent 58%), linear-gradient(160deg, #03100f 0%, #072422 52%, #020b0a 100%)";
@@ -1564,7 +1755,7 @@ function sampleItems() {
 }
 
 function defaultSettings() {
-  return { layout: { mode: "full", compact: { card_size: "medium" } } };
+  return { layout: { mode: "full", compact: { card_size: "medium", alignment: "bottom" } } };
 }
 
 function normalizeSettings(raw) {
@@ -1573,11 +1764,13 @@ function normalizeSettings(raw) {
   const card_size = Object.prototype.hasOwnProperty.call(COMPACT_SIZES, candidate)
     ? candidate
     : "medium";
-  return { layout: { mode, compact: { card_size } } };
+  const alignCandidate = raw && raw.layout && raw.layout.compact && raw.layout.compact.alignment;
+  const alignment = COMPACT_ALIGNMENTS.includes(alignCandidate) ? alignCandidate : "bottom";
+  return { layout: { mode, compact: { card_size, alignment } } };
 }
 
-function settingsFor(mode, compactSize) {
-  return normalizeSettings({ layout: { mode, compact: { card_size: compactSize } } });
+function settingsFor(mode, compactSize, compactAlign = "bottom") {
+  return normalizeSettings({ layout: { mode, compact: { card_size: compactSize, alignment: compactAlign } } });
 }
 
 function firstLine(text) {
@@ -1617,6 +1810,22 @@ function filterItems(list, query, filter) {
   });
 }
 
+function filterRecentItems(list, query, filter) {
+  return filterItems(list, query, filter).filter((item) => !item.pinned);
+}
+
+function moveRecentSelection(list, selectedId, delta) {
+  if (list.length === 0) return null;
+  let index = list.findIndex((item) => item.id === selectedId);
+  if (index < 0) return list[0].id;
+  index = Math.max(0, Math.min(list.length - 1, index + delta));
+  return list[index].id;
+}
+
+function compactIsVertical(alignment) {
+  return alignment === "left" || alignment === "right";
+}
+
 function findCardIndex(list, card) {
   const raw = String(card == null ? "" : card).trim();
   if (!raw) return -1;
@@ -1648,6 +1857,10 @@ function pinCopyTarget(list, focusedId) {
   return pinnedOrdered(list).some((item) => item.id === focusedId) ? focusedId : null;
 }
 
+function quickCopyTarget(list, id) {
+  return pinnedOrdered(list).some((item) => item.id === id) ? id : null;
+}
+
 function removeAt(list, index) {
   const next = list.slice();
   const item = next.splice(index, 1)[0];
@@ -1668,6 +1881,8 @@ function parseDeepLink(search) {
   if (mode === "full" || mode === "compact") out.mode = mode;
   const size = params.get("compact_size");
   if (Object.prototype.hasOwnProperty.call(COMPACT_SIZES, size)) out.compactSize = size;
+  const align = params.get("compact_align");
+  if (COMPACT_ALIGNMENTS.includes(align)) out.compactAlign = align;
   const card = params.get("card");
   if (card) out.card = card;
   if (params.get("pins") === "1") out.pins = true;
@@ -1681,6 +1896,7 @@ const CORE_EXPORTS = {
   TYPE,
   TYPE_ORDER,
   COMPACT_SIZES,
+  COMPACT_ALIGNMENTS,
   ART_DRAGON,
   ART_AURORA,
   sampleItems,
@@ -1692,11 +1908,15 @@ const CORE_EXPORTS = {
   rowTitle,
   ordered,
   filterItems,
+  filterRecentItems,
+  moveRecentSelection,
+  compactIsVertical,
   findCardIndex,
   pinnedOrdered,
   initialPinFocus,
   nextPinFocus,
   pinCopyTarget,
+  quickCopyTarget,
   removeAt,
   insertAt,
   parseDeepLink,
@@ -1772,18 +1992,28 @@ const el = {
   cPrev: $("cPrev"),
   cList: $("cList"),
   cNext: $("cNext"),
+  cUp: $("cUp"),
+  cDown: $("cDown"),
+  cPinned: $("cPinned"),
+  cPinnedTitle: $("cPinnedTitle"),
+  cPinnedList: $("cPinnedList"),
+  cRecentLabel: $("cRecentLabel"),
   cStatus: $("cStatus"),
   cNewBadge: $("cNewBadge"),
   cHints: $("cHints"),
   settingsPop: $("settingsPop"),
   segLayout: $("segLayout"),
   segSize: $("segSize"),
+  segAlign: $("segAlign"),
+  sizeRow: $("sizeRow"),
+  alignRow: $("alignRow"),
 };
 
 let items = sampleItems();
 let selectedId = items[0] ? items[0].id : null;
 let mode = "full";
 let compactSize = "medium";
+let compactAlign = "bottom";
 let query = "";
 let filter = "all";
 let pinsOpen = false;
@@ -1815,7 +2045,7 @@ function loadSettings() {
 
 function saveSettings() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsFor(mode, compactSize)));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settingsFor(mode, compactSize, compactAlign)));
   } catch {
     /* storage unavailable: the session still works */
   }
@@ -1836,7 +2066,7 @@ function deck() {
 }
 
 function compactList() {
-  return filterItems(items, query, filter);
+  return filterRecentItems(items, query, filter);
 }
 
 function activeList() {
@@ -2093,6 +2323,16 @@ function compactCard(item, index) {
   </article>`;
 }
 
+function pinnedCompactCard(item) {
+  return `<article class="c-card c-pin-card kind-${item.kind}"
+      data-id="${item.id}" data-kind="${item.kind}" data-pin-copy="1"
+      role="button" tabindex="0" style="--tc:${TYPE[item.kind].color}"
+      aria-label="Copy pinned ${escapeHtml(TYPE[item.kind].label)} card and close">
+    ${headMarkup(item)}
+    <div class="c-card-body b-${item.kind}">${compactBody(item)}</div>
+  </article>`;
+}
+
 function updateIncognito() {
   el.cIncognito.classList.toggle("is-on", incognito);
   el.cIncognito.setAttribute("aria-pressed", String(incognito));
@@ -2119,27 +2359,50 @@ function updateSettingsSegments() {
   for (const button of el.segSize.querySelectorAll("[data-size]")) {
     button.classList.toggle("selected", button.dataset.size === compactSize);
   }
+  for (const button of el.segAlign.querySelectorAll("[data-align]")) {
+    button.classList.toggle("selected", button.dataset.align === compactAlign);
+  }
+  const compactOnly = mode === "compact";
+  for (const row of [el.sizeRow, el.alignRow]) {
+    row.classList.toggle("is-disabled", !compactOnly);
+    row.setAttribute("aria-disabled", String(!compactOnly));
+  }
+  for (const button of [...el.segSize.querySelectorAll("button"), ...el.segAlign.querySelectorAll("button")]) {
+    button.disabled = !compactOnly;
+  }
 }
 
 function renderCompact() {
   const list = compactList();
-  const pinnedCount = items.filter((item) => item.pinned).length;
-  const keepScroll = el.cList.scrollLeft;
+  const pinned = pinnedOrdered(items);
+  const keepLeft = el.cList.scrollLeft;
+  const keepTop = el.cList.scrollTop;
 
   for (const chip of el.cFilters.querySelectorAll(".chip")) {
     chip.classList.toggle("selected", chip.dataset.filter === filter);
   }
 
+  el.cPinned.hidden = pinned.length === 0;
+  el.cRecentLabel.hidden = pinned.length === 0;
+  if (pinned.length > 0) {
+    el.cPinnedTitle.textContent = `Pinned · ${pinned.length}`;
+    el.cPinnedList.innerHTML = pinned.map(pinnedCompactCard).join("");
+    el.cRecentLabel.textContent = `Recent · ${list.length}`;
+  } else {
+    el.cPinnedList.innerHTML = "";
+  }
+
   if (items.length === 0) {
     el.cList.innerHTML = `<div class="c-empty"><b>Clipboard is empty</b><span>Copy something and it will appear here.</span></div>`;
   } else if (list.length === 0) {
-    el.cList.innerHTML = `<div class="c-empty"><b>No matches</b><span>Try another search or filter.</span></div>`;
+    el.cList.innerHTML = `<div class="c-empty"><b>No recent cards</b><span>${pinned.length ? "Pinned cards are in the shelf above." : "Try another search or filter."}</span></div>`;
   } else {
     el.cList.innerHTML = list.map((item, index) => compactCard(item, index)).join("");
   }
 
-  el.cList.scrollLeft = keepScroll;
-  el.cStatus.textContent = `${list.length} / ${items.length}${pinnedCount ? ` · ${pinnedCount} pinned` : ""}`;
+  el.cList.scrollLeft = keepLeft;
+  el.cList.scrollTop = keepTop;
+  el.cStatus.textContent = `${list.length} recent${pinned.length ? ` · ${pinned.length} pinned` : ""}`;
   updateIncognito();
   updateClear();
   updateBadges();
@@ -2160,18 +2423,31 @@ function renderAll() {
 function applyMode() {
   const showFull = mode === "full" && !closed;
   const showCompact = mode === "compact" && !closed;
+  const vertical = compactIsVertical(compactAlign);
 
   document.body.classList.toggle("mode-full", mode === "full");
   document.body.classList.toggle("mode-compact", mode === "compact");
   document.body.classList.toggle("is-closed", closed);
   document.body.classList.toggle("pins-open", showFull && pinsOpen);
+  document.body.classList.toggle("compact-align-bottom", compactAlign === "bottom");
+  document.body.classList.toggle("compact-align-left", compactAlign === "left");
+  document.body.classList.toggle("compact-align-right", compactAlign === "right");
   document.body.dataset.compactSize = compactSize;
+  document.body.dataset.compactAlign = compactAlign;
   document.body.style.setProperty("--compact-card-w", `${COMPACT_SIZES[compactSize]}px`);
+  document.body.style.setProperty("--compact-col-w", `${COMPACT_SIZES[compactSize] + 28}px`);
 
   el.full.hidden = !showFull;
   el.compact.hidden = !showCompact;
   el.pinsPanel.hidden = !(showFull && pinsOpen);
   el.reopen.hidden = !closed;
+  el.cPrev.hidden = vertical;
+  el.cNext.hidden = vertical;
+  el.cUp.hidden = !vertical;
+  el.cDown.hidden = !vertical;
+  el.cHints.textContent = vertical
+    ? "↑ ↓ · ↵ copy · Esc"
+    : "← → · ↵ copy · Del · Ctrl+1..9 · Esc";
 }
 
 function positionSettingsPop() {
@@ -2180,6 +2456,12 @@ function positionSettingsPop() {
   const rect = anchor.getBoundingClientRect();
   const width = el.settingsPop.offsetWidth || 342;
   const height = el.settingsPop.offsetHeight || 240;
+  if (mode === "compact" && compactIsVertical(compactAlign)) {
+    const left = compactAlign === "left" ? rect.right + 8 : rect.left - width - 8;
+    el.settingsPop.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, left))}px`;
+    el.settingsPop.style.top = `${Math.max(12, Math.min(window.innerHeight - height - 12, rect.top))}px`;
+    return;
+  }
   const below = rect.bottom + 8;
   const above = rect.top - height - 8;
   const top = mode === "compact"
@@ -2236,8 +2518,20 @@ function setMode(next) {
 }
 
 function setCompactSize(next) {
+  if (mode !== "compact") return;
   if (!Object.prototype.hasOwnProperty.call(COMPACT_SIZES, next)) return;
   compactSize = next;
+  saveSettings();
+  applyMode();
+  renderCompact();
+  if (settingsOpen) requestAnimationFrame(positionSettingsPop);
+}
+
+function setCompactAlign(next) {
+  if (mode !== "compact") return;
+  if (!COMPACT_ALIGNMENTS.includes(next)) return;
+  if (next === compactAlign) return;
+  compactAlign = next;
   saveSettings();
   applyMode();
   renderCompact();
@@ -2263,8 +2557,13 @@ function scrollSelectedIntoView() {
   if (!card) return;
   const listRect = el.cList.getBoundingClientRect();
   const cardRect = card.getBoundingClientRect();
-  const delta = cardRect.left + cardRect.width / 2 - (listRect.left + listRect.width / 2);
-  el.cList.scrollTo({ left: el.cList.scrollLeft + delta, behavior: "smooth" });
+  if (compactIsVertical(compactAlign)) {
+    const delta = cardRect.top + cardRect.height / 2 - (listRect.top + listRect.height / 2);
+    el.cList.scrollTo({ top: el.cList.scrollTop + delta, behavior: "smooth" });
+  } else {
+    const delta = cardRect.left + cardRect.width / 2 - (listRect.left + listRect.width / 2);
+    el.cList.scrollTo({ left: el.cList.scrollLeft + delta, behavior: "smooth" });
+  }
 }
 
 function moveFull(delta) {
@@ -2278,17 +2577,14 @@ function moveFull(delta) {
 
 function moveCompact(delta) {
   const list = compactList();
-  if (list.length === 0) return;
-  let index = list.findIndex((item) => item.id === selectedId);
-  if (index < 0) index = 0;
-  index = Math.max(0, Math.min(list.length - 1, index + delta));
-  selectById(list[index].id, { scroll: true });
+  const next = moveRecentSelection(list, selectedId, delta);
+  if (next) selectById(next, { scroll: true });
 }
 
 function flashCard(id) {
   const card = mode === "full"
     ? (selectedId === id ? el.stageCard : null)
-    : el.cList.querySelector(`[data-id="${id}"]`);
+    : (el.cList.querySelector(`[data-id="${id}"]`) || el.cPinnedList.querySelector(`[data-id="${id}"]`));
   if (!card) return;
   card.classList.remove("is-copied");
   void card.offsetWidth;
@@ -2311,6 +2607,15 @@ function copyNth(position) {
   const item = list[position];
   if (!item) return;
   copyItem(item);
+}
+
+function quickCopyPinned(id) {
+  const target = quickCopyTarget(items, id);
+  if (!target) return;
+  const item = items.find((entry) => entry.id === target);
+  if (!item) return;
+  copyItem(item);
+  closeOverlay();
 }
 
 function togglePin(id) {
@@ -2593,6 +2898,10 @@ el.segSize.addEventListener("click", (event) => {
   const button = event.target.closest("[data-size]");
   if (button) setCompactSize(button.dataset.size);
 });
+el.segAlign.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-align]");
+  if (button) setCompactAlign(button.dataset.align);
+});
 
 el.cFilters.addEventListener("click", (event) => {
   const chip = event.target.closest("[data-filter]");
@@ -2629,8 +2938,23 @@ el.cList.addEventListener("dblclick", (event) => {
   if (item) copyItem(item);
 });
 
+el.cPinnedList.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-pin-copy]");
+  if (card) quickCopyPinned(card.dataset.id);
+});
+
+el.cPinnedList.addEventListener("keydown", (event) => {
+  const card = event.target.closest("[data-pin-copy]");
+  if (!card || (event.key !== "Enter" && event.key !== " ")) return;
+  event.preventDefault();
+  event.stopPropagation();
+  quickCopyPinned(card.dataset.id);
+});
+
 el.cPrev.addEventListener("click", () => moveCompact(-1));
 el.cNext.addEventListener("click", () => moveCompact(1));
+el.cUp.addEventListener("click", () => moveCompact(-1));
+el.cDown.addEventListener("click", () => moveCompact(1));
 el.cIncognito.addEventListener("click", toggleIncognito);
 el.cClearBtn.addEventListener("click", askClear);
 el.cClearYes.addEventListener("click", doClear);
@@ -2749,6 +3073,10 @@ document.addEventListener("keydown", (event) => {
     if (event.key === "ArrowDown") { event.preventDefault(); return; }
     if (event.key === "ArrowLeft") { event.preventDefault(); moveFull(-1); return; }
     if (event.key === "ArrowRight") { event.preventDefault(); moveFull(1); return; }
+  } else if (compactIsVertical(compactAlign)) {
+    if (event.key === "ArrowUp") { event.preventDefault(); moveCompact(-1); return; }
+    if (event.key === "ArrowDown") { event.preventDefault(); moveCompact(1); return; }
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") { event.preventDefault(); return; }
   } else {
     if (event.key === "ArrowLeft") { event.preventDefault(); moveCompact(-1); return; }
     if (event.key === "ArrowRight") { event.preventDefault(); moveCompact(1); return; }
@@ -2770,10 +3098,12 @@ function boot() {
   const stored = loadSettings();
   mode = stored.layout.mode;
   compactSize = stored.layout.compact.card_size;
+  compactAlign = stored.layout.compact.alignment;
 
   const deep = parseDeepLink(location.search);
   if (deep.mode) mode = deep.mode;
   if (deep.compactSize) compactSize = deep.compactSize;
+  if (deep.compactAlign) compactAlign = deep.compactAlign;
   if (deep.empty) {
     items = [];
     selectedId = null;
