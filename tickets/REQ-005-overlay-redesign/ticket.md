@@ -32,13 +32,37 @@ implementation contract. The batch-level composition record was drafted as
 v3 RFC, so it is held on the design branch pending renumbering. This ticket is
 self-contained and canonical.
 
-## Design revision pending
+## Source of truth and drift rule
 
-This design is **not frozen**. A change was requested after the initial
-contract. Do not merge this branch or add a `mock.sha256` until the revision is
-applied and the acceptance criteria are rechecked.
+- Normative mock: `mock.html`; sha256
+  `1cc2beb2f64ca805754f57aa596e55876cb6de8e9b12ee0fec82716ca7f6bc3b`
+  (also recorded in `mock.sha256`).
+- This ticket is the **criteria** source of truth; the mock is the **look and
+  interaction** source of truth.
+- Any change to `mock.html` must update this ticket's acceptance/contract
+  **and** `mock.sha256` in the same commit. Any criteria change must update the
+  mock in the same commit. If they disagree, fix one before merging.
+- The app-local ticket + mock are canonical. The composition record drafted as
+  `dotfiles-v3/docs/107-clipboard-overlay.md` is held/renumbered because master
+  now uses 107 for the generations v3 RFC.
+- The windowed Normal alternative is archived on branch
+  `ticket/REQ-005-overlay-windowed` (commit `1e1eca8`); the selected design is
+  the full-screen Normal below.
 
-## Acceptance
+## Design deliverable
+
+- [x] `mock.html` is self-contained, has no external assets/build step, and
+      opens directly in a browser.
+- [x] Normal is the full-monitor command surface with a dimmed/blurred desktop;
+      command bar, rail and preview match the mock.
+- [x] Compact is the 440 px centre panel or 400 px full-height left/right bar;
+      the type indicator is an inset rounded tick, never an edge-flush sliver.
+- [x] Settings (Layout Normal/Compact, Compact position), all item kinds,
+      pin/delete/undo, clear confirm, incognito, live updates without selection
+      theft, and the documented deep links are interactive.
+- [x] The contract, acceptance criteria and mock hash match this revision.
+
+## Implementation acceptance
 
 - [ ] The overlay implements the contract in this ticket.
 - [ ] Normal and Compact (center/left/right) match the mock at 1600×1000 and
@@ -125,8 +149,9 @@ The current `ags-clipboard` overlay is a bottom-anchored, full-width strip:
   `Ctrl+1..9` copies by position (`ui/ClipboardWindow.tsx:233-280`);
 - search + incognito + clear in a top row; incognito is driven by the daemon
   job through the event hub (`ClipboardWindow.tsx:299-312`);
-- per-type palette roles drive the header ink via luminance math
-  (`ui/ItemCard.tsx:84-147`);
+- per-type palette roles fill the header; since REQ-006 the ink is static
+  role-based CSS (`.kind-* .clipboard-head`), not app-side luminance math
+  (`style.css:126-160`; `tickets/REQ-006-static-role-ink/ticket.md`);
 - appearance via `createAppearance({ configDir: "ags-clipboard" })`
   (`app.tsx:19-26`);
 - one window per monitor, anchored bottom (`app.tsx:70-76`).
@@ -140,8 +165,9 @@ Why it reads old:
 3. there is no preview: an image is a 236×118 crop, code is five lines of a
    label, a link is a truncated line;
 4. every card repeats chrome (header + border + radius);
-5. per-type hue math in the app is a workaround the appearance plane should
-   own (explicit ink tokens), not app-side luminance.
+5. the header bar is still the loudest type signal. REQ-006 already removed
+   the old luminance math; the next step is to shrink the type signal to a
+   tick/glyph, not to fix contrast.
 
 What must survive:
 
@@ -357,20 +383,21 @@ Compact (440 px, top centre, sharp desktop behind):
 
 ### 4.6 Type hues
 
-Palette roles, not fixed app math (the v1 luminance workaround retires):
+Palette roles, not fixed app math (REQ-006 already retired the luminance
+workaround):
 
-| Kind | Role (proposal) | Use |
+| Kind | Role (REQ-006 static) | Use |
 | --- | --- | --- |
-| text | tertiary | stripe, glyph, filter dot |
-| code | secondary | stripe, glyph, filter dot |
-| image | primary | stripe, glyph |
-| color | error | stripe, glyph |
-| link | primary/tertiary variant | stripe, glyph |
-| emoji | secondary/tertiary variant | stripe, glyph |
+| text | tertiary | tick, glyph, filter dot |
+| code | surface_container_lowest | tick, glyph, filter dot |
+| image | error_container | tick, glyph |
+| color | error | tick, glyph |
+| link | primary | tick, glyph |
+| emoji | secondary | tick, glyph |
 
-The exact role mapping is settled against the appearance v2 palette at
-implementation time; the rule is **role, not hex** and **annotate, not fill**.
-No app-side luminance/contrast math.
+The mock uses fixed hues for legibility; production uses these roles. The rule
+is **role, not hex** and **annotate, not fill**. No app-side luminance/contrast
+math.
 
 ### 4.7 Responsive safety
 
@@ -737,8 +764,10 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
    bottom-anchored. Decide focused-monitor vs primary.
 7. **Virtualized rail.** `Gtk.ListView` vs `Gtk.ColumnView` with sections;
    pick the one that gives sticky section headers and cheap updates.
-8. **Type-role map.** Final palette roles for text/code/image/color/link/
-   emoji against the v2 appearance tokens; no luminance math.
+8. **Type-role map.** The REQ-006 static roles are the baseline
+   (tertiary / surface_container_lowest / error_container / error / primary /
+   secondary); the mock uses fixed hues for legibility. Recheck against the v3
+   appearance tokens when the skin plane lands.
 9. **Clear undo.** Clear deletes cached images; if the runtime can defer
    deletion, an Undo could be added later.
 10. **Pinned ordering.** Pinned items first by recency vs manual order; this
@@ -755,7 +784,12 @@ Current app:
 - `ags-clipboard/ui/ClipboardWindow.tsx:117-131` — horizontal 260 px cards.
 - `ags-clipboard/ui/ClipboardWindow.tsx:233-280` — keyboard copy/delete/pin.
 - `ags-clipboard/ui/ClipboardWindow.tsx:299-312` — incognito via event hub.
-- `ags-clipboard/ui/ItemCard.tsx:84-147` — palette luminance header math.
+- `ags-clipboard/ui/ItemCard.tsx` — the card adds only its kind class; header
+  fill/ink live in `.kind-* .clipboard-head` with no runtime color math
+  (REQ-006).
+- `ags-clipboard/style.css:126-160` — static role fill + on-role ink per kind.
+- `ags-clipboard/tickets/REQ-006-static-role-ink/ticket.md` — the ink mapping
+  evidence.
 - `ags-clipboard/ui/ItemCard.tsx:120-170` — coloured header bar.
 - `ags-clipboard/ui/Preview.tsx` — 236×118 image, colour swatch, text lines.
 - `ags-clipboard/style.css:11-17,70,124-180` — panel/card/header styling.
@@ -765,7 +799,8 @@ Current app:
 Design rules inherited from:
 
 - `dotfiles-v3/docs/106-wallpaper-selector-overlay.md` §3 (principles) and
-  §5.7 (tokens).
+  §5.7 (tokens), restated in §0.1 above. The composition record is held on its
+  design branch pending the skin-plane v3 reconciliation.
 
 Settings pattern reference (the clipboard's `layout.mode` file mirrors it):
 
