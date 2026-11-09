@@ -165,7 +165,7 @@ What must survive:
 | **C2** | Two-pane layout: **history rail (left) + item preview (right)**. The preview is the surface; the rail is the index. | Text, code, images and links need room. A preview is the missing feature. | Rail 420 px; preview flexible; one selection drives both. |
 | **C3** | One **command bar** at the top, below the desktop bar: search, type filters, incognito, clear. | Everything global lives in one place; the content stays clean. | The bar respects the desktop bar's reserved strip; no second settings bar. |
 | **C4** | **Browse ≠ commit.** Selecting a row previews it. `Enter` / **Copy** puts it on the clipboard. `Ctrl+1..9` is the direct-copy power path. | The old click-to-copy had no preview; the new model makes reading free and copying explicit. | `copyItem` is only called from the commit actions. |
-| **C5** | Type is a **3 px stripe + glyph tint**, not a full coloured header. | The type should annotate the content, not outshine it. | Palette roles still tint the type; no luminance math in the app. |
+| **C5** | Type is a **3 px stripe + glyph tint**, not a full coloured header. In Compact, the stripe is an inset rounded tick, never an edge-flush sliver. | The type should annotate the content, not outshine it or look like a border artifact. | Palette roles still tint the type; no luminance math in the app. |
 | **C6** | **Pinned items group first**, then Today / Yesterday / Older. Pin/unpin from the row or the preview footer. | Pins are the user's deliberate shortlist; they should not scroll away. | A pinned toggle; section headers; selection survives the move. |
 | **C7** | **Delete is undoable** (toast with Undo); **Clear requires an inline confirm**. | Destructive actions need a way back; clear also deletes cached images. | Delete removes + toast; Clear turns the button into `Clear all? Yes / No`. |
 | **C8** | **Incognito is a visible state**, not a hidden mode: a pill in the command bar and a “captures paused” note in the rail. | Pausing capture is important; the user must see it. | Driven by `clipboard.state`; tinted active state; no config file. |
@@ -404,11 +404,12 @@ No app-side luminance/contrast math.
   blurred/dimmed desktop and the full scrim.
 - Header (50 px): search field (flex), a compact type `<select>` (84 px max),
   a 30 px gear.
-- List (48 px rows): 2 px type stripe, 26 px glyph or image thumb (or a
-  14 px colour dot), title 12.5 / 600 one line, age 9.5 at the right, pin
-  22 px on hover/selected. Pinned items first with a 9.5 px `Pinned` label and
-  a 1 px divider; no other section labels. The side bars use the extra height
-  for more rows; the header/footer stay pinned.
+- List (48 px rows): 3 px inset type tick (8 px from the panel edge, 12 px
+  vertical inset), 26 px glyph or image thumb (or a 14 px colour dot), title
+  12.5 / 600 one line, age 9.5 at the right, pin 22 px on hover/selected.
+  Pinned items first with a 9.5 px `Pinned` label and a 1 px divider; no other
+  section labels. The side bars use the extra height for more rows; the
+  header/footer stay pinned.
 - Footer (36 px): `N items`, optional `N new`, spacer, `Incognito off/on`,
   `Clear`, expand-to-normal icon. In clear-confirm, the row becomes
   `Clear all? Yes / No`.
@@ -664,8 +665,9 @@ Commands: `make ci`, `make gates` in `ags-clipboard`; then the composition’s
 - [ ] Compact mode is a 440 px centre panel or a 400 px full-height left/right
       bar on a sharp desktop; the full surface is hidden; the panel does not
       read as a dialog/card.
-- [ ] Compact rows are 48 px with a stripe, glyph/thumb, title, age and pin;
-      the footer has count, incognito, clear and expand.
+- [ ] Compact rows are 48 px with an inset type tick (not an edge-flush
+      sliver), glyph/thumb, title, age and pin; the footer has count, incognito,
+      clear and expand.
 - [ ] Switching Normal ↔ Compact or Center/Left/Right preserves query, filter,
       selection and does not restart the app; the side bars span the work-area
       height below the desktop bar.
