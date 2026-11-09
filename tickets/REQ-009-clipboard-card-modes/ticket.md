@@ -34,6 +34,16 @@ REQ-005's rail + preview is frozen on `main` and is **not** modified by this
 ticket. REQ-009 replaces its interaction model; REQ-005 remains the historical
 record. The live app keeps the current card strip until REQ-009 is implemented.
 
+## Frozen baseline (approved 2026-11-09)
+
+This is the approved card-stage iteration and the **intent** for the feature:
+
+- Commit: `d9ed130` (card stage + pinned copy/collapse + compact bottom strip).
+- Mock sha256: `06820b4b54e5ddfc83f367d9a2b7de0015201a6a6b2da971ea01006e6bd05037`
+  (recorded in `mock.sha256`).
+- The mock and this ticket are the baseline; any later mock additions are a
+  proposal until this section is updated to the new commit/hash.
+
 ## Interaction
 
 ### Full mode
@@ -124,8 +134,9 @@ does not frame the surface.
 - [x] A DOM/state harness and `node --check` pass for the mock, including the
       pinned-grid focus, wrap, copy+collapse, back, stage-isolation, click,
       empty and single-pin cases.
-- [ ] Design review green light, then freeze this ticket's contract and the
-      mock's sha256 in the same commit.
+- [x] Baseline design approved and frozen: commit `d9ed130`, sha256
+      `06820b4b54e5ddfc83f367d9a2b7de0015201a6a6b2da971ea01006e6bd05037`.
+      The compact alignment + pinned-section proposal is pending review.
 - [ ] Implementation in the app: full stage, compact strip, settings adapter,
       persistence, all preserved behaviours.
 - [ ] `make ci` / `make gates` pass; the composition pin is bumped.
@@ -163,6 +174,7 @@ faux editor behind the overlay makes the compact strip's non-takeover behaviour
 visible.
 
 The mock is the first source of truth for look and interaction. This ticket is
-the source of truth for intent and acceptance. The full contract and hash are
-frozen only after the design review; until then this is a design deliverable,
-not an implementation claim.
+the source of truth for intent and acceptance. The baseline is frozen at commit
+`d9ed130` (`mock.sha256`); the working mock may carry a pending proposal. The
+proposal only becomes intent when its section is accepted and the baseline hash
+is updated.
