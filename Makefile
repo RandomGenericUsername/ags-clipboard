@@ -1,13 +1,14 @@
 .PHONY: help platform-dev deps types test conformance drift ci bundle typecheck gates clean-tags
 
-# The program tuple this app builds/tests against (AD-31/AD-34). v1.0.1 is the
-# current Generations v3 appearance patch
-# (`createAppearance`/`createAppearanceRefreshHandler`); v0.8.0 is the contracts
-# tuple that froze the v3 generation plane and `appearance-refresh <genHash>`.
+# The program tuple this app builds/tests against (AD-31/AD-34). v1.1.0 is the
+# current surface.window appearance patch
+# (`createAppearance`/`createAppearanceRefreshHandler`); v0.12.0 is the contracts
+# tuple that adds the required `surface.window` role while keeping the v3
+# generation plane and `appearance-refresh <genHash>`.
 # Both are LOCAL-ONLY in this run: local gates symlink them from .dev/
 # (gitignored), CI checks out the tags explicitly once published.
-AGS_PLATFORM_VERSION := v1.0.1
-CONTRACTS_VERSION := v0.8.0
+AGS_PLATFORM_VERSION := v1.1.0
+CONTRACTS_VERSION := v0.12.0
 AGS_PLATFORM_REPO := https://github.com/RandomGenericUsername/ags-platform.git
 AGS_PLATFORM_DEV ?=
 PLATFORM_FETCH_DIR := $(CURDIR)/.dev/ags-platform/$(AGS_PLATFORM_VERSION)
@@ -24,8 +25,8 @@ help:
 	@echo "make ci           stock-runner gate: test + conformance"
 	@echo "make gates        all local gates: test + conformance + bundle + typecheck"
 	@echo ""
-	@echo "Local-only v1.0.1 platform / v0.8.0 contracts tuple: put checkouts/symlinks at"
-	@echo "  .dev/ags-platform/v1.0.1  (or AGS_PLATFORM_DEV=/path/to/ags-platform)"
+	@echo "Local-only v1.1.0 platform / v0.12.0 contracts tuple: put checkouts/symlinks at"
+	@echo "  .dev/ags-platform/v1.1.0  (or AGS_PLATFORM_DEV=/path/to/ags-platform)"
 	@echo "and a contracts checkout at ../contracts (or set CONTRACTS_ROOT)."
 
 # The platform shortcut. It MUST point outside node_modules: Node refuses to
@@ -90,7 +91,7 @@ conformance: platform-dev
 	CONTRACTS_ROOT="$(CONTRACTS_ROOT)" node --test tests/app-contract.test.mjs
 
 # Contract drift: the shared event client and the app's pure helpers against
-# the canonical contracts v0.8.0 checkout. Stock runner.
+# the canonical contracts v0.12.0 checkout. Stock runner.
 drift: platform-dev
 	@command -v node >/dev/null || { echo "FAIL: drift: node is not on PATH" >&2; exit 1; }
 	@[ -f "$(CONTRACTS_ROOT)/event-contract.json" ] || { \

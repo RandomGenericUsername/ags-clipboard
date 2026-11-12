@@ -1,5 +1,19 @@
 # Changelog
 
+## v0.6.2 — 2026-11-12
+
+- Refresh the local pin tuple to `ags-platform` `v1.1.0` / `contracts`
+  `v0.12.0`. The Makefile, CI checkout and tuple-presence assertion,
+  conformance/validation assertions and README/AGENTS state the
+  `v1.1.0` / `v0.12.0` tuple.
+- Pin parity only: `app.tsx`, `lib/`, `ui/`, `style.css`, the layout token and
+  the `appearance-refresh <genHash>` handler/ack behavior are unchanged. No
+  request command or appearance protocol is added.
+- `ags-platform` `v1.1.0` / `contracts` `v0.12.0` add the required
+  `surface.window` outer/toplevel role and remain API-compatible for this
+  app's `value(...)` reads and generation apply/ack; the window group belongs
+  to the runtime/assets/composition plane, so no app-side migration is needed.
+
 ## v0.6.1 — 2026-11-07
 
 - Refresh the local platform pin to `ags-platform` `v1.0.1` while keeping
