@@ -460,6 +460,36 @@ window#clipboard-window {
   box-shadow: 0 0 0 2px alpha(@primary, 0.55);
 }
 
+.kind-text.clipboard-pin-card.focused {
+  border-color: @tertiary;
+  box-shadow: 0 0 0 2px alpha(@tertiary, 0.55);
+}
+
+.kind-code.clipboard-pin-card.focused {
+  border-color: @surface_container_lowest;
+  box-shadow: 0 0 0 2px alpha(@surface_container_lowest, 0.55);
+}
+
+.kind-color.clipboard-pin-card.focused {
+  border-color: @error;
+  box-shadow: 0 0 0 2px alpha(@error, 0.55);
+}
+
+.kind-image.clipboard-pin-card.focused {
+  border-color: @error_container;
+  box-shadow: 0 0 0 2px alpha(@error_container, 0.55);
+}
+
+.kind-link.clipboard-pin-card.focused {
+  border-color: @primary;
+  box-shadow: 0 0 0 2px alpha(@primary, 0.55);
+}
+
+.kind-emoji.clipboard-pin-card.focused {
+  border-color: @secondary;
+  box-shadow: 0 0 0 2px alpha(@secondary, 0.55);
+}
+
 .clipboard-pin-body {
   padding: 12px;
 }
