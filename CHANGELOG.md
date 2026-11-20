@@ -54,6 +54,12 @@
   restored; the compact `N new` and `N recent/pinned` counters are removed;
   and the pinned view now fills four homogeneous columns with 236 px rows,
   16 px gaps and the mock header order.
+- Owner feedback round 4: card headers are one neutral surface/ink plate
+  instead of six per-kind fills; type identity moved to a 6 px
+  `.clipboard-type-dot` (the only type-coloured header element); selection and
+  pin focus use one shared `@primary` rule; the pin square uses the neutral
+  control fill; the new selectors are listed for the skin lane, which must
+  delete the old per-kind header/selection/focus/pin rules.
 
 ## v0.6.2 — 2026-11-12
 

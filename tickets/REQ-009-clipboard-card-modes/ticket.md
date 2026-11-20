@@ -270,11 +270,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 27 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 31 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, skin/focus/pin geometry, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 32 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, neutral header/type-dot, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,283,540 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 31 conformance, drift "all checks passed", bundle 1,283,540 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,270,684 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 32 conformance, drift "all checks passed", bundle 1,270,684 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -332,18 +332,23 @@ menubutton.clipboard-gear:active, .clipboard-gear > button:active
 .clipboard-pin-card, .clipboard-compact, .clipboard-control-bar,
 .clipboard-nav-arrow, .clipboard-strip-arrow, .clipboard-gear
 
-/* round 3: per-kind rings + search focus + visible pin fill */
-.kind-text.selected, .kind-code.selected, .kind-color.selected,
-.kind-image.selected, .kind-link.selected, .kind-emoji.selected
-.kind-text.clipboard-pin-card.focused, .kind-code.clipboard-pin-card.focused,
-.kind-color.clipboard-pin-card.focused, .kind-image.clipboard-pin-card.focused,
-.kind-link.clipboard-pin-card.focused, .kind-emoji.clipboard-pin-card.focused
-.kind-text .clipboard-pin-button, .kind-color .clipboard-pin-button,
-.kind-image .clipboard-pin-button, .kind-link .clipboard-pin-button,
-.kind-emoji .clipboard-pin-button
+/* round 3: search focus + visible pin fill */
+.clipboard-pin-button, .clipboard-pin-button:hover, .clipboard-pin-button.is-on
 .clipboard-pin-body
 .clipboard-search-box.focused
 .clipboard-search:focus, .clipboard-search:focus-visible
+
+/* round 4: neutral header + type dot + shared accent state */
+.clipboard-head
+.clipboard-type-dot
+.clipboard-type-dot.kind-text, .clipboard-type-dot.kind-code,
+.clipboard-type-dot.kind-color, .clipboard-type-dot.kind-image,
+.clipboard-type-dot.kind-link, .clipboard-type-dot.kind-emoji
+.clipboard-card.selected
+.clipboard-pin-card.focused
+/* DELETE from the skin template: the six .kind-* .clipboard-head plates,
+ * the six .kind-*.selected rules, the six .kind-*.clipboard-pin-card.focused
+ * rules, and the five .kind-* .clipboard-pin-button fills. */
 ```
 
 ## Feedback round 1 (2026-11-20)
@@ -662,6 +667,65 @@ widget geometry, not just property presence.
 - Pinned view Up/Down transition and focus wrap at 1600×1000 and 1280×800.
 - Screenshot target:
   `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-3/`.
+
+## Feedback round 4 (2026-11-20)
+
+Owner feedback: “image is always red, code is always black, etc”. The six
+per-kind header plates made card chrome type-coloured instead of following the
+active palette.
+
+### A. Neutral card chrome
+
+- **Before:** `.kind-text .clipboard-head` used `@tertiary`, code used
+  `@surface_container_lowest`, image used `@error_container`, etc.
+- **After:** one `.clipboard-head` rule uses `alpha(@surface_container, 0.75)`
+  with `color: @on_surface` and a subtle `alpha(@on_surface, 0.08)` bottom
+  hairline. The card body and header now both follow the active surface/ink
+  roles. No hex.
+- **Evidence:** `style.css` `.clipboard-head`; theme test `the card header is
+  one neutral surface/ink plate`.
+
+### B. Type identity is a dot
+
+- **After:** `ItemHead` inserts a 6 px `.clipboard-type-dot` before the type
+  label. It is the only type-coloured element in the header and reuses the
+  header role map: Text `@tertiary`, Code `@surface_container_lowest`, Color
+  `@error`, Image `@error_container`, Link `@primary`, Emoji `@secondary`.
+- **Evidence:** `ui/ItemCard.tsx` dot construction; `style.css`
+  `.clipboard-type-dot.kind-*`; theme test `type identity is only a small dot
+  in the neutral header`.
+
+### C. Shared selection/focus, neutral pin
+
+- **After:** the six `.kind-*.selected` rules and six
+  `.kind-*.clipboard-pin-card.focused` rules are gone. One
+  `.clipboard-card.selected` and one `.clipboard-pin-card.focused` rule use
+  `@primary` with a subtle tint/ring. The per-kind pin-button fills are gone;
+  the 22×22 pin uses the neutral `@on_surface` control fill and still reads on
+  the neutral header.
+- **Evidence:** `style.css`; conformance test `fallback chrome has no
+  hard-coded hex and uses one shared accent state`, plus `gear and pin controls
+  are square and skin-derived`.
+
+### D. Active skin caveat
+
+- The app-side fallback is correct, but the currently composed
+  `dotfiles-assets` skin still contains the old per-kind header/selection
+  selectors and overrides the fallback at runtime. This lane does not edit
+  `dotfiles-assets`.
+- Verified the fallback directly with an isolated `XDG_STATE_HOME` (no
+  composed appearance): all headers rendered neutral with only the type dot.
+  Screenshot: `/tmp/req009-shots/r4-fallback.png`.
+- The skin lane must delete the old per-kind selectors listed in the skin
+  follow-up section above and paint `.clipboard-head`, `.clipboard-type-dot`,
+  `.clipboard-card.selected` and `.clipboard-pin-card.focused`.
+
+### Remaining visual checks
+
+- After the skin template change: Image/Code/Text headers neutral under the
+  active skin, type dots visible, one accent selection/focus ring, neutral pin.
+- Screenshot target:
+  `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-4/`.
 
 ## Mock
 
