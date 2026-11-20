@@ -87,22 +87,79 @@ window#clipboard-window {
   border-color: @primary;
 }
 
-/* One shared selection signal from the skin accent; type identity now lives
- * only in the small header/filter dots. */
-.clipboard-card.selected {
+/* Selection follows the same accent family as the header plate. */
+.kind-text.selected {
   border-color: @primary;
   background-color: alpha(@primary, 0.12);
   box-shadow: 0 0 0 2px alpha(@primary, 0.6);
 }
 
-/* Neutral header plate: the active surface/ink, with only a small type dot
- * carrying identity. No per-kind header background. */
+.kind-link.selected {
+  border-color: @primary_container;
+  background-color: alpha(@primary_container, 0.12);
+  box-shadow: 0 0 0 2px alpha(@primary_container, 0.6);
+}
+
+.kind-code.selected {
+  border-color: @secondary_container;
+  background-color: alpha(@secondary_container, 0.12);
+  box-shadow: 0 0 0 2px alpha(@secondary_container, 0.6);
+}
+
+.kind-image.selected {
+  border-color: @secondary;
+  background-color: alpha(@secondary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@secondary, 0.6);
+}
+
+.kind-color.selected {
+  border-color: @tertiary;
+  background-color: alpha(@tertiary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@tertiary, 0.6);
+}
+
+.kind-emoji.selected {
+  border-color: @tertiary_container;
+  background-color: alpha(@tertiary_container, 0.12);
+  box-shadow: 0 0 0 2px alpha(@tertiary_container, 0.6);
+}
+
+/* Per-type header plates use the scheme's three accent families. Structural
+ * height/padding/hairline stay shared; only the paint differs by kind. */
 .clipboard-head {
   min-height: 36px;
   padding: 0 12px;
-  background-color: alpha(@surface_container, 0.75);
-  color: @on_surface;
   border-bottom: 1px solid alpha(@on_surface, 0.08);
+}
+
+.kind-text .clipboard-head {
+  background-color: @primary;
+  color: @on_primary;
+}
+
+.kind-link .clipboard-head {
+  background-color: @primary_container;
+  color: @on_primary_container;
+}
+
+.kind-code .clipboard-head {
+  background-color: @secondary_container;
+  color: @on_secondary_container;
+}
+
+.kind-image .clipboard-head {
+  background-color: @secondary;
+  color: @on_secondary;
+}
+
+.kind-color .clipboard-head {
+  background-color: @tertiary;
+  color: @on_tertiary;
+}
+
+.kind-emoji .clipboard-head {
+  background-color: @tertiary_container;
+  color: @on_tertiary_container;
 }
 
 .clipboard-index {
@@ -465,11 +522,51 @@ menubutton.clipboard-gear > button:active,
   box-shadow: 0 24px 64px alpha(@shadow, 0.44);
 }
 
-.clipboard-pin-card.focused {
+.kind-text.clipboard-pin-card.focused {
   border-color: @primary;
   box-shadow:
     0 0 0 2px @primary,
     0 0 0 7px alpha(@primary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-link.clipboard-pin-card.focused {
+  border-color: @primary_container;
+  box-shadow:
+    0 0 0 2px @primary_container,
+    0 0 0 7px alpha(@primary_container, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-code.clipboard-pin-card.focused {
+  border-color: @secondary_container;
+  box-shadow:
+    0 0 0 2px @secondary_container,
+    0 0 0 7px alpha(@secondary_container, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-image.clipboard-pin-card.focused {
+  border-color: @secondary;
+  box-shadow:
+    0 0 0 2px @secondary,
+    0 0 0 7px alpha(@secondary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-color.clipboard-pin-card.focused {
+  border-color: @tertiary;
+  box-shadow:
+    0 0 0 2px @tertiary,
+    0 0 0 7px alpha(@tertiary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-emoji.clipboard-pin-card.focused {
+  border-color: @tertiary_container;
+  box-shadow:
+    0 0 0 2px @tertiary_container,
+    0 0 0 7px alpha(@tertiary_container, 0.22),
     0 26px 70px alpha(@shadow, 0.5);
 }
 
@@ -575,56 +672,57 @@ menubutton.clipboard-gear > button:active,
 }
 
 .clipboard-filter-dot.kind-text {
-  background-color: @tertiary;
-}
-
-.clipboard-filter-dot.kind-code {
-  background-color: @surface_container_lowest;
-}
-
-.clipboard-filter-dot.kind-color {
-  background-color: @error;
-}
-
-.clipboard-filter-dot.kind-image {
-  background-color: @error_container;
-}
-
-.clipboard-filter-dot.kind-link {
   background-color: @primary;
 }
 
-.clipboard-filter-dot.kind-emoji {
+.clipboard-filter-dot.kind-link {
+  background-color: @primary_container;
+}
+
+.clipboard-filter-dot.kind-code {
+  background-color: @secondary_container;
+}
+
+.clipboard-filter-dot.kind-image {
   background-color: @secondary;
 }
 
-/* The only type-coloured element inside the neutral card header. */
+.clipboard-filter-dot.kind-color {
+  background-color: @tertiary;
+}
+
+.clipboard-filter-dot.kind-emoji {
+  background-color: @tertiary_container;
+}
+
+/* The header dot uses the plate's on_* ink so it stays visible against the
+ * coloured header while the filter dot mirrors the plate fill. */
 .clipboard-type-dot {
   border-radius: 999px;
 }
 
 .clipboard-type-dot.kind-text {
-  background-color: @tertiary;
-}
-
-.clipboard-type-dot.kind-code {
-  background-color: @surface_container_lowest;
-}
-
-.clipboard-type-dot.kind-color {
-  background-color: @error;
-}
-
-.clipboard-type-dot.kind-image {
-  background-color: @error_container;
+  background-color: @on_primary;
 }
 
 .clipboard-type-dot.kind-link {
-  background-color: @primary;
+  background-color: @on_primary_container;
+}
+
+.clipboard-type-dot.kind-code {
+  background-color: @on_secondary_container;
+}
+
+.clipboard-type-dot.kind-image {
+  background-color: @on_secondary;
+}
+
+.clipboard-type-dot.kind-color {
+  background-color: @on_tertiary;
 }
 
 .clipboard-type-dot.kind-emoji {
-  background-color: @secondary;
+  background-color: @on_tertiary_container;
 }
 
 .clipboard-compact-actions {
@@ -758,6 +856,97 @@ menubutton.clipboard-gear > button:active,
   border-color: alpha(@on_surface, 0.55);
   box-shadow: inset 0 0 0 1px alpha(@on_surface, 0.35);
   opacity: 1;
+}
+
+/* Coloured headers use their matching on_* ink so the square stays visible. */
+.kind-text .clipboard-pin-button {
+  background-color: alpha(@on_primary, 0.20);
+  border-color: alpha(@on_primary, 0.30);
+}
+
+.kind-text .clipboard-pin-button:hover {
+  background-color: alpha(@on_primary, 0.34);
+}
+
+.kind-text .clipboard-pin-button.is-on {
+  background-color: alpha(@on_primary, 0.46);
+  border-color: alpha(@on_primary, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_primary, 0.35);
+}
+
+.kind-link .clipboard-pin-button {
+  background-color: alpha(@on_primary_container, 0.20);
+  border-color: alpha(@on_primary_container, 0.30);
+}
+
+.kind-link .clipboard-pin-button:hover {
+  background-color: alpha(@on_primary_container, 0.34);
+}
+
+.kind-link .clipboard-pin-button.is-on {
+  background-color: alpha(@on_primary_container, 0.46);
+  border-color: alpha(@on_primary_container, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_primary_container, 0.35);
+}
+
+.kind-code .clipboard-pin-button {
+  background-color: alpha(@on_secondary_container, 0.20);
+  border-color: alpha(@on_secondary_container, 0.30);
+}
+
+.kind-code .clipboard-pin-button:hover {
+  background-color: alpha(@on_secondary_container, 0.34);
+}
+
+.kind-code .clipboard-pin-button.is-on {
+  background-color: alpha(@on_secondary_container, 0.46);
+  border-color: alpha(@on_secondary_container, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_secondary_container, 0.35);
+}
+
+.kind-image .clipboard-pin-button {
+  background-color: alpha(@on_secondary, 0.20);
+  border-color: alpha(@on_secondary, 0.30);
+}
+
+.kind-image .clipboard-pin-button:hover {
+  background-color: alpha(@on_secondary, 0.34);
+}
+
+.kind-image .clipboard-pin-button.is-on {
+  background-color: alpha(@on_secondary, 0.46);
+  border-color: alpha(@on_secondary, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_secondary, 0.35);
+}
+
+.kind-color .clipboard-pin-button {
+  background-color: alpha(@on_tertiary, 0.20);
+  border-color: alpha(@on_tertiary, 0.30);
+}
+
+.kind-color .clipboard-pin-button:hover {
+  background-color: alpha(@on_tertiary, 0.34);
+}
+
+.kind-color .clipboard-pin-button.is-on {
+  background-color: alpha(@on_tertiary, 0.46);
+  border-color: alpha(@on_tertiary, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_tertiary, 0.35);
+}
+
+.kind-emoji .clipboard-pin-button {
+  background-color: alpha(@on_tertiary_container, 0.20);
+  border-color: alpha(@on_tertiary_container, 0.30);
+}
+
+.kind-emoji .clipboard-pin-button:hover {
+  background-color: alpha(@on_tertiary_container, 0.34);
+}
+
+.kind-emoji .clipboard-pin-button.is-on {
+  background-color: alpha(@on_tertiary_container, 0.46);
+  border-color: alpha(@on_tertiary_container, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_tertiary_container, 0.35);
 }
 
 .clipboard-pin-mark {

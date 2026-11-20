@@ -88,36 +88,65 @@ test("every @role in the stylesheets is a declared palette.v1 role", () => {
   }
 });
 
-test("the card header is one neutral surface/ink plate", () => {
+const HEADER_INK = {
+  text: ["primary", "on_primary"],
+  link: ["primary_container", "on_primary_container"],
+  code: ["secondary_container", "on_secondary_container"],
+  image: ["secondary", "on_secondary"],
+  color: ["tertiary", "on_tertiary"],
+  emoji: ["tertiary_container", "on_tertiary_container"],
+};
+
+test("each card kind uses its accent-family header fill and on_* ink", () => {
   const css = readText("style.css");
-  const head = functionBodyCss(css, ".clipboard-head");
-  assert.match(head, /background-color:\s*alpha\(@surface_container/);
-  assert.match(head, /color:\s*@on_surface/);
-  assert.doesNotMatch(
-    css,
-    /\.kind-\w+\s+\.clipboard-head\s*\{/,
-    "no type-specific header plate may remain",
+  const heads = new Map(
+    [
+      ...css.matchAll(
+        /\.kind-(\w+) \.clipboard-head \{\s*background-color: @([a-z0-9_]+);\s*color: @([a-z0-9_]+);\s*\}/g,
+      ),
+    ].map((match) => [match[1], [match[2], match[3]]]),
   );
+  assert.deepEqual(
+    Object.fromEntries(heads),
+    HEADER_INK,
+    "every .kind-* header must use its accent family and matching on_* ink",
+  );
+
+  const structural = functionBodyCss(css, ".clipboard-head");
+  assert.doesNotMatch(structural, /background-color:|color:/, "only the per-kind rules paint the header");
+  assert.match(structural, /min-height:/);
+  assert.match(structural, /padding:/);
 });
 
-test("type identity is only a small dot in the neutral header", () => {
+test("type identity rejects error/neutral-black roles", () => {
   const css = readText("style.css");
-  const roles = {
-    text: "@tertiary",
-    code: "@surface_container_lowest",
-    color: "@error",
-    image: "@error_container",
-    link: "@primary",
-    emoji: "@secondary",
-  };
-  for (const [kind, role] of Object.entries(roles)) {
-    const dot = functionBodyCss(css, `.clipboard-type-dot.kind-${kind}`);
-    assert.match(dot, new RegExp(`background-color:\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  for (const kind of Object.keys(HEADER_INK)) {
+    for (const selector of [
+      `.kind-${kind} .clipboard-head`,
+      `.kind-${kind}.selected`,
+      `.kind-${kind}.clipboard-pin-card.focused`,
+      `.kind-${kind} .clipboard-pin-button`,
+      `.clipboard-filter-dot.kind-${kind}`,
+      `.clipboard-type-dot.kind-${kind}`,
+    ]) {
+      const body = functionBodyCss(css, selector);
+      assert.doesNotMatch(
+        body,
+        /@error\b|@error_container\b|@surface_container_lowest\b/,
+        `${selector} must not use error/neutral-black type roles`,
+      );
+    }
   }
-  const itemCard = readText("ui", "ItemCard.tsx");
-  assert.match(itemCard, /dot\.add_css_class\("clipboard-type-dot"\)/);
-  assert.match(itemCard, /dot\.set_size_request\(6, 6\)/);
-  assert.match(itemCard, /dot\.add_css_class\(`kind-\$\{item\.kind\}`\)/);
+});
+
+test("filter dots mirror header fills and header dots use on_* ink", () => {
+  const css = readText("style.css");
+  for (const [kind, [fill, ink]] of Object.entries(HEADER_INK)) {
+    const filter = functionBodyCss(css, `.clipboard-filter-dot.kind-${kind}`);
+    assert.match(filter, new RegExp(`background-color:\\s*@${fill}\\b`));
+    const dot = functionBodyCss(css, `.clipboard-type-dot.kind-${kind}`);
+    assert.match(dot, new RegExp(`background-color:\\s*@${ink}\\b`));
+  }
 });
 
 test("the header ink classes and runtime luminance math are gone", () => {
