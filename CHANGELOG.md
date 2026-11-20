@@ -60,6 +60,13 @@
   pin focus use one shared `@primary` rule; the pin square uses the neutral
   control fill; the new selectors are listed for the skin lane, which must
   delete the old per-kind header/selection/focus/pin rules.
+- Owner feedback round 5: restored per-type headers using the scheme's accent
+  families — Text primary, Link primary_container, Code secondary_container,
+  Image secondary, Color tertiary, Emoji tertiary_container — each with its
+  matching `on_*` ink. Selection/focus/pin fills follow the same families;
+  filter dots use the header fills and header dots use the header ink. Error
+  and neutral-black roles are gone from type identity; full gates pass and the
+  skin selector list is updated.
 
 ## v0.6.2 — 2026-11-12
 

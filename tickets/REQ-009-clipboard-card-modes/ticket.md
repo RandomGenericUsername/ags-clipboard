@@ -269,12 +269,12 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 
 | Command | Result |
 | --- | --- |
-| `make test` | exit 0 — 27 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 32 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, neutral header/type-dot, skin/focus/pin geometry, template gate, refresh invariants) |
+| `make test` | exit 0 — 28 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch, header/type-role gates) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 32 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,270,684 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 32 conformance, drift "all checks passed", bundle 1,270,684 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,287,280 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 32 conformance, drift "all checks passed", bundle 1,287,280 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -338,17 +338,32 @@ menubutton.clipboard-gear:active, .clipboard-gear > button:active
 .clipboard-search-box.focused
 .clipboard-search:focus, .clipboard-search:focus-visible
 
-/* round 4: neutral header + type dot + shared accent state */
-.clipboard-head
-.clipboard-type-dot
-.clipboard-type-dot.kind-text, .clipboard-type-dot.kind-code,
-.clipboard-type-dot.kind-color, .clipboard-type-dot.kind-image,
-.clipboard-type-dot.kind-link, .clipboard-type-dot.kind-emoji
-.clipboard-card.selected
-.clipboard-pin-card.focused
-/* DELETE from the skin template: the six .kind-* .clipboard-head plates,
- * the six .kind-*.selected rules, the six .kind-*.clipboard-pin-card.focused
- * rules, and the five .kind-* .clipboard-pin-button fills. */
+/* round 5: accent-family headers (replace the old per-kind roles) */
+.clipboard-head                      /* structural only: height/padding/hairline */
+.kind-text .clipboard-head           /* @primary / @on_primary */
+.kind-link .clipboard-head           /* @primary_container / @on_primary_container */
+.kind-code .clipboard-head           /* @secondary_container / @on_secondary_container */
+.kind-image .clipboard-head          /* @secondary / @on_secondary */
+.kind-color .clipboard-head          /* @tertiary / @on_tertiary */
+.kind-emoji .clipboard-head          /* @tertiary_container / @on_tertiary_container */
+
+.kind-text.selected, .kind-link.selected, .kind-code.selected,
+.kind-image.selected, .kind-color.selected, .kind-emoji.selected
+.kind-text.clipboard-pin-card.focused, .kind-link.clipboard-pin-card.focused,
+.kind-code.clipboard-pin-card.focused, .kind-image.clipboard-pin-card.focused,
+.kind-color.clipboard-pin-card.focused, .kind-emoji.clipboard-pin-card.focused
+.kind-text .clipboard-pin-button, .kind-link .clipboard-pin-button,
+.kind-code .clipboard-pin-button, .kind-image .clipboard-pin-button,
+.kind-color .clipboard-pin-button, .kind-emoji .clipboard-pin-button
+
+.clipboard-filter-dot.kind-text, .clipboard-filter-dot.kind-link,
+.clipboard-filter-dot.kind-code, .clipboard-filter-dot.kind-image,
+.clipboard-filter-dot.kind-color, .clipboard-filter-dot.kind-emoji
+.clipboard-type-dot.kind-text, .clipboard-type-dot.kind-link,
+.clipboard-type-dot.kind-code, .clipboard-type-dot.kind-image,
+.clipboard-type-dot.kind-color, .clipboard-type-dot.kind-emoji
+/* The old @error / @error_container / @surface_container_lowest mappings are
+ * removed from all of the selectors above; no hex. */
 ```
 
 ## Feedback round 1 (2026-11-20)
@@ -726,6 +741,51 @@ active palette.
   active skin, type dots visible, one accent selection/focus ring, neutral pin.
 - Screenshot target:
   `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-4/`.
+
+## Feedback round 5 (2026-11-20)
+
+Owner rejected the neutral all-same header: the scheme already has six
+semantic accent families, so cards should use them instead of `@error` /
+`@error_container` / `@surface_container_lowest`.
+
+### A. Header plates
+
+- Six `.kind-* .clipboard-head` rules now use the exact accent mapping:
+  - Text → `@primary` / `@on_primary`
+  - Link → `@primary_container` / `@on_primary_container`
+  - Code → `@secondary_container` / `@on_secondary_container`
+  - Image → `@secondary` / `@on_secondary`
+  - Color → `@tertiary` / `@on_tertiary`
+  - Emoji → `@tertiary_container` / `@on_tertiary_container`
+- `.clipboard-head` itself is structural only: height, padding and the bottom
+  hairline. No neutral paint remains, and no type uses error/black roles.
+- The 6 px type dot remains; it uses the matching `on_*` ink so it stays
+  visible on the coloured plate.
+
+### B. Selection / focus / pin
+
+- Restored six `.kind-*.selected` rings and six
+  `.kind-*.clipboard-pin-card.focused` rings using the same accent family,
+  with subtle alpha fills and a soft outer halo.
+- Restored six `.kind-* .clipboard-pin-button` fills using the matching `on_*`
+  role; the base 22×22 square stays neutral for non-coloured surfaces.
+- Filter dots use the header fill roles; header dots use the header ink roles.
+
+### C. Tests
+
+- `tests/theme-roles.test.mjs` asserts the six header fill/ink pairs, rejects
+  `@error`, `@error_container` and `@surface_container_lowest` in every type
+  identity rule, and checks dot mappings.
+- `tests/app-contract.test.mjs` asserts per-kind selection/focus/pin fills,
+  the six header families, no hex and no `min-width: 260px`.
+- Evidence: `make test` 28 pass; `make conformance` 32 pass; full gates below.
+
+### D. Skin caveat
+
+- The app fallback is correct (verified with an isolated `XDG_STATE_HOME`, no
+  composed skin). The active `dotfiles-assets` skin still carries the old
+  per-kind roles and overrides the fallback until the skin lane updates the
+  selectors listed in the skin follow-up section.
 
 ## Mock
 
