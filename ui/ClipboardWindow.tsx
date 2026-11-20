@@ -220,10 +220,14 @@ export function ClipboardWindow(
 
   const root = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 })
   root.add_css_class("clipboard-root")
+  root.set_vexpand(true)
+  root.set_hexpand(true)
 
   // Full stage
   const fullRoot = column(10)
   fullRoot.add_css_class("clipboard-full")
+  fullRoot.set_vexpand(true)
+  fullRoot.set_hexpand(true)
 
   const brand = label("Clipboard", "clipboard-brand")
   const fullCount = label("0", "clipboard-count")
@@ -311,6 +315,7 @@ export function ClipboardWindow(
   pinsScroll.set_child(pinsGrid)
   const pinsPanel = column(12)
   pinsPanel.add_css_class("clipboard-pins-panel")
+  pinsPanel.set_vexpand(true)
   pinsPanel.append(pinsHead)
   pinsPanel.append(pinsScroll)
 
@@ -324,6 +329,8 @@ export function ClipboardWindow(
   // Compact strip
   const compactRoot = column(10)
   compactRoot.add_css_class("clipboard-compact")
+  compactRoot.set_vexpand(true)
+  compactRoot.set_hexpand(true)
 
   let searchIcon = uiIcon("search", 18)
   const search = new Gtk.Entry({ placeholder_text: "Search clipboard\u2026", hexpand: true })
@@ -334,8 +341,14 @@ export function ClipboardWindow(
   searchBox.append(search)
 
   const filterChips = new Map<TypeFilter, Gtk.Button>()
-  const filters = row(4)
+  const filters = new Gtk.FlowBox({
+    selection_mode: Gtk.SelectionMode.NONE,
+    row_spacing: 4,
+    column_spacing: 4,
+    max_children_per_line: 8,
+  })
   filters.add_css_class("clipboard-filters")
+  filters.set_hexpand(true)
   const FILTER_LABEL: Record<TypeFilter, string> = {
     all: "All",
     text: "Text",
@@ -416,9 +429,9 @@ export function ClipboardWindow(
   const strip = row(8)
   strip.add_css_class("clipboard-strip")
   strip.append(stripPrev)
+  strip.append(stripUp)
   strip.append(compactScroll)
   strip.append(stripNext)
-  strip.append(stripUp)
   strip.append(stripDown)
   const compactHints = label("", "clipboard-hints")
   compactRoot.append(compactTop)
@@ -949,6 +962,8 @@ export function ClipboardWindow(
       vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
     )
     compactList.set_halign(vertical ? Gtk.Align.FILL : Gtk.Align.START)
+    strip.set_orientation(vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)
+    compactTop.set_orientation(vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)
     compactScroll.set_policy(
       vertical ? Gtk.PolicyType.NEVER : Gtk.PolicyType.AUTOMATIC,
       vertical ? Gtk.PolicyType.AUTOMATIC : Gtk.PolicyType.NEVER,
@@ -1007,6 +1022,7 @@ export function ClipboardWindow(
         width,
         (target) => copyOnly(target),
       )
+      if (vertical) card.set_halign(Gtk.Align.FILL)
       card.add_css_class(`key-${cssKey(itemKey(item))}`)
       if (itemKey(item) === selectedKey) card.add_css_class("selected")
       compactList.append(card)
@@ -1081,7 +1097,7 @@ export function ClipboardWindow(
 
   function applyMode(): void {
     const full = mode === "full"
-    fullRoot.set_visible(full)
+    fullRoot.set_visible(full && !pinsOpen)
     compactRoot.set_visible(!full)
     pinsPanel.set_visible(full && pinsOpen)
     root.remove_css_class("clipboard-mode-full")

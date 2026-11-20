@@ -216,6 +216,26 @@ test("the settings document is saved on every change", () => {
   }
 });
 
+test("compact link cards expose a visible Open chip that uses the link path", () => {
+  const itemCard = readText("ui", "ItemCard.tsx");
+  assert.match(itemCard, /clipboard-open-chip/);
+  assert.match(itemCard, /open\.connect\("clicked", \(\) => onOpenLink\(item\)\)/);
+  assert.doesNotMatch(itemCard, /hover.*open/i, "the Open chip is not hover-only");
+});
+
+test("compact view switching and pinned-grid focus stay wired", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const key = functionBody(window, "function onKey");
+  assert.match(key, /keyval === Gdk\.KEY_Tab/);
+  assert.match(key, /toggleCompactView\(\)/);
+  assert.match(key, /keyval === Gdk\.KEY_Left/);
+  assert.match(key, /movePins\(-1\)/);
+  assert.match(key, /copyFocusedPin\(\)/);
+  assert.match(key, /keyval === Gdk\.KEY_Up[\s\S]*openPins\(\)/);
+  assert.match(window, /initialPinFocus\(/);
+  assert.match(window, /pinCopyTarget\(/);
+});
+
 test("the launcher and keybind description are documented for consumers", () => {
   const readme = readText("README.md");
   assert.match(readme, /`clipboard-ui`/);
