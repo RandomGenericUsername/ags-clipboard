@@ -1,5 +1,35 @@
 # Changelog
 
+## Unreleased — REQ-009 card-stage clipboard
+
+- Replace the REQ-005 rail + preview surface with the card-stage clipboard.
+  Full mode (default) is a full-monitor stage over a dimmed scrim: one focused
+  card (~720 × 460, clamped) with previous/next peeks, circular arrows, a
+  bottom control bar and a 4-column pinned grid opened by `↑` or the pill and
+  closed by `↓`/`Esc`/Back. Pinned-grid `←`/`→` wrap a focused pin without
+  moving the stage deck; `Enter`/click copies and collapses. `Ctrl+1..9`,
+  `Ctrl+F`, `Ctrl+Z`, `Delete` and honest empty/single-pin states are kept.
+- Add Compact mode: bottom/left/right card strip, `Recent | Pinned (n)` view,
+  Small/Medium/Large cards (220/260/300 px), search, type filter, incognito,
+  inline clear confirmation, settings, `Tab`/`Shift+Tab` view switching
+  (Bottom also `↑`/`↓`; vertical also `←`/`→` when search is not focused) and
+  a visible per-link `Open` chip.
+- Add the capture-tool settings pattern: pure `lib/settings.ts`,
+  `lib/settings-store.ts` port and the GLib adapter at
+  `$XDG_CONFIG_HOME/clipboard-ui/config.json`
+  (`{ "layout": { "mode", "compact": { "card_size", "alignment" } } }`),
+  save-on-change, unknown/missing/corrupt values degrading to
+  `full`/`medium`/`bottom`. The file is app-owned, never an AGS link or the
+  daemon config.
+- Preserve the `clipboard-window`/`clipboard` request surface, the
+  `appearance-refresh <genHash>` handler and `style.css` fallback. Live
+  captures no longer steal the current selection; a `n new` badge offers to
+  jump to them. Delete-with-undo restores the card and keeps its cached image
+  through the undo window.
+- `make test` now executes the settings domain/port and the deck, view,
+  selection and pinned-focus logic; conformance pins the app-owned settings
+  path and save-on-change setters.
+
 ## v0.6.2 — 2026-11-12
 
 - Refresh the local pin tuple to `ags-platform` `v1.1.0` / `contracts`

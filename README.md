@@ -30,8 +30,9 @@ in a browser (no build step). The mock is the first source of truth for look and
 interaction; the ticket is the source of truth for intent and acceptance.
 
 REQ-005's rail + preview design is frozen on `main` and is superseded by
-REQ-009. The live app still renders the bottom card strip described below until
-REQ-009 is implemented.
+REQ-009. The live app implements REQ-009: Full is the default layout and
+Compact is the bottom/left/right strip, both driven by the app-owned settings
+file below.
 
 The overlay settings live at `$XDG_CONFIG_HOME/clipboard-ui/config.json`:
 
@@ -40,9 +41,9 @@ The overlay settings live at `$XDG_CONFIG_HOME/clipboard-ui/config.json`:
 ```
 
 Defaults are `full` / `medium` / `bottom` (card size `small`/`medium`/`large` =
-220/260/300 px; alignment `bottom`/`left`/`right`). `compact.position` is
-retired. This file is **not** the
-daemon's `clipboard/config.json` and is not an AGS link.
+220/260/300 px; alignment `bottom`/`left`/`right`). Unknown, missing or corrupt
+values degrade to those defaults. `compact.position` is retired. This file is
+**not** the daemon's `clipboard/config.json` and is not an AGS link.
 
 ## Runtime contract
 
@@ -55,8 +56,8 @@ documents:
 - images: `$XDG_CACHE_HOME/clipboard/`
 - daemon config: `$XDG_CONFIG_HOME/clipboard/config.json`
 - overlay settings: `$XDG_CONFIG_HOME/clipboard-ui/config.json` (the app's
-  Full/Compact layout and compact card size; **not** the daemon's
-  `clipboard/config.json`)
+  Full/Compact layout, compact card size and compact alignment; **not** the
+  daemon's `clipboard/config.json`)
 
 The daemon performs the one-time migration from the retired namespace; this
 app never reads the old paths. Writable state stays outside the installed tag

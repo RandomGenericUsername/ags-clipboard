@@ -210,12 +210,12 @@ above. The details remain here for review and traceability.
 - Real contract: `$XDG_CONFIG_HOME/clipboard-ui/config.json`
 
   ```json
-  { "layout": { "mode": "full", "compact": { "card_size": "medium" } } }
+  { "layout": { "mode": "full", "compact": { "card_size": "medium", "alignment": "bottom" } } }
   ```
 
-  Defaults are `full` / `medium`. Unknown values degrade to the defaults. The
-  implementation uses the capture-tool pattern: pure domain + port + GLib
-  adapter, save-on-change. This is **not** the daemon's
+  Defaults are `full` / `medium` / `bottom`. Unknown values degrade to the
+  defaults. The implementation uses the capture-tool pattern: pure domain +
+  port + GLib adapter, save-on-change. This is **not** the daemon's
   `clipboard/config.json` and **not** an AGS link. The mock uses `localStorage`.
 
 ### Visual language
@@ -255,10 +255,73 @@ does not frame the surface.
 - [x] Final design approved and frozen: commit `6242101`, sha256
       `9e3f6ecaa396837194697b1d6922d7946677ea18440e4d7b5bb9c2e1fd278d19`.
       The accepted compact extension is part of the intent.
-- [ ] Implementation in the app: full stage, compact strip (Bottom/Left/Right),
+- [x] Implementation in the app: full stage, compact strip (Bottom/Left/Right),
       Recent/Pinned view, tab keys, compact link Open, settings adapter,
       persistence, all preserved behaviours.
-- [ ] `make ci` / `make gates` pass; the composition pin is bumped.
+- [x] `make ci` / `make gates` pass in the ticket worktree (evidence below).
+- [ ] The composition pin is bumped (release/composition lane; explicitly out
+      of scope for this app worktree — do not bump here).
+
+## Implementation evidence (2026-11-20)
+
+Worktree `.worktrees/REQ-009`, branch `ticket/REQ-009-clipboard-card-modes`.
+Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
+
+| Command | Result |
+| --- | --- |
+| `make test` | exit 0 — 27 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 17 tests pass (manifest identity, settings path, save-on-change, compact Open chip/view keys, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
+| `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,222,384 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 17 conformance, drift "all checks passed", bundle 1,222,384 bytes, 0 type errors) |
+
+Implementation map:
+
+- `lib/settings.ts`, `lib/settings-store.ts`, `lib/settings-glib.ts` — pure
+  settings domain, injected port, GLib adapter at
+  `$XDG_CONFIG_HOME/clipboard-ui/config.json`.
+- `lib/card-modes.ts` — pinned-first deck, Recent/Pinned filtering, compact
+  selection, pinned-grid focus/wrap and copy target.
+- `lib/history.ts` — `restoreItem` and deferred image purge for delete/undo.
+- `ui/ClipboardWindow.tsx` — both layouts, key map, live updates (selection
+  preserved, `n new` badge), inline clear, settings popovers, window
+  anchor/margins per layout/alignment.
+- `ui/ItemCard.tsx` — shared identity header, compact card with visible `Open`
+  chip, stage card, peek card and pinned card.
+- `ui/Preview.tsx` — stage-scale previews (large image/code/emoji, link
+  domain + URL, colour hex/RGB/HSL).
+- `style.css` — bundled fallback for the new surface.
+- Tests: `tests/unit.test.mjs` (settings + mode/selection), updated
+  `tests/app-contract.test.mjs` and
+  `tests/validation/appearance-migration.test.mjs`.
+
+Known deviations / follow-ups:
+
+- Full mode dims the desktop with the overlay's scrim; it cannot blur the
+  desktop itself from an app-owned layer surface. Compact leaves the desktop
+  visible and sharp.
+- Skin paint: new selectors are listed in the follow-up section below; this
+  lane did not edit `dotfiles-assets/skins/templates/ags-clipboard.gtk.css.j2`.
+- Runtime behaviour was exercised by the local gates (typecheck/bundle), not by
+  a headless GTK session; visual pixel-parity with the mock is a review step.
+
+### Skin follow-up (shared paint pass, not this lane)
+
+Roles/selectors that need skin paint in
+`dotfiles-assets/skins/templates/ags-clipboard.gtk.css.j2`:
+
+```text
+.clipboard-root.clipboard-mode-full
+.clipboard-stage-card, .clipboard-stage-body
+.clipboard-peek, .clipboard-peek-card, .clipboard-peek-body
+.clipboard-nav-arrow, .clipboard-control-bar, .clipboard-bar-button
+.clipboard-pins-pill, .clipboard-gear, .clipboard-pin-card.focused
+.clipboard-compact, .clipboard-compact.align-left, .clipboard-compact.align-right
+.clipboard-search-box, .clipboard-chip.selected, .clipboard-view-tab.active
+.clipboard-open-chip, .clipboard-strip-arrow, .clipboard-new-badge
+.clipboard-settings, .clipboard-segment-button.selected
+```
 
 ## Mock
 
