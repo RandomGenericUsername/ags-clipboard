@@ -101,8 +101,8 @@ export function nextCompactView(
 }
 
 /**
- * Move the compact selection by `delta`, clamped (the mock clamps rather than
- * wraps inside a view). Returns the next key, or `null` for an empty list.
+ * Move the compact selection by `delta` with wrap-around. Returns the next
+ * key, or `null` for an empty list.
  */
 export function moveCompactSelection(
   list: readonly ClipboardItem[],
@@ -112,7 +112,7 @@ export function moveCompactSelection(
   if (list.length === 0) return null
   let index = list.findIndex((item) => itemKey(item) === selectedKey)
   if (index < 0) return itemKey(list[0])
-  index = Math.max(0, Math.min(list.length - 1, index + delta))
+  index = ((index + delta) % list.length + list.length) % list.length
   return itemKey(list[index])
 }
 

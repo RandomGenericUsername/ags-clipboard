@@ -290,9 +290,6 @@ export function ClipboardWindow(
   let clearConfirm = false
   let paused = false
   let jobId: string | null = null
-  //: Captures that arrived while the overlay was open. Selecting the newest
-  //: one clears them; they never steal the current selection.
-  let newKeys: string[] = []
   //: Delete undo buffer + the timeout that retires it.
   let undo: { item: ClipboardItem; selected: string | null } | null = null
   let undoTimer = 0
@@ -307,6 +304,10 @@ export function ClipboardWindow(
   root.add_css_class("clipboard-root")
   root.set_vexpand(true)
   root.set_hexpand(true)
+  // A focusable, paint-free root is the compact default focus target. This
+  // keeps the entry unfocused (so arrows navigate cards) while the window
+  // still owns the keyboard.
+  root.set_can_focus(true)
   const stageBase = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 })
   stageBase.set_vexpand(true)
   stageBase.set_hexpand(true)
@@ -390,12 +391,12 @@ export function ClipboardWindow(
   const pinsHead = row(12)
   pinsHead.add_css_class("clipboard-pins-head")
   pinsHead.append(pinsTitle)
+  pinsHead.append(pinsBack)
   pinsHead.append(pinsHints)
   const pinsSpacer = new Gtk.Box()
   pinsSpacer.set_hexpand(true)
   pinsHead.append(pinsSpacer)
   pinsHead.append(pinsHint)
-  pinsHead.append(pinsBack)
   const pinsGrid = new Gtk.Grid({
     column_spacing: 16,
     row_spacing: 16,
@@ -403,7 +404,8 @@ export function ClipboardWindow(
   })
   pinsGrid.add_css_class("clipboard-pins-grid")
   pinsGrid.set_hexpand(true)
-  pinsGrid.set_halign(Gtk.Align.CENTER)
+  pinsGrid.set_halign(Gtk.Align.FILL)
+  pinsGrid.set_valign(Gtk.Align.START)
   const pinsScroll = new Gtk.ScrolledWindow({
     hexpand: true,
     vexpand: true,
@@ -513,17 +515,10 @@ export function ClipboardWindow(
 
   const recentTab = button("Recent", "clipboard-view-tab")
   const pinnedTab = button("Pinned (0)", "clipboard-view-tab")
-  const compactStatus = label("0 recent", "clipboard-status")
-  const newBadge = button("0 new", "clipboard-new-badge")
   const viewBar = row(2)
   viewBar.add_css_class("clipboard-viewbar")
   viewBar.append(recentTab)
   viewBar.append(pinnedTab)
-  viewBar.append(compactStatus)
-  const viewSpacer = new Gtk.Box()
-  viewSpacer.set_hexpand(true)
-  viewBar.append(viewSpacer)
-  viewBar.append(newBadge)
 
   const compactList = new Gtk.Box({
     orientation: Gtk.Orientation.HORIZONTAL,
@@ -796,7 +791,6 @@ export function ClipboardWindow(
   function selectByKey(key: string | null, scroll = false): void {
     if (key === null) return
     selectedKey = key
-    newKeys = newKeys.filter((entry) => entry !== key)
     if (mode === "full") renderFull()
     else renderCompact()
     if (mode === "full" && pinsOpen) renderPins()
@@ -842,7 +836,6 @@ export function ClipboardWindow(
   function copyOnly(item: ClipboardItem): void {
     copyItem(item)
       .then(() => {
-        newKeys = newKeys.filter((entry) => entry !== itemKey(item))
         if (mapped) {
           if (mode === "full") renderFull()
           else renderCompact()
@@ -939,12 +932,6 @@ export function ClipboardWindow(
   function toggleCompactView(): void {
     const next = nextCompactView(compactView, items.some((item) => item.favorite))
     if (next !== compactView) setView(next)
-  }
-
-  function jumpToNewest(): void {
-    const key = newKeys[0]
-    if (key === undefined) return
-    selectByKey(key, true)
   }
 
   // ── rendering ────────────────────────────────────────────────────────────
@@ -1049,6 +1036,7 @@ export function ClipboardWindow(
       }
     }
     const cardW = Math.max(180, Math.floor((geometry.width - 96) / 4))
+    const columns = 4
     pins.forEach((item, index) => {
       const deckIndex = list.findIndex((entry) => itemKey(entry) === itemKey(item)) + 1
       const card = PinCard(
@@ -1062,8 +1050,17 @@ export function ClipboardWindow(
         cardW,
         togglePin,
       )
-      pinsGrid.attach(card, index % 4, Math.floor(index / 4), 1, 1)
+      pinsGrid.attach(card, index % columns, Math.floor(index / columns), 1, 1)
     })
+    // Keep four equal columns even when the last row is not full. Without
+    // fillers a 3-pin grid would collapse to 3 wider columns, unlike the mock.
+    const rows = Math.ceil(pins.length / columns)
+    for (let index = pins.length; index < rows * columns; index += 1) {
+      const filler = new Gtk.Box()
+      filler.add_css_class("clipboard-pin-filler")
+      filler.set_hexpand(true)
+      pinsGrid.attach(filler, index % columns, Math.floor(index / columns), 1, 1)
+    }
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       scrollFocusedPinIntoView()
       return false
@@ -1153,11 +1150,6 @@ export function ClipboardWindow(
       pinnedTab.remove_css_class("active")
     }
     recentTab.set_sensitive(true)
-
-    const viewLabel = compactView === "pinned" ? "pinned" : "recent"
-    compactStatus.set_label(`${list.length} ${viewLabel}`)
-    newBadge.set_visible(newKeys.length > 0)
-    newBadge.set_label(`${newKeys.length} new`)
 
     compactList.set_orientation(
       vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
@@ -1347,7 +1339,7 @@ export function ClipboardWindow(
         return true
       }
       if (mode === "compact" && typing) {
-        overlay?.set_focus(null)
+        root.grab_focus()
         return true
       }
       hideWindow()
@@ -1543,12 +1535,13 @@ export function ClipboardWindow(
     renderCompact()
   })
   search.connect("notify::has-focus", () => {
+    if (search.has_focus) searchBox.add_css_class("focused")
+    else searchBox.remove_css_class("focused")
     compactHints.set_label(compactHintText())
   })
 
   recentTab.connect("clicked", () => setView("recent"))
   pinnedTab.connect("clicked", () => setView("pinned"))
-  newBadge.connect("clicked", jumpToNewest)
   stripPrev.connect("clicked", () => selectByKey(moveCompactSelection(compactListItems(), selectedKey, -1), true))
   stripNext.connect("clicked", () => selectByKey(moveCompactSelection(compactListItems(), selectedKey, 1), true))
   stripUp.connect("clicked", () => selectByKey(moveCompactSelection(compactListItems(), selectedKey, -1), true))
@@ -1571,7 +1564,6 @@ export function ClipboardWindow(
     clearConfirm = false
     items = readHistory()
     selectedKey = null
-    newKeys = []
     undo = null
     renderAll()
   })
@@ -1584,7 +1576,6 @@ export function ClipboardWindow(
     const key = itemKey(item)
     items = [item, ...items.filter((existing) => itemKey(existing) !== key)]
     if (selectedKey === null) selectedKey = key
-    if (!newKeys.includes(key)) newKeys = [key, ...newKeys]
     if (mapped) {
       if (mode === "full") {
         renderFull()
@@ -1669,7 +1660,17 @@ export function ClipboardWindow(
         self.connect("map", () => {
           mapped = true
           self.present()
-          if (mode === "compact") search.grab_focus()
+          // Do not autofocus search: compact arrows must navigate cards. `/`
+          // (or a click) focuses the entry; while focused, text editing wins.
+          // `present()` can still hand focus to the first focusable child
+          // (the entry), so clear that focus on the next idle tick.
+          GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            if (mode === "compact") {
+              root.grab_focus()
+              if (!search.has_focus) searchBox.remove_css_class("focused")
+            }
+            return false
+          })
           items = readHistory()
           ensureSelection()
           renderAll()

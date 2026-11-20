@@ -360,11 +360,11 @@ test("the compact view toggles only when a pin exists", () => {
   assert.equal(nextCompactView("pinned", false), "recent");
 });
 
-test("compact selection clamps and recovers from a stale key", () => {
+test("compact selection wraps and recovers from a stale key", () => {
   const list = ordered(DECK).filter((entry) => !entry.favorite);
   assert.equal(moveCompactSelection(list, "code:c", 1), "text:a");
-  assert.equal(moveCompactSelection(list, "text:a", 1), "text:a");
-  assert.equal(moveCompactSelection(list, "code:c", -1), "code:c");
+  assert.equal(moveCompactSelection(list, "text:a", 1), "code:c");
+  assert.equal(moveCompactSelection(list, "code:c", -1), "text:a");
   assert.equal(moveCompactSelection(list, "missing", 1), "code:c");
   assert.equal(moveCompactSelection([], "code:c", 1), null);
 });

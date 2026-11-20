@@ -364,7 +364,9 @@ export function PinCard(
   const button = new Gtk.Box({
     css_classes: ["clipboard-pin-card", `kind-${item.kind}`],
   })
-  button.set_size_request(width, 236)
+  button.set_size_request(-1, 236)
+  button.set_hexpand(true)
+  button.set_vexpand(false)
   button.set_halign(Gtk.Align.FILL)
   button.set_valign(Gtk.Align.FILL)
   if (focused) button.add_css_class("focused")
@@ -376,10 +378,12 @@ export function PinCard(
     css_classes: [`kind-${item.kind}`],
   })
   card.set_overflow(Gtk.Overflow.HIDDEN)
+  card.set_vexpand(true)
   const suppress = { until: 0 }
   card.append(ItemHead(item, { index, pin: true, onTogglePin, suppress }))
   const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   body.add_css_class("clipboard-pin-body")
+  body.set_vexpand(true)
   body.append(Preview(item, { width: Math.max(140, width - 26) }))
   card.append(body)
   button.append(card)

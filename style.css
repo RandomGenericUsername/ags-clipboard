@@ -30,6 +30,16 @@ window#clipboard-window {
   color: alpha(@on_surface, 0.55);
 }
 
+/* The rounded box owns the focus ring; the inner entry must not draw its own
+ * rectangular outline inside it. */
+.clipboard-search:focus,
+.clipboard-search:focus-within,
+.clipboard-search:focus-visible {
+  outline: none;
+  box-shadow: none;
+  border: none;
+}
+
 /* Incognito is an active toggle: the shared action-active role (@primary),
  * so it no longer collides with the selection accent (spec §4). */
 .clipboard-incognito {
@@ -77,12 +87,43 @@ window#clipboard-window {
   border-color: @primary;
 }
 
-/* Selection is a shared state signal: the skin accent role, not the card's
- * type hue. The type role stays on the header plate only. */
-.clipboard-card.selected {
+/* Selection rings follow the card's type role (same role as its header plate)
+ * while the tint stays subtle. This is the app-side fallback; the skin lane
+ * repaints these selectors. */
+.kind-text.selected {
+  border-color: @tertiary;
+  background-color: alpha(@tertiary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@tertiary, 0.6);
+}
+
+.kind-code.selected {
+  border-color: @surface_container_lowest;
+  background-color: alpha(@surface_container_lowest, 0.12);
+  box-shadow: 0 0 0 2px alpha(@surface_container_lowest, 0.6);
+}
+
+.kind-color.selected {
+  border-color: @error;
+  background-color: alpha(@error, 0.12);
+  box-shadow: 0 0 0 2px alpha(@error, 0.6);
+}
+
+.kind-image.selected {
+  border-color: @error_container;
+  background-color: alpha(@error_container, 0.12);
+  box-shadow: 0 0 0 2px alpha(@error_container, 0.6);
+}
+
+.kind-link.selected {
   border-color: @primary;
   background-color: alpha(@primary, 0.12);
   box-shadow: 0 0 0 2px alpha(@primary, 0.6);
+}
+
+.kind-emoji.selected {
+  border-color: @secondary;
+  background-color: alpha(@secondary, 0.12);
+  box-shadow: 0 0 0 2px alpha(@secondary, 0.6);
 }
 
 /* Type header: background = palette role, ink = that role's Material `on_*`
@@ -493,8 +534,57 @@ menubutton.clipboard-gear > button:active,
     0 26px 70px alpha(@shadow, 0.5);
 }
 
+.kind-text.clipboard-pin-card.focused {
+  border-color: @tertiary;
+  box-shadow:
+    0 0 0 2px @tertiary,
+    0 0 0 7px alpha(@tertiary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-code.clipboard-pin-card.focused {
+  border-color: @surface_container_lowest;
+  box-shadow:
+    0 0 0 2px @surface_container_lowest,
+    0 0 0 7px alpha(@surface_container_lowest, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-color.clipboard-pin-card.focused {
+  border-color: @error;
+  box-shadow:
+    0 0 0 2px @error,
+    0 0 0 7px alpha(@error, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-image.clipboard-pin-card.focused {
+  border-color: @error_container;
+  box-shadow:
+    0 0 0 2px @error_container,
+    0 0 0 7px alpha(@error_container, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-link.clipboard-pin-card.focused {
+  border-color: @primary;
+  box-shadow:
+    0 0 0 2px @primary,
+    0 0 0 7px alpha(@primary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
+.kind-emoji.clipboard-pin-card.focused {
+  border-color: @secondary;
+  box-shadow:
+    0 0 0 2px @secondary,
+    0 0 0 7px alpha(@secondary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+
 .clipboard-pin-body {
   padding: 12px;
+  background-color: @surface;
 }
 
 .clipboard-pins-empty {
@@ -549,6 +639,11 @@ menubutton.clipboard-gear > button:active,
   min-width: 220px;
 }
 
+.clipboard-search-box.focused {
+  border-color: @primary;
+  box-shadow: 0 0 0 1px alpha(@primary, 0.8);
+}
+
 .clipboard-filters {
   padding: 2px;
 }
@@ -569,8 +664,8 @@ menubutton.clipboard-gear > button:active,
 }
 
 .clipboard-chip.selected {
-  background-color: alpha(@on_surface, 0.12);
-  border-color: alpha(@outline, 0.45);
+  background-color: alpha(@primary, 0.2);
+  border-color: alpha(@primary, 0.55);
   color: @on_surface;
   font-weight: 700;
 }
@@ -687,22 +782,6 @@ menubutton.clipboard-gear > button:active,
   border-bottom-color: @primary;
 }
 
-.clipboard-status {
-  font-size: 0.68rem;
-  color: alpha(@on_surface, 0.45);
-  padding-left: 8px;
-}
-
-.clipboard-new-badge {
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 999px;
-  border: 1px solid alpha(@secondary, 0.55);
-  background-color: alpha(@secondary, 0.16);
-  color: @on_surface;
-  font-size: 0.68rem;
-}
-
 .clipboard-strip {
   min-height: 120px;
 }
@@ -740,24 +819,102 @@ menubutton.clipboard-gear > button:active,
   min-width: 22px;
   min-height: 22px;
   padding: 0;
-  border: none;
+  border: 1px solid alpha(@on_surface, 0.28);
   border-radius: 6px;
-  background-color: transparent;
+  background-color: alpha(@on_surface, 0.18);
   box-shadow: none;
   color: inherit;
-  opacity: 0.72;
+  opacity: 0.9;
 }
 
 .clipboard-pin-button:hover {
-  background-color: alpha(@primary, 0.16);
+  background-color: alpha(@on_surface, 0.30);
+  border-color: alpha(@on_surface, 0.42);
   opacity: 1;
 }
 
 .clipboard-pin-button.is-on {
-  background-color: alpha(@primary, 0.22);
-  box-shadow: inset 0 0 0 1px alpha(@primary, 0.5);
-  color: @on_surface;
+  background-color: alpha(@on_surface, 0.42);
+  border-color: alpha(@on_surface, 0.55);
+  box-shadow: inset 0 0 0 1px alpha(@on_surface, 0.35);
   opacity: 1;
+}
+
+/* Header plates with non-neutral ink use that plate's on_* role, so the
+ * 22×22 square stays visible on both light and dark type headers. */
+.kind-text .clipboard-pin-button {
+  background-color: alpha(@on_tertiary, 0.20);
+  border-color: alpha(@on_tertiary, 0.30);
+}
+
+.kind-text .clipboard-pin-button:hover {
+  background-color: alpha(@on_tertiary, 0.34);
+}
+
+.kind-text .clipboard-pin-button.is-on {
+  background-color: alpha(@on_tertiary, 0.46);
+  border-color: alpha(@on_tertiary, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_tertiary, 0.35);
+}
+
+.kind-color .clipboard-pin-button {
+  background-color: alpha(@on_error, 0.20);
+  border-color: alpha(@on_error, 0.30);
+}
+
+.kind-color .clipboard-pin-button:hover {
+  background-color: alpha(@on_error, 0.34);
+}
+
+.kind-color .clipboard-pin-button.is-on {
+  background-color: alpha(@on_error, 0.46);
+  border-color: alpha(@on_error, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_error, 0.35);
+}
+
+.kind-image .clipboard-pin-button {
+  background-color: alpha(@on_error_container, 0.20);
+  border-color: alpha(@on_error_container, 0.30);
+}
+
+.kind-image .clipboard-pin-button:hover {
+  background-color: alpha(@on_error_container, 0.34);
+}
+
+.kind-image .clipboard-pin-button.is-on {
+  background-color: alpha(@on_error_container, 0.46);
+  border-color: alpha(@on_error_container, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_error_container, 0.35);
+}
+
+.kind-link .clipboard-pin-button {
+  background-color: alpha(@on_primary, 0.20);
+  border-color: alpha(@on_primary, 0.30);
+}
+
+.kind-link .clipboard-pin-button:hover {
+  background-color: alpha(@on_primary, 0.34);
+}
+
+.kind-link .clipboard-pin-button.is-on {
+  background-color: alpha(@on_primary, 0.46);
+  border-color: alpha(@on_primary, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_primary, 0.35);
+}
+
+.kind-emoji .clipboard-pin-button {
+  background-color: alpha(@on_secondary, 0.20);
+  border-color: alpha(@on_secondary, 0.30);
+}
+
+.kind-emoji .clipboard-pin-button:hover {
+  background-color: alpha(@on_secondary, 0.34);
+}
+
+.kind-emoji .clipboard-pin-button.is-on {
+  background-color: alpha(@on_secondary, 0.46);
+  border-color: alpha(@on_secondary, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@on_secondary, 0.35);
 }
 
 .clipboard-pin-mark {

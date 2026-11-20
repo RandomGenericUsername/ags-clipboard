@@ -532,9 +532,20 @@ test("the pinned view is an overlay over the stage with the mock geometry", () =
   assert.match(css, /\.clipboard-pins-panel\s*\{[^}]*padding:\s*104px 24px 20px/s);
   assert.match(css, /\.clipboard-pins-panel\s*\{[^}]*background-color:\s*alpha\(@scrim/s);
   assert.match(window, /column_homogeneous: true/);
-  assert.match(itemCard, /set_size_request\(width, 236\)/);
+  assert.match(window, /pinsGrid\.set_halign\(Gtk\.Align\.FILL\)/);
+  assert.match(
+    window,
+    /pinsHead\.append\(pinsTitle\)[\s\S]*?pinsHead\.append\(pinsBack\)[\s\S]*?pinsHead\.append\(pinsHints\)[\s\S]*?pinsHead\.append\(pinsHint\)/,
+    "header order must be title, back, hints, spacer, hint",
+  );
+  assert.match(itemCard, /set_size_request\(-1, 236\)/);
+  assert.match(itemCard, /button\.set_vexpand\(false\)/);
+  assert.match(itemCard, /card\.set_vexpand\(true\)/);
+  assert.match(itemCard, /body\.set_vexpand\(true\)/);
+  assert.match(window, /clipboard-pin-filler/);
+  assert.match(window, /pinsGrid\.set_valign\(Gtk\.Align\.START\)/);
   assert.match(css, /\.clipboard-pin-card\s*\{[^}]*border-radius:\s*17px/s);
-  assert.match(css, /\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
+  assert.match(css, /\.kind-text\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
   assert.match(window, /pinsBackBar = barButton\("Back", "down", "Esc"\)/);
 });
 
@@ -578,24 +589,33 @@ test("the app stylesheet avoids GTK-unsupported CSS properties", () => {
   }
 });
 
-test("fallback chrome has no hard-coded hex colors and uses the accent role", () => {
+test("fallback chrome has no hard-coded hex colors and keeps per-kind rings", () => {
   const css = readText("style.css")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "");
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/, "style.css must not hard-code chrome hex colors");
 
-  const selected = functionBodyCss(css, ".clipboard-card.selected");
-  assert.match(selected, /border-color:\s*@primary/);
-  assert.match(selected, /box-shadow:[^;]*@primary/);
-  assert.doesNotMatch(css, /\.kind-[a-z]+\.selected\s*\{/, "selection must be shared, not per-kind");
-  assert.doesNotMatch(css, /\.kind-[a-z]+\.clipboard-pin-card\.focused\s*\{/);
-
-  const focused = functionBodyCss(css, ".clipboard-pin-card.focused");
-  assert.match(focused, /border-color:\s*@primary/);
-  assert.match(focused, /0 0 0 7px/);
+  const rings = {
+    text: "@tertiary",
+    code: "@surface_container_lowest",
+    color: "@error",
+    image: "@error_container",
+    link: "@primary",
+    emoji: "@secondary",
+  };
+  for (const [kind, role] of Object.entries(rings)) {
+    const selected = functionBodyCss(css, `.kind-${kind}.selected`);
+    assert.match(selected, new RegExp(`border-color:\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+    assert.match(selected, /box-shadow:[^;]*alpha\(/);
+    const focused = functionBodyCss(css, `.kind-${kind}.clipboard-pin-card.focused`);
+    assert.match(focused, /0 0 0 7px/);
+    assert.match(focused, new RegExp(`border-color:\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+  assert.doesNotMatch(css, /\.clipboard-card\.selected\s*\{/, "selection is per-kind, not one shared ring");
+  assert.match(css, /\.clipboard-chip\.selected\s*\{[^}]*alpha\(@primary/s);
 });
 
-test("gear and pin controls are square and skin-neutral by default", () => {
+test("gear and pin controls are square and skin-derived", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const itemCard = readText("ui", "ItemCard.tsx");
   const css = readText("style.css");
@@ -610,10 +630,62 @@ test("gear and pin controls are square and skin-neutral by default", () => {
   assert.match(css, /\.clipboard-gear > button\s*\{[^}]*box-shadow:\s*none/s);
   assert.match(css, /menubutton\.clipboard-gear:hover[\s\S]*?box-shadow:\s*0 0 0 1px alpha\(@primary/s);
 
-  assert.match(css, /\.clipboard-pin-button\s*\{[^}]*background-color:\s*transparent/s);
+  // The pin is a visible square, not a transparent ghost.
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-width:\s*22px/s);
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-height:\s*22px/s);
-  assert.match(css, /\.clipboard-pin-button:hover\s*\{[^}]*alpha\(@primary/s);
+  assert.match(css, /\.clipboard-pin-button\s*\{[^}]*background-color:\s*alpha\(@on_surface, 0\.18\)/s);
+  assert.match(css, /\.clipboard-pin-button\s*\{[^}]*border:\s*1px solid alpha\(@on_surface/s);
+  assert.match(css, /\.clipboard-pin-button:hover\s*\{[^}]*alpha\(@on_surface, 0\.30\)/s);
+  assert.match(css, /\.clipboard-pin-button\.is-on\s*\{[^}]*alpha\(@on_surface, 0\.42\)/s);
+  for (const [kind, role] of [
+    ["text", "@on_tertiary"],
+    ["color", "@on_error"],
+    ["image", "@on_error_container"],
+    ["link", "@on_primary"],
+    ["emoji", "@on_secondary"],
+  ]) {
+    assert.match(
+      css,
+      new RegExp(`\\.kind-${kind} \\.clipboard-pin-button\\s*\\{[^}]*alpha\\(${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
+      `pin fill must use ${role} on ${kind} headers`,
+    );
+  }
+});
+
+test("compact opens without focusing search and arrows stay reachable", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const map = functionBody(window, 'self.connect("map"');
+  assert.doesNotMatch(map, /search\.grab_focus/, "compact must not autofocus search on open");
+  assert.match(window, /root\.set_can_focus\(true\)/);
+  assert.match(map, /root\.grab_focus\(\)/);
+  const key = functionBody(window, "function onKey");
+  assert.match(key, /keyval === Gdk\.KEY_slash[\s\S]*?search\.grab_focus\(\)/);
+  assert.match(key, /const typing = search\.has_focus/);
+  assert.match(key, /moveCompactSelection\(list, selectedKey, -1\)/);
+  assert.match(key, /moveCompactSelection\(list, selectedKey, 1\)/);
+  assert.match(key, /toggleCompactView\(\)/);
+  assert.match(key, /control && \(keyval === Gdk\.KEY_Return \|\| keyval === Gdk\.KEY_KP_Enter\)/);
+});
+
+test("search focus ring lives on the rounded box, not the inner entry", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const css = readText("style.css");
+  assert.match(window, /if \(search\.has_focus\) searchBox\.add_css_class\("focused"\)/);
+  assert.match(window, /else searchBox\.remove_css_class\("focused"\)/);
+  assert.match(css, /\.clipboard-search-box\.focused\s*\{[^}]*border-color:\s*@primary/s);
+  assert.match(css, /\.clipboard-search-box\.focused\s*\{[^}]*box-shadow:\s*0 0 0 1px alpha\(@primary/s);
+  assert.match(css, /\.clipboard-search:focus,[\s\S]*?outline:\s*none/);
+  assert.match(css, /\.clipboard-chip\s*\{[^}]*border-radius:\s*999px/s);
+  assert.match(css, /\.clipboard-chip\.selected\s*\{[^}]*alpha\(@primary/s);
+});
+
+test("compact view has no duplicate new/recent counters", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const css = readText("style.css");
+  assert.doesNotMatch(window, /newBadge|compactStatus|jumpToNewest|newKeys/);
+  assert.doesNotMatch(css, /\.clipboard-new-badge|\.clipboard-status/);
+  assert.match(window, /recentTab/);
+  assert.match(window, /pinnedTab/);
 });
 
 function functionBodyCss(css, selector) {
