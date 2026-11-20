@@ -545,7 +545,7 @@ test("the pinned view is an overlay over the stage with the mock geometry", () =
   assert.match(window, /clipboard-pin-filler/);
   assert.match(window, /pinsGrid\.set_valign\(Gtk\.Align\.START\)/);
   assert.match(css, /\.clipboard-pin-card\s*\{[^}]*border-radius:\s*17px/s);
-  assert.match(css, /\.kind-text\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
+  assert.match(css, /\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
   assert.match(window, /pinsBackBar = barButton\("Back", "down", "Esc"\)/);
 });
 
@@ -589,30 +589,36 @@ test("the app stylesheet avoids GTK-unsupported CSS properties", () => {
   }
 });
 
-test("fallback chrome has no hard-coded hex colors and keeps per-kind rings", () => {
+test("fallback chrome has no hard-coded hex and uses one shared accent state", () => {
   const css = readText("style.css")
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "");
   assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/, "style.css must not hard-code chrome hex colors");
 
-  const rings = {
-    text: "@tertiary",
-    code: "@surface_container_lowest",
-    color: "@error",
-    image: "@error_container",
-    link: "@primary",
-    emoji: "@secondary",
-  };
-  for (const [kind, role] of Object.entries(rings)) {
-    const selected = functionBodyCss(css, `.kind-${kind}.selected`);
-    assert.match(selected, new RegExp(`border-color:\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-    assert.match(selected, /box-shadow:[^;]*alpha\(/);
-    const focused = functionBodyCss(css, `.kind-${kind}.clipboard-pin-card.focused`);
-    assert.match(focused, /0 0 0 7px/);
-    assert.match(focused, new RegExp(`border-color:\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
-  }
-  assert.doesNotMatch(css, /\.clipboard-card\.selected\s*\{/, "selection is per-kind, not one shared ring");
+  const selected = functionBodyCss(css, ".clipboard-card.selected");
+  assert.match(selected, /border-color:\s*@primary/);
+  assert.match(selected, /box-shadow:[^;]*alpha\(@primary/);
+  const focused = functionBodyCss(css, ".clipboard-pin-card.focused");
+  assert.match(focused, /border-color:\s*@primary/);
+  assert.match(focused, /0 0 0 7px/);
+
+  assert.doesNotMatch(css, /\.kind-\w+\.selected\s*\{/, "selection is shared, not per-kind");
+  assert.doesNotMatch(css, /\.kind-\w+\.clipboard-pin-card\.focused\s*\{/, "pin focus is shared");
+  assert.doesNotMatch(css, /\.kind-\w+\s+\.clipboard-pin-button\s*\{/, "pin fill is neutral");
   assert.match(css, /\.clipboard-chip\.selected\s*\{[^}]*alpha\(@primary/s);
+});
+
+test("the card header is neutral and type identity is only a dot", () => {
+  const css = readText("style.css");
+  const head = functionBodyCss(css, ".clipboard-head");
+  assert.match(head, /background-color:\s*alpha\(@surface_container/);
+  assert.match(head, /color:\s*@on_surface/);
+  assert.doesNotMatch(css, /\.kind-\w+\s+\.clipboard-head\s*\{/);
+  const itemCard = readText("ui", "ItemCard.tsx");
+  assert.match(itemCard, /clipboard-type-dot/);
+  for (const kind of ["text", "code", "color", "image", "link", "emoji"]) {
+    assert.match(css, new RegExp(`\\.clipboard-type-dot\\.kind-${kind}\\s*\\{`));
+  }
 });
 
 test("gear and pin controls are square and skin-derived", () => {
@@ -630,26 +636,14 @@ test("gear and pin controls are square and skin-derived", () => {
   assert.match(css, /\.clipboard-gear > button\s*\{[^}]*box-shadow:\s*none/s);
   assert.match(css, /menubutton\.clipboard-gear:hover[\s\S]*?box-shadow:\s*0 0 0 1px alpha\(@primary/s);
 
-  // The pin is a visible square, not a transparent ghost.
+  // The pin is a visible square with a neutral control fill.
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-width:\s*22px/s);
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-height:\s*22px/s);
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*background-color:\s*alpha\(@on_surface, 0\.18\)/s);
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*border:\s*1px solid alpha\(@on_surface/s);
   assert.match(css, /\.clipboard-pin-button:hover\s*\{[^}]*alpha\(@on_surface, 0\.30\)/s);
   assert.match(css, /\.clipboard-pin-button\.is-on\s*\{[^}]*alpha\(@on_surface, 0\.42\)/s);
-  for (const [kind, role] of [
-    ["text", "@on_tertiary"],
-    ["color", "@on_error"],
-    ["image", "@on_error_container"],
-    ["link", "@on_primary"],
-    ["emoji", "@on_secondary"],
-  ]) {
-    assert.match(
-      css,
-      new RegExp(`\\.kind-${kind} \\.clipboard-pin-button\\s*\\{[^}]*alpha\\(${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`),
-      `pin fill must use ${role} on ${kind} headers`,
-    );
-  }
+  assert.doesNotMatch(css, /\.kind-\w+\s+\.clipboard-pin-button\s*\{/);
 });
 
 test("compact opens without focusing search and arrows stay reachable", () => {

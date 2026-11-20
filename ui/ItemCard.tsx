@@ -140,8 +140,9 @@ function guardChildClick(widget: Gtk.Widget, suppress: { until: number }): void 
 }
 
 /**
- * The per-type identity header: glyph, type label, optional index, pin and
- * relative time. The type colour comes from the `.kind-*` card class.
+ * The card header: glyph, small type dot, type label, optional index, pin and
+ * relative time. The plate itself is neutral; the dot is the only type-coloured
+ * element.
  */
 export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.CenterBox {
   // CenterBox lays start/end out itself — no child hexpand, which would
@@ -157,6 +158,13 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
     headStart.append(badge)
   }
   headStart.append(uiIcon(item.kind, options.stage ? 20 : 18))
+  const dot = new Gtk.Box()
+  dot.add_css_class("clipboard-type-dot")
+  dot.add_css_class(`kind-${item.kind}`)
+  dot.set_size_request(6, 6)
+  dot.set_halign(Gtk.Align.CENTER)
+  dot.set_valign(Gtk.Align.CENTER)
+  headStart.append(dot)
   const label = new Gtk.Label({ label: TYPE_LABEL[item.kind], xalign: 0 })
   label.add_css_class("clipboard-head-label")
   if (options.stage) label.add_css_class("clipboard-head-label-stage")

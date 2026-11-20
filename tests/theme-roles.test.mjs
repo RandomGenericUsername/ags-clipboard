@@ -49,19 +49,15 @@ function readText(...parts) {
   return readFileSync(join(ROOT, ...parts), "utf8");
 }
 
-const LEGACY_TOKEN = new RegExp("@" + "color" + "_[a-z0-9_]+", "g");
+function functionBodyCss(css, selector) {
+  const start = css.indexOf(selector);
+  assert.notEqual(start, -1, `missing CSS selector: ${selector}`);
+  const brace = css.indexOf("{", start);
+  const end = css.indexOf("}", brace);
+  return css.slice(brace + 1, end);
+}
 
-//: Header fill -> the Material ink role that belongs to that fill. `code` is
-//: the neutral `surface_container_lowest` head, which has no `on_*` sibling;
-//: its deterministic ink is `@on_surface`.
-const HEADER_INK = {
-  text: ["tertiary", "on_tertiary"],
-  code: ["surface_container_lowest", "on_surface"],
-  color: ["error", "on_error"],
-  image: ["error_container", "on_error_container"],
-  link: ["primary", "on_primary"],
-  emoji: ["secondary", "on_secondary"],
-};
+const LEGACY_TOKEN = new RegExp("@" + "color" + "_[a-z0-9_]+", "g");
 
 test("no legacy positional carrier token survives in CSS/TS/TSX", () => {
   const legacy = [];
@@ -92,27 +88,36 @@ test("every @role in the stylesheets is a declared palette.v1 role", () => {
   }
 });
 
-test("each card kind's header uses its fill's static on_* ink", () => {
+test("the card header is one neutral surface/ink plate", () => {
   const css = readText("style.css");
-  const heads = new Map(
-    [
-      ...css.matchAll(
-        /\.kind-(\w+) \.clipboard-head \{\s*background-color: @([a-z0-9_]+);\s*color: @([a-z0-9_]+);\s*\}/g,
-      ),
-    ].map((match) => [match[1], [match[2], match[3]]]),
-  );
-
-  assert.deepEqual(
-    Object.fromEntries(heads),
-    HEADER_INK,
-    "every .kind-* header must set its fill and matching on_* ink in CSS",
+  const head = functionBodyCss(css, ".clipboard-head");
+  assert.match(head, /background-color:\s*alpha\(@surface_container/);
+  assert.match(head, /color:\s*@on_surface/);
+  assert.doesNotMatch(
+    css,
+    /\.kind-\w+\s+\.clipboard-head\s*\{/,
+    "no type-specific header plate may remain",
   );
 });
 
-test("the six per-type header fills stay distinct", () => {
-  const fills = Object.values(HEADER_INK).map(([fill]) => fill);
-  assert.equal(fills.length, 6);
-  assert.equal(new Set(fills).size, 6, "each item kind keeps its own hue role");
+test("type identity is only a small dot in the neutral header", () => {
+  const css = readText("style.css");
+  const roles = {
+    text: "@tertiary",
+    code: "@surface_container_lowest",
+    color: "@error",
+    image: "@error_container",
+    link: "@primary",
+    emoji: "@secondary",
+  };
+  for (const [kind, role] of Object.entries(roles)) {
+    const dot = functionBodyCss(css, `.clipboard-type-dot.kind-${kind}`);
+    assert.match(dot, new RegExp(`background-color:\\s*${role.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+  const itemCard = readText("ui", "ItemCard.tsx");
+  assert.match(itemCard, /dot\.add_css_class\("clipboard-type-dot"\)/);
+  assert.match(itemCard, /dot\.set_size_request\(6, 6\)/);
+  assert.match(itemCard, /dot\.add_css_class\(`kind-\$\{item\.kind\}`\)/);
 });
 
 test("the header ink classes and runtime luminance math are gone", () => {
