@@ -453,10 +453,11 @@ test("nav and strip arrows have fixed circular sizes", () => {
   assert.match(window, /arrow\.set_size_request\(32, 32\)/);
   assert.match(window, /arrow\.set_valign\(Gtk\.Align\.CENTER\)/);
   assert.match(window, /arrow\.set_vexpand\(false\)/);
-  assert.match(css, /\.clipboard-nav-arrow\s*\{[^}]*max-width:\s*46px/s);
-  assert.match(css, /\.clipboard-nav-arrow\s*\{[^}]*max-height:\s*46px/s);
-  assert.match(css, /\.clipboard-strip-arrow\s*\{[^}]*max-width:\s*32px/s);
-  assert.match(css, /\.clipboard-strip-arrow\s*\{[^}]*max-height:\s*32px/s);
+  // GTK 4 has no max-width/max-height; the widget size request is the cap.
+  assert.doesNotMatch(css, /\.clipboard-nav-arrow\s*\{[^}]*max-width/s);
+  assert.doesNotMatch(css, /\.clipboard-strip-arrow\s*\{[^}]*max-height/s);
+  assert.match(css, /\.clipboard-nav-arrow\s*\{[^}]*border-radius:\s*999px/s);
+  assert.match(css, /\.clipboard-strip-arrow\s*\{[^}]*border-radius:\s*999px/s);
 });
 
 test("every card kind wires the pin control and guards its click", () => {
@@ -533,6 +534,92 @@ test("the pinned view is an overlay over the stage with the mock geometry", () =
   assert.match(window, /column_homogeneous: true/);
   assert.match(itemCard, /set_size_request\(width, 236\)/);
   assert.match(css, /\.clipboard-pin-card\s*\{[^}]*border-radius:\s*17px/s);
-  assert.match(css, /\.kind-text\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
+  assert.match(css, /\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
   assert.match(window, /pinsBackBar = barButton\("Back", "down", "Esc"\)/);
 });
+
+// ── REQ-009 owner feedback round 2 ─────────────────────────────────────────
+
+test("the app stylesheet avoids GTK-unsupported CSS properties", () => {
+  const css = readText("style.css")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  // GTK 4 does not implement these web/CSS-box properties; an unknown
+  // property is a load-time CSS error and can stall the overlay.
+  const unsupported = [
+    "max-width",
+    "max-height",
+    "min-inline-size",
+    "max-inline-size",
+    "gap",
+    "row-gap",
+    "column-gap",
+    "inset",
+    "z-index",
+    "display",
+    "position",
+    "overflow",
+    "overflow-x",
+    "overflow-y",
+    "backdrop-filter",
+    "transition",
+    "transform",
+    "animation",
+    "box-sizing",
+    "aspect-ratio",
+    "cursor",
+  ];
+  for (const property of unsupported) {
+    assert.doesNotMatch(
+      css,
+      new RegExp(`(^|\\n)\\s*${property}\\s*:`),
+      `style.css uses unsupported GTK property ${property}`,
+    );
+  }
+});
+
+test("fallback chrome has no hard-coded hex colors and uses the accent role", () => {
+  const css = readText("style.css")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+  assert.doesNotMatch(css, /#[0-9a-fA-F]{3,8}\b/, "style.css must not hard-code chrome hex colors");
+
+  const selected = functionBodyCss(css, ".clipboard-card.selected");
+  assert.match(selected, /border-color:\s*@primary/);
+  assert.match(selected, /box-shadow:[^;]*@primary/);
+  assert.doesNotMatch(css, /\.kind-[a-z]+\.selected\s*\{/, "selection must be shared, not per-kind");
+  assert.doesNotMatch(css, /\.kind-[a-z]+\.clipboard-pin-card\.focused\s*\{/);
+
+  const focused = functionBodyCss(css, ".clipboard-pin-card.focused");
+  assert.match(focused, /border-color:\s*@primary/);
+  assert.match(focused, /0 0 0 7px/);
+});
+
+test("gear and pin controls are square and skin-neutral by default", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const itemCard = readText("ui", "ItemCard.tsx");
+  const css = readText("style.css");
+  assert.equal((window.match(/set_size_request\(38, 38\)/g) ?? []).length, 2);
+  assert.match(itemCard, /pinButton\.set_size_request\(22, 22\)/);
+  assert.match(itemCard, /pinButton\.set_valign\(Gtk\.Align\.CENTER\)/);
+
+  // MenuButton's child button node must be neutralized explicitly.
+  assert.match(css, /menubutton\.clipboard-gear > button/);
+  assert.match(css, /\.clipboard-gear > button\s*\{[^}]*background-color:\s*transparent/s);
+  assert.match(css, /\.clipboard-gear > button\s*\{[^}]*border:\s*none/s);
+  assert.match(css, /\.clipboard-gear > button\s*\{[^}]*box-shadow:\s*none/s);
+  assert.match(css, /menubutton\.clipboard-gear:hover[\s\S]*?box-shadow:\s*0 0 0 1px alpha\(@primary/s);
+
+  assert.match(css, /\.clipboard-pin-button\s*\{[^}]*background-color:\s*transparent/s);
+  assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-width:\s*22px/s);
+  assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-height:\s*22px/s);
+  assert.match(css, /\.clipboard-pin-button:hover\s*\{[^}]*alpha\(@primary/s);
+});
+
+function functionBodyCss(css, selector) {
+  const start = css.indexOf(selector);
+  assert.notEqual(start, -1, `missing CSS selector: ${selector}`);
+  const brace = css.indexOf("{", start);
+  const end = css.indexOf("}", brace);
+  return css.slice(brace + 1, end);
+}

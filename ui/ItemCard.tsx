@@ -165,6 +165,11 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
     if (options.onTogglePin !== undefined) {
       const pinButton = new Gtk.Button({ css_classes: ["clipboard-pin-button"] })
       pinButton.set_child(uiIcon("pin", 13))
+      pinButton.set_size_request(22, 22)
+      pinButton.set_hexpand(false)
+      pinButton.set_vexpand(false)
+      pinButton.set_halign(Gtk.Align.CENTER)
+      pinButton.set_valign(Gtk.Align.CENTER)
       pinButton.set_tooltip_text(item.favorite ? "Unpin" : "Pin")
       if (options.suppress !== undefined) guardChildClick(pinButton, options.suppress)
       if (item.favorite) pinButton.add_css_class("is-on")

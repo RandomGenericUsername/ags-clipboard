@@ -77,44 +77,12 @@ window#clipboard-window {
   border-color: @primary;
 }
 
-/* Highlight follows the card's TYPE role (same role as its header), so the
- * selected outline is dynamic per type, not one shared accent. The GESTURE is
- * the shared one (ring + 12% tint, never a solid fill over the content), so
- * clipboard still reads as the same system (spec §3.7 exception). */
-.kind-text.selected {
-  border-color: @tertiary;
-  background-color: alpha(@tertiary, 0.12);
-  box-shadow: 0 0 0 2px alpha(@tertiary, 0.6);
-}
-
-.kind-code.selected {
-  border-color: @surface_container_lowest;
-  background-color: alpha(@surface_container_lowest, 0.12);
-  box-shadow: 0 0 0 2px alpha(@surface_container_lowest, 0.6);
-}
-
-.kind-color.selected {
-  border-color: @error;
-  background-color: alpha(@error, 0.12);
-  box-shadow: 0 0 0 2px alpha(@error, 0.6);
-}
-
-.kind-image.selected {
-  border-color: @error_container;
-  background-color: alpha(@error_container, 0.12);
-  box-shadow: 0 0 0 2px alpha(@error_container, 0.6);
-}
-
-.kind-link.selected {
+/* Selection is a shared state signal: the skin accent role, not the card's
+ * type hue. The type role stays on the header plate only. */
+.clipboard-card.selected {
   border-color: @primary;
   background-color: alpha(@primary, 0.12);
   box-shadow: 0 0 0 2px alpha(@primary, 0.6);
-}
-
-.kind-emoji.selected {
-  border-color: @secondary;
-  background-color: alpha(@secondary, 0.12);
-  box-shadow: 0 0 0 2px alpha(@secondary, 0.6);
 }
 
 /* Type header: background = palette role, ink = that role's Material `on_*`
@@ -276,18 +244,48 @@ window#clipboard-window {
   color: alpha(@on_surface, 0.45);
 }
 
+/* The gear is a Gtk.MenuButton: style the menubutton AND its child button node
+ * so theme/skin button paint cannot leak through as a permanent rounded box. */
+menubutton.clipboard-gear,
 .clipboard-gear {
-  min-width: 34px;
-  min-height: 34px;
+  min-width: 38px;
+  min-height: 38px;
+  border: none;
   border-radius: 10px;
-  background-color: alpha(@surface_container, 0.5);
-  border: 1px solid alpha(@outline, 0.35);
+  background-color: transparent;
+  box-shadow: none;
   padding: 0;
+  color: alpha(@on_surface, 0.8);
 }
 
+menubutton.clipboard-gear > button,
+.clipboard-gear > button {
+  min-width: 38px;
+  min-height: 38px;
+  border: none;
+  border-radius: 10px;
+  background-color: transparent;
+  box-shadow: none;
+  padding: 0;
+  color: inherit;
+}
+
+menubutton.clipboard-gear:hover,
 .clipboard-gear:hover,
-.clipboard-gear:active {
-  border-color: @primary;
+menubutton.clipboard-gear > button:hover,
+.clipboard-gear > button:hover {
+  background-color: alpha(@on_surface, 0.08);
+  box-shadow: 0 0 0 1px alpha(@primary, 0.7);
+  color: @on_surface;
+}
+
+menubutton.clipboard-gear:active,
+.clipboard-gear:active,
+menubutton.clipboard-gear > button:active,
+.clipboard-gear > button:active {
+  background-color: alpha(@primary, 0.18);
+  box-shadow: 0 0 0 1px @primary;
+  color: @on_surface;
 }
 
 .clipboard-stage {
@@ -347,7 +345,7 @@ window#clipboard-window {
 }
 
 .clipboard-peek {
-  background: transparent;
+  background-color: transparent;
   border: none;
   padding: 0;
   opacity: 0.55;
@@ -370,8 +368,6 @@ window#clipboard-window {
 .clipboard-nav-arrow {
   min-width: 46px;
   min-height: 46px;
-  max-width: 46px;
-  max-height: 46px;
   border-radius: 999px;
   border: 1px solid alpha(@outline, 0.45);
   background-color: alpha(@surface_container, 0.55);
@@ -497,54 +493,6 @@ window#clipboard-window {
     0 26px 70px alpha(@shadow, 0.5);
 }
 
-.kind-text.clipboard-pin-card.focused {
-  border-color: @tertiary;
-  box-shadow:
-    0 0 0 2px @tertiary,
-    0 0 0 7px alpha(@tertiary, 0.22),
-    0 26px 70px alpha(@shadow, 0.5);
-}
-
-.kind-code.clipboard-pin-card.focused {
-  border-color: @surface_container_lowest;
-  box-shadow:
-    0 0 0 2px @surface_container_lowest,
-    0 0 0 7px alpha(@surface_container_lowest, 0.22),
-    0 26px 70px alpha(@shadow, 0.5);
-}
-
-.kind-color.clipboard-pin-card.focused {
-  border-color: @error;
-  box-shadow:
-    0 0 0 2px @error,
-    0 0 0 7px alpha(@error, 0.22),
-    0 26px 70px alpha(@shadow, 0.5);
-}
-
-.kind-image.clipboard-pin-card.focused {
-  border-color: @error_container;
-  box-shadow:
-    0 0 0 2px @error_container,
-    0 0 0 7px alpha(@error_container, 0.22),
-    0 26px 70px alpha(@shadow, 0.5);
-}
-
-.kind-link.clipboard-pin-card.focused {
-  border-color: @primary;
-  box-shadow:
-    0 0 0 2px @primary,
-    0 0 0 7px alpha(@primary, 0.22),
-    0 26px 70px alpha(@shadow, 0.5);
-}
-
-.kind-emoji.clipboard-pin-card.focused {
-  border-color: @secondary;
-  box-shadow:
-    0 0 0 2px @secondary,
-    0 0 0 7px alpha(@secondary, 0.22),
-    0 26px 70px alpha(@shadow, 0.5);
-}
-
 .clipboard-pin-body {
   padding: 12px;
 }
@@ -610,7 +558,7 @@ window#clipboard-window {
   padding: 0 9px;
   border-radius: 999px;
   border: 1px solid transparent;
-  background: transparent;
+  background-color: transparent;
   color: alpha(@on_surface, 0.65);
   font-size: 0.7rem;
 }
@@ -674,7 +622,7 @@ window#clipboard-window {
   padding: 0 9px;
   border-radius: 9px;
   border: 1px solid transparent;
-  background: transparent;
+  background-color: transparent;
   color: alpha(@on_surface, 0.7);
   font-size: 0.7rem;
 }
@@ -728,7 +676,7 @@ window#clipboard-window {
   border: none;
   border-bottom: 2px solid transparent;
   border-radius: 0;
-  background: transparent;
+  background-color: transparent;
   color: alpha(@on_surface, 0.6);
   font-size: 0.7rem;
   font-weight: 600;
@@ -762,8 +710,6 @@ window#clipboard-window {
 .clipboard-strip-arrow {
   min-width: 32px;
   min-height: 32px;
-  max-width: 32px;
-  max-height: 32px;
   border-radius: 999px;
   border: 1px solid alpha(@outline, 0.4);
   background-color: alpha(@surface_container, 0.55);
@@ -796,12 +742,22 @@ window#clipboard-window {
   padding: 0;
   border: none;
   border-radius: 6px;
-  background-color: alpha(@surface, 0.3);
+  background-color: transparent;
+  box-shadow: none;
   color: inherit;
+  opacity: 0.72;
+}
+
+.clipboard-pin-button:hover {
+  background-color: alpha(@primary, 0.16);
+  opacity: 1;
 }
 
 .clipboard-pin-button.is-on {
-  background-color: alpha(@surface, 0.55);
+  background-color: alpha(@primary, 0.22);
+  box-shadow: inset 0 0 0 1px alpha(@primary, 0.5);
+  color: @on_surface;
+  opacity: 1;
 }
 
 .clipboard-pin-mark {
@@ -898,7 +854,7 @@ window#clipboard-window {
   padding: 0 9px;
   border-radius: 6px;
   border: 1px solid transparent;
-  background: transparent;
+  background-color: transparent;
   color: alpha(@on_surface, 0.7);
   font-size: 0.62rem;
   font-weight: 550;
