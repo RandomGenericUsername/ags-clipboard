@@ -273,8 +273,8 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 17 tests pass (manifest identity, settings path, save-on-change, compact Open chip/view keys, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,222,384 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 17 conformance, drift "all checks passed", bundle 1,222,384 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,224,816 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 17 conformance, drift "all checks passed", bundle 1,224,816 bytes, 0 type errors) |
 
 Implementation map:
 
