@@ -14,6 +14,9 @@ const FALLBACK_ICON: Record<string, string> = {
   code: "text-x-script-symbolic",
   color: "applications-graphics-symbolic",
   emoji: "face-smile-symbolic",
+  pin: "view-pin-symbolic",
+  open: "external-link-symbolic",
+  settings: "emblem-system-symbolic",
 }
 
 //: Rasterized-at-size icon textures, shared across cards.
@@ -73,7 +76,7 @@ export function uiIcon(variant: string, size = 18): Gtk.Widget {
 //: Header fills and their matching Material `on_*` ink live entirely in
 //: style.css (`.kind-* .clipboard-head`). The card only adds its kind class, so
 //: the ink follows the v2 appearance roles without any runtime color math.
-const TYPE_LABEL: Record<ItemKind, string> = {
+export const TYPE_LABEL: Record<ItemKind, string> = {
   text: "Text",
   code: "Code",
   color: "Color",
@@ -93,7 +96,7 @@ export function clearVisualCaches(): void {
   textureCache.clear()
 }
 
-function relativeTime(timestamp: number): string {
+export function relativeTime(timestamp: number): string {
   const seconds = Math.max(0, Math.floor(Date.now() / 1000 - timestamp))
   if (seconds < 45) return "just now"
   const minutes = Math.round(seconds / 60)
@@ -104,10 +107,95 @@ function relativeTime(timestamp: number): string {
   return `${days} day${days === 1 ? "" : "s"} ago`
 }
 
+export interface HeadOptions {
+  /** 1-based position; omit on the full stage card. */
+  index?: number
+  /** Larger glyph/label for the stage and pinned cards. */
+  stage?: boolean
+  /** Show a pin marker (or a pin button when `onTogglePin` is given). */
+  pin?: boolean
+  onTogglePin?: (item: ClipboardItem) => void
+}
+
 /**
- * One clipboard history card: a palette-themed type header
- * (index + glyph + type label + relative time) over a type-appropriate
- * preview body. ``index`` is the 1-based position for ``Ctrl+1..9``.
+ * The per-type identity header: glyph, type label, optional index, pin and
+ * relative time. The type colour comes from the `.kind-*` card class.
+ */
+export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.CenterBox {
+  // CenterBox lays start/end out itself — no child hexpand, which would
+  // otherwise propagate up and make the card stretch in the list.
+  const header = new Gtk.CenterBox({ css_classes: ["clipboard-head"] })
+  const headStart = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 4 })
+  if (options.index !== undefined) {
+    const badge = new Gtk.Label({ label: String(options.index), xalign: 0.5 })
+    badge.add_css_class("clipboard-index")
+    badge.set_size_request(18, 18)
+    badge.set_halign(Gtk.Align.CENTER)
+    badge.set_valign(Gtk.Align.CENTER)
+    headStart.append(badge)
+  }
+  headStart.append(uiIcon(item.kind, options.stage ? 20 : 18))
+  const label = new Gtk.Label({ label: TYPE_LABEL[item.kind], xalign: 0 })
+  label.add_css_class("clipboard-head-label")
+  if (options.stage) label.add_css_class("clipboard-head-label-stage")
+  headStart.append(label)
+  if (options.pin === true) {
+    if (options.onTogglePin !== undefined) {
+      const pinButton = new Gtk.Button({ css_classes: ["clipboard-pin-button"] })
+      pinButton.set_child(uiIcon("pin", 13))
+      pinButton.set_tooltip_text(item.favorite ? "Unpin" : "Pin")
+      if (item.favorite) pinButton.add_css_class("is-on")
+      pinButton.connect("clicked", () => options.onTogglePin?.(item))
+      headStart.append(pinButton)
+    } else if (item.favorite) {
+      const mark = uiIcon("pin", 13)
+      mark.add_css_class("clipboard-pin-mark")
+      headStart.append(mark)
+    }
+  }
+  header.set_start_widget(headStart)
+
+  const time = new Gtk.Label({ label: relativeTime(item.timestamp) })
+  time.add_css_class("clipboard-time")
+  header.set_end_widget(time)
+  return header
+}
+
+/** Attach the card click gestures once (single click + optional double). */
+function attachCardGestures(
+  card: Gtk.Widget,
+  item: ClipboardItem,
+  onSelect: (item: ClipboardItem) => void,
+  onActivate?: (item: ClipboardItem) => void,
+  onOpenLink?: (item: ClipboardItem) => void,
+): void {
+  const gesture = new Gtk.GestureClick()
+  gesture.set_button(Gdk.BUTTON_PRIMARY)
+  gesture.connect("released", () => onSelect(item))
+  card.add_controller(gesture)
+
+  if (onActivate !== undefined) {
+    const doubleClick = new Gtk.GestureClick()
+    doubleClick.set_button(Gdk.BUTTON_PRIMARY)
+    doubleClick.connect("pressed", (_gesture, nPress: number) => {
+      if (nPress === 2) onActivate(item)
+    })
+    card.add_controller(doubleClick)
+  }
+
+  // Right click on a LINK card opens the URL via the desktop handler.
+  if (item.kind === "link" && onOpenLink !== undefined) {
+    const rightClick = new Gtk.GestureClick()
+    rightClick.set_button(Gdk.BUTTON_SECONDARY)
+    rightClick.connect("released", () => onOpenLink(item))
+    card.add_controller(rightClick)
+  }
+}
+
+/**
+ * One compact-strip card: the palette-themed type header over a
+ * type-appropriate preview body. ``index`` is the 1-based position in the
+ * active view for ``Ctrl+1..9``.
  */
 export function ItemCard(
   item: ClipboardItem,
@@ -115,6 +203,7 @@ export function ItemCard(
   onSelect: (item: ClipboardItem) => void,
   onOpenLink: ((item: ClipboardItem) => void) | undefined,
   cardWidth: number,
+  onActivate?: (item: ClipboardItem) => void,
 ): Gtk.Box {
   const card = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -128,45 +217,125 @@ export function ItemCard(
   card.set_hexpand(false)
   card.set_halign(Gtk.Align.START)
 
-  // CenterBox lays start/end out itself — no child hexpand, which would
-  // otherwise propagate up and make the card stretch in the list.
-  const header = new Gtk.CenterBox({ css_classes: ["clipboard-head"] })
-  const headStart = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 4 })
-  const badge = new Gtk.Label({ label: String(index), xalign: 0.5 })
-  badge.add_css_class("clipboard-index")
-  badge.set_size_request(18, 18)
-  badge.set_halign(Gtk.Align.CENTER)
-  badge.set_valign(Gtk.Align.CENTER)
-  headStart.append(badge)
-  headStart.append(uiIcon(item.kind, 18))
-  const label = new Gtk.Label({ label: TYPE_LABEL[item.kind], xalign: 0 })
-  label.add_css_class("clipboard-head-label")
-  headStart.append(label)
-  header.set_start_widget(headStart)
+  card.append(ItemHead(item, { index, pin: true }))
 
-  const time = new Gtk.Label({ label: relativeTime(item.timestamp) })
-  time.add_css_class("clipboard-time")
-  header.set_end_widget(time)
-  card.append(header)
-
-  const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
+  const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 })
   body.add_css_class("clipboard-body")
-  body.append(Preview(item))
+  body.append(Preview(item, { width: cardWidth - 24 }))
+  if (item.kind === "link" && onOpenLink !== undefined) {
+    // Visible, always-present chip (not hover-only) in every compact view and
+    // alignment. It calls the same openLink path as full mode.
+    const open = new Gtk.Button({ label: "Open", css_classes: ["clipboard-open-chip"] })
+    open.set_halign(Gtk.Align.START)
+    open.set_tooltip_text(`Open ${item.text ?? "link"}`)
+    open.connect("clicked", () => onOpenLink(item))
+    body.append(open)
+  }
   card.append(body)
 
-  // Left click copies the item back.
-  const gesture = new Gtk.GestureClick()
-  gesture.set_button(Gdk.BUTTON_PRIMARY)
-  gesture.connect("released", () => onSelect(item))
-  card.add_controller(gesture)
-
-  // Right click on a LINK card opens the URL via the desktop handler.
-  if (item.kind === "link" && onOpenLink !== undefined) {
-    const rightClick = new Gtk.GestureClick()
-    rightClick.set_button(Gdk.BUTTON_SECONDARY)
-    rightClick.connect("released", () => onOpenLink(item))
-    card.add_controller(rightClick)
-  }
-
+  attachCardGestures(card, item, onSelect, onActivate, onOpenLink)
   return card
+}
+
+/** The one large focused card of the full stage. */
+export function StageCard(
+  item: ClipboardItem,
+  onSelect: (item: ClipboardItem) => void,
+  onOpenLink: ((item: ClipboardItem) => void) | undefined,
+  width: number,
+  height: number,
+): Gtk.Box {
+  const card = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 0,
+    css_classes: ["clipboard-stage-card", `kind-${item.kind}`],
+  })
+  card.set_overflow(Gtk.Overflow.HIDDEN)
+  card.set_size_request(width, height)
+  card.set_hexpand(false)
+  card.set_halign(Gtk.Align.CENTER)
+  card.set_valign(Gtk.Align.CENTER)
+  card.append(ItemHead(item, { stage: true, pin: true }))
+
+  const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
+  body.add_css_class("clipboard-stage-body")
+  body.add_css_class(`clipboard-stage-body-${item.kind}`)
+  body.set_vexpand(true)
+  body.append(
+    Preview(item, {
+      stage: true,
+      width: Math.max(240, width - 48),
+      height: Math.max(160, height - 120),
+    }),
+  )
+  card.append(body)
+
+  attachCardGestures(card, item, onSelect, undefined, onOpenLink)
+  return card
+}
+
+/** A narrow, dimmed previous/next card on the full stage. */
+export function PeekCard(
+  item: ClipboardItem | null,
+  onSelect: (item: ClipboardItem) => void,
+  width: number,
+  height: number,
+): Gtk.Button {
+  const button = new Gtk.Button({ css_classes: ["clipboard-peek"] })
+  button.set_size_request(width, height)
+  button.set_halign(Gtk.Align.CENTER)
+  button.set_valign(Gtk.Align.CENTER)
+  if (item === null) {
+    button.set_visible(false)
+    return button
+  }
+  button.set_tooltip_text(`Show ${TYPE_LABEL[item.kind]} card`)
+  const card = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 0,
+    css_classes: [`kind-${item.kind}`],
+  })
+  card.add_css_class("clipboard-peek-card")
+  card.set_overflow(Gtk.Overflow.HIDDEN)
+  card.append(ItemHead(item, { pin: true }))
+  const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
+  body.add_css_class("clipboard-peek-body")
+  body.append(Preview(item, { width: width - 24, height: Math.max(60, height - 90) }))
+  card.append(body)
+  button.set_child(card)
+  button.connect("clicked", () => onSelect(item))
+  return button
+}
+
+/** One card in the full-mode pinned grid. */
+export function PinCard(
+  item: ClipboardItem,
+  index: number,
+  focused: boolean,
+  onActivate: (item: ClipboardItem) => void,
+  width: number,
+): Gtk.Button {
+  const button = new Gtk.Button({
+    css_classes: ["clipboard-pin-card", `kind-${item.kind}`],
+  })
+  button.set_size_request(width, -1)
+  button.set_halign(Gtk.Align.FILL)
+  button.set_valign(Gtk.Align.FILL)
+  if (focused) button.add_css_class("focused")
+  button.set_tooltip_text(`Copy ${TYPE_LABEL[item.kind]} card`)
+
+  const card = new Gtk.Box({
+    orientation: Gtk.Orientation.VERTICAL,
+    spacing: 0,
+    css_classes: [`kind-${item.kind}`],
+  })
+  card.set_overflow(Gtk.Overflow.HIDDEN)
+  card.append(ItemHead(item, { index, pin: true }))
+  const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
+  body.add_css_class("clipboard-pin-body")
+  body.append(Preview(item, { width: width - 26 }))
+  card.append(body)
+  button.set_child(card)
+  button.connect("clicked", () => onActivate(item))
+  return button
 }

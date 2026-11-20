@@ -26,6 +26,30 @@ import {
   parseHistory,
 } from "../lib/clipboard-types.ts";
 import { handleRequest } from "../lib/requests.ts";
+import {
+  COMPACT_ALIGNMENTS,
+  COMPACT_SIZES,
+  compactCardWidth,
+  compactIsVertical,
+  defaultSettings,
+  normalizeSettings,
+  serializeSettings,
+  settingsFor,
+} from "../lib/settings.ts";
+import { loadSettings, saveSettings } from "../lib/settings-store.ts";
+import {
+  filterCompactView,
+  filterPinnedItems,
+  filterRecentItems,
+  initialPinFocus,
+  itemByKey,
+  moveCompactSelection,
+  nextCompactView,
+  nextPinFocus,
+  ordered,
+  pinCopyTarget,
+  pinnedOrdered,
+} from "../lib/card-modes.ts";
 
 const GEN_HASH = "a".repeat(64);
 
@@ -161,4 +185,203 @@ test("show/hide/toggle/popup-close drive only the window surface", () => {
     calls: [],
     responses: ["unknown request: bogus x"],
   });
+});
+
+// ── Settings domain (REQ-009) ──────────────────────────────────────────────
+
+const SETTINGS_SHAPE = {
+  layout: {
+    mode: "full",
+    compact: { card_size: "medium", alignment: "bottom" },
+  },
+};
+
+test("default settings are full / medium / bottom", () => {
+  assert.deepEqual(defaultSettings(), SETTINGS_SHAPE);
+});
+
+test("unknown, missing and corrupt settings degrade to the defaults", () => {
+  assert.deepEqual(normalizeSettings(null), SETTINGS_SHAPE);
+  assert.deepEqual(normalizeSettings("nope"), SETTINGS_SHAPE);
+  assert.deepEqual(normalizeSettings({ layout: {} }), SETTINGS_SHAPE);
+  assert.deepEqual(
+    normalizeSettings({ layout: { mode: "sideways", compact: { card_size: 300, alignment: "diagonal" } } }),
+    SETTINGS_SHAPE,
+  );
+  // Each field degrades independently.
+  assert.deepEqual(
+    normalizeSettings({ layout: { mode: "compact", compact: { card_size: "huge" } } }),
+    {
+      layout: {
+        mode: "compact",
+        compact: { card_size: "medium", alignment: "bottom" },
+      },
+    },
+  );
+});
+
+test("valid compact settings survive normalization", () => {
+  assert.deepEqual(
+    normalizeSettings({
+      layout: { mode: "compact", compact: { card_size: "large", alignment: "right" } },
+    }),
+    {
+      layout: {
+        mode: "compact",
+        compact: { card_size: "large", alignment: "right" },
+      },
+    },
+  );
+});
+
+test("serializeSettings emits exactly the documented shape", () => {
+  assert.equal(
+    serializeSettings(settingsFor("compact", "small", "left")),
+    '{"layout":{"mode":"compact","compact":{"card_size":"small","alignment":"left"}}}',
+  );
+  assert.deepEqual(JSON.parse(serializeSettings(defaultSettings())), SETTINGS_SHAPE);
+});
+
+test("compact sizes and alignments map to the contract values", () => {
+  assert.deepEqual(COMPACT_SIZES, { small: 220, medium: 260, large: 300 });
+  assert.deepEqual(COMPACT_ALIGNMENTS, ["bottom", "left", "right"]);
+  assert.equal(compactCardWidth("small"), 220);
+  assert.equal(compactCardWidth("large"), 300);
+  assert.equal(compactIsVertical("left"), true);
+  assert.equal(compactIsVertical("right"), true);
+  assert.equal(compactIsVertical("bottom"), false);
+});
+
+// ── Settings port (pure store) ─────────────────────────────────────────────
+
+function memoryPort(initial = null) {
+  let contents = initial;
+  return {
+    writes: [],
+    read() {
+      return contents;
+    },
+    write(text) {
+      contents = text;
+      this.writes.push(text);
+    },
+  };
+}
+
+test("loadSettings reads a valid document and falls back on absent/corrupt files", () => {
+  const valid = memoryPort(
+    '{"layout":{"mode":"compact","compact":{"card_size":"small","alignment":"right"}}}',
+  );
+  assert.deepEqual(loadSettings(valid), {
+    layout: {
+      mode: "compact",
+      compact: { card_size: "small", alignment: "right" },
+    },
+  });
+  assert.deepEqual(loadSettings(memoryPort(null)), SETTINGS_SHAPE);
+  assert.deepEqual(loadSettings(memoryPort("")), SETTINGS_SHAPE);
+  assert.deepEqual(loadSettings(memoryPort("{ nope")), SETTINGS_SHAPE);
+});
+
+test("saveSettings writes the normalized document on change", () => {
+  const port = memoryPort();
+  const saved = saveSettings(
+    port,
+    /** deliberately loose input: normalization is the store's job */
+    { layout: { mode: "compact", compact: { card_size: "bogus", alignment: "right" } } },
+  );
+  assert.deepEqual(saved, {
+    layout: {
+      mode: "compact",
+      compact: { card_size: "medium", alignment: "right" },
+    },
+  });
+  assert.equal(port.writes.length, 1);
+  assert.deepEqual(JSON.parse(port.writes[0]), saved);
+});
+
+// ── Card deck / compact view logic (REQ-009) ───────────────────────────────
+
+function item(hash, kind, timestamp, favorite = false, text = hash) {
+  return { hash, kind, timestamp, favorite, text, path: null };
+}
+
+const DECK = [
+  item("a", "text", 1),
+  item("b", "link", 5, true, "https://example.org/gtk4"),
+  item("c", "code", 3),
+  item("d", "image", 2, true),
+];
+
+test("the deck is pinned first, recency order inside each group", () => {
+  assert.deepEqual(
+    ordered(DECK).map((entry) => entry.hash),
+    ["b", "d", "c", "a"],
+  );
+  assert.deepEqual(
+    pinnedOrdered(DECK).map((entry) => entry.hash),
+    ["b", "d"],
+  );
+});
+
+test("recent and pinned views are disjoint filtered lists", () => {
+  assert.deepEqual(
+    filterRecentItems(DECK, "", "all").map((entry) => entry.hash),
+    ["c", "a"],
+  );
+  assert.deepEqual(
+    filterPinnedItems(DECK, "", "all").map((entry) => entry.hash),
+    ["b", "d"],
+  );
+  assert.equal(filterCompactView(DECK, "", "all", "recent").length, 2);
+  assert.equal(filterCompactView(DECK, "", "all", "pinned").length, 2);
+});
+
+test("query and type filters apply to the active view", () => {
+  assert.deepEqual(
+    filterRecentItems(DECK, "gtk4", "all").map((entry) => entry.hash),
+    [],
+  );
+  assert.deepEqual(
+    filterPinnedItems(DECK, "gtk4", "all").map((entry) => entry.hash),
+    ["b"],
+  );
+  assert.deepEqual(
+    filterRecentItems(DECK, "", "code").map((entry) => entry.hash),
+    ["c"],
+  );
+  assert.deepEqual(filterCompactView(DECK, "zzz", "all", "pinned"), []);
+});
+
+test("the compact view toggles only when a pin exists", () => {
+  assert.equal(nextCompactView("recent", true), "pinned");
+  assert.equal(nextCompactView("pinned", true), "recent");
+  assert.equal(nextCompactView("recent", false), "recent");
+  assert.equal(nextCompactView("pinned", false), "recent");
+});
+
+test("compact selection clamps and recovers from a stale key", () => {
+  const list = ordered(DECK).filter((entry) => !entry.favorite);
+  assert.equal(moveCompactSelection(list, "code:c", 1), "text:a");
+  assert.equal(moveCompactSelection(list, "text:a", 1), "text:a");
+  assert.equal(moveCompactSelection(list, "code:c", -1), "code:c");
+  assert.equal(moveCompactSelection(list, "missing", 1), "code:c");
+  assert.equal(moveCompactSelection([], "code:c", 1), null);
+});
+
+test("pinned focus starts on the stage card when pinned, else the first pin", () => {
+  assert.equal(initialPinFocus(DECK, "image:d"), "image:d");
+  assert.equal(initialPinFocus(DECK, "text:a"), "link:b");
+  assert.equal(initialPinFocus([item("x", "text", 1)], "text:x"), null);
+});
+
+test("pinned focus wraps in both directions and copies only a real pin", () => {
+  assert.equal(nextPinFocus(DECK, "link:b", -1), "image:d");
+  assert.equal(nextPinFocus(DECK, "image:d", 1), "link:b");
+  assert.equal(nextPinFocus(DECK, "missing", 1), "link:b");
+  assert.equal(nextPinFocus(DECK, "missing", -1), "image:d");
+  assert.equal(pinCopyTarget(DECK, "link:b"), "link:b");
+  assert.equal(pinCopyTarget(DECK, "text:a"), null);
+  assert.equal(itemByKey(DECK, "image:d"), DECK[3]);
+  assert.equal(itemByKey(DECK, "missing"), null);
 });

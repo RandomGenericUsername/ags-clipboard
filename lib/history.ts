@@ -71,18 +71,47 @@ export function toggleFavorite(hash: string): void {
   writeHistory(next)
 }
 
-/** Remove an item (and its cached image) and persist it. */
-export function deleteItem(hash: string): void {
+/**
+ * Put a deleted item back exactly as it was (the undo path). A duplicate hash
+ * is a no-op so a stale undo cannot create a second card.
+ */
+export function restoreItem(item: ClipboardItem): void {
+  const items = readHistory()
+  if (items.some((existing) => existing.hash === item.hash)) return
+  const next = [...items, item].sort((a, b) => b.timestamp - a.timestamp)
+  writeHistory(next)
+}
+
+/**
+ * Remove an item and persist it. `keepImage` leaves the cached PNG on disk so
+ * the undo path can restore an image card intact; the caller purges it when
+ * the undo window closes.
+ */
+export function deleteItem(
+  hash: string,
+  options: { keepImage?: boolean } = {},
+): ClipboardItem | null {
   const items = readHistory()
   const target = items.find((item) => item.hash === hash)
-  if (target === undefined) return
+  if (target === undefined) return null
   writeHistory(items.filter((item) => item.hash !== hash))
-  if (target.path !== null) {
+  if (target.path !== null && options.keepImage !== true) {
     try {
       Gio.File.new_for_path(target.path).delete(null)
     } catch (error) {
       console.error(`clipboard: cannot remove image ${target.path}: ${error}`)
     }
+  }
+  return target
+}
+
+/** Delete a cached image after a delete/undo window closes. */
+export function purgeItemImage(item: ClipboardItem): void {
+  if (item.path === null) return
+  try {
+    Gio.File.new_for_path(item.path).delete(null)
+  } catch (error) {
+    console.error(`clipboard: cannot remove image ${item.path}: ${error}`)
   }
 }
 

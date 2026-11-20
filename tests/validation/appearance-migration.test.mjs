@@ -181,8 +181,13 @@ assert.match(
 );
 assert.match(
   window,
-  /ItemCard\(item, index \+ 1, select, openLink, cardWidth\.peek\(\)\)/,
-  "every card is built from the current layout token, read with peek()",
+  /return compactSize === "medium" \? cardWidth\.peek\(\) : compactCardWidth\(compactSize\)/,
+  "the compact width comes from the card-size token, with the layout token for medium",
+);
+assert.match(
+  window,
+  /ItemCard\(\s*item,\s*index \+ 1,[\s\S]*?openLink,\s*width,/,
+  "every compact card is built from the current width token",
 );
 assert.doesNotMatch(itemCard, /set_size_request\(260,/, "the hard card width is gone");
 assert.match(itemCard, /set_size_request\(cardWidth, -1\)/);

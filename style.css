@@ -224,3 +224,501 @@ window#clipboard-window {
   color: alpha(@on_surface, 0.6);
   padding: 24px;
 }
+
+/* ── REQ-009 card stage + compact strip ───────────────────────────── */
+
+.clipboard-root {
+  color: @on_surface;
+}
+
+/* Full mode covers the monitor with a dimmed scrim; the desktop stays
+ * visible behind it. Compact mode leaves the root transparent. */
+.clipboard-root.clipboard-mode-full {
+  background-color: alpha(@scrim, 0.62);
+}
+
+.clipboard-full {
+  padding: 24px 28px;
+}
+
+.clipboard-full-top {
+  min-height: 44px;
+}
+
+.clipboard-brand {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.clipboard-count {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: alpha(@on_surface, 0.6);
+  background-color: alpha(@surface_container, 0.7);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.clipboard-pins-pill {
+  min-height: 34px;
+  border-radius: 999px;
+  border: 1px solid alpha(@outline, 0.45);
+  background-color: alpha(@surface_container, 0.55);
+  color: alpha(@on_surface, 0.85);
+  padding: 0 12px;
+}
+
+.clipboard-pins-pill:hover {
+  border-color: alpha(@primary, 0.8);
+  color: @on_surface;
+}
+
+.clipboard-pins-pill.empty {
+  color: alpha(@on_surface, 0.45);
+}
+
+.clipboard-gear {
+  min-width: 34px;
+  min-height: 34px;
+  border-radius: 10px;
+  background-color: alpha(@surface_container, 0.5);
+  border: 1px solid alpha(@outline, 0.35);
+  padding: 0;
+}
+
+.clipboard-gear:hover,
+.clipboard-gear:active {
+  border-color: @primary;
+}
+
+.clipboard-stage {
+  min-height: 300px;
+}
+
+.clipboard-stage-card {
+  background-color: alpha(@surface, 0.92);
+  border: 1px solid alpha(@outline, 0.5);
+  border-radius: 18px;
+  box-shadow: 0 24px 70px alpha(@shadow, 0.45);
+}
+
+.clipboard-stage-card:hover {
+  border-color: alpha(@primary, 0.7);
+}
+
+.clipboard-stage-body {
+  padding: 20px;
+}
+
+.clipboard-stage-body-image {
+  padding: 0;
+}
+
+.clipboard-stage-body-color {
+  padding: 22px;
+}
+
+.clipboard-head-label-stage {
+  font-size: 0.95rem;
+}
+
+.clipboard-stage-domain {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.clipboard-stage-url {
+  font-size: 0.82rem;
+  color: @primary;
+}
+
+.clipboard-color-meta {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: alpha(@on_surface, 0.7);
+}
+
+.clipboard-hint {
+  font-size: 0.7rem;
+  color: alpha(@on_surface, 0.45);
+}
+
+.clipboard-emoji-stage {
+  font-size: 5rem;
+}
+
+.clipboard-peek {
+  background: transparent;
+  border: none;
+  padding: 0;
+  opacity: 0.55;
+}
+
+.clipboard-peek:hover {
+  opacity: 0.9;
+}
+
+.clipboard-peek-card {
+  background-color: alpha(@surface, 0.72);
+  border: 1px solid alpha(@outline, 0.35);
+  border-radius: 14px;
+}
+
+.clipboard-peek-body {
+  padding: 10px;
+}
+
+.clipboard-nav-arrow {
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid alpha(@outline, 0.45);
+  background-color: alpha(@surface_container, 0.55);
+  color: @on_surface;
+  padding: 0;
+}
+
+.clipboard-nav-arrow:hover {
+  background-color: alpha(@primary, 0.25);
+  border-color: @primary;
+}
+
+.clipboard-control-bar {
+  min-height: 44px;
+  background-color: alpha(@surface_container, 0.68);
+  border: 1px solid alpha(@outline, 0.35);
+  border-radius: 14px;
+  padding: 6px 12px;
+}
+
+.clipboard-bar-index {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.clipboard-bar-type {
+  font-size: 0.72rem;
+  color: alpha(@on_surface, 0.6);
+}
+
+.clipboard-bar-button {
+  min-height: 32px;
+  border-radius: 9px;
+  border: 1px solid alpha(@outline, 0.4);
+  background-color: alpha(@surface, 0.5);
+  color: @on_surface;
+  padding: 0 10px;
+}
+
+.clipboard-bar-button.primary {
+  background-color: @primary;
+  color: @on_primary;
+  border-color: @primary;
+}
+
+.clipboard-bar-button.danger:hover {
+  background-color: alpha(@error, 0.18);
+  border-color: alpha(@error, 0.6);
+}
+
+.clipboard-bar-button.is-on {
+  border-color: @primary;
+  background-color: alpha(@primary, 0.18);
+}
+
+.clipboard-hints {
+  font-size: 0.68rem;
+  color: alpha(@on_surface, 0.45);
+}
+
+.clipboard-pins-panel {
+  padding: 24px 28px;
+}
+
+.clipboard-pins-head {
+  min-height: 38px;
+}
+
+.clipboard-pins-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.clipboard-pins-grid {
+  padding: 4px;
+}
+
+.clipboard-pin-card {
+  background-color: alpha(@surface, 0.9);
+  border: 1px solid alpha(@outline, 0.4);
+  border-radius: 14px;
+  padding: 0;
+}
+
+.clipboard-pin-card.focused {
+  border-color: @primary;
+  box-shadow: 0 0 0 2px alpha(@primary, 0.55);
+}
+
+.clipboard-pin-body {
+  padding: 12px;
+}
+
+.clipboard-pins-empty {
+  padding: 40px;
+  color: alpha(@on_surface, 0.6);
+}
+
+.clipboard-stage-empty {
+  padding: 48px;
+  color: alpha(@on_surface, 0.6);
+}
+
+.clipboard-empty-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: @on_surface;
+}
+
+.clipboard-empty-detail {
+  font-size: 0.76rem;
+  color: alpha(@on_surface, 0.55);
+}
+
+/* Compact strip */
+
+.clipboard-compact {
+  padding: 12px 18px;
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid alpha(@outline, 0.4);
+  background-color: alpha(@surface, 0.92);
+  box-shadow: 0 -22px 70px alpha(@shadow, 0.4);
+}
+
+.clipboard-compact.align-left,
+.clipboard-compact.align-right {
+  border-radius: 18px;
+  border: 1px solid alpha(@outline, 0.4);
+  padding: 12px;
+}
+
+.clipboard-compact-top {
+  min-height: 38px;
+}
+
+.clipboard-search-box {
+  background-color: alpha(@surface_container, 0.85);
+  border: 1px solid alpha(@outline, 0.3);
+  border-radius: 999px;
+  padding: 4px 10px;
+  min-width: 220px;
+}
+
+.clipboard-filters {
+  padding: 2px;
+}
+
+.clipboard-chip {
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: alpha(@on_surface, 0.65);
+  font-size: 0.7rem;
+}
+
+.clipboard-chip:hover {
+  background-color: alpha(@on_surface, 0.07);
+  color: @on_surface;
+}
+
+.clipboard-chip.selected {
+  background-color: alpha(@on_surface, 0.12);
+  border-color: alpha(@outline, 0.45);
+  color: @on_surface;
+  font-weight: 700;
+}
+
+.clipboard-compact-actions {
+  padding: 2px;
+}
+
+.clipboard-compact-actions .clipboard-incognito,
+.clipboard-compact-actions .clipboard-clear {
+  min-height: 30px;
+  padding: 0 9px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: alpha(@on_surface, 0.7);
+  font-size: 0.7rem;
+}
+
+.clipboard-compact-actions .clipboard-incognito.is-on {
+  background-color: alpha(@secondary, 0.16);
+  border-color: alpha(@secondary, 0.55);
+  color: @on_surface;
+}
+
+.clipboard-compact-actions .clipboard-clear:hover {
+  background-color: alpha(@error, 0.14);
+  color: @on_error;
+}
+
+.clipboard-clear-confirm {
+  border: 1px solid alpha(@error, 0.5);
+  background-color: alpha(@error, 0.12);
+  border-radius: 9px;
+  padding: 2px 6px;
+}
+
+.clipboard-confirm-label {
+  font-size: 0.68rem;
+  color: @on_surface;
+}
+
+.clipboard-confirm-yes {
+  min-height: 24px;
+  border-radius: 6px;
+  background-color: alpha(@error, 0.3);
+  color: @on_surface;
+  border: 1px solid alpha(@error, 0.55);
+  padding: 0 8px;
+}
+
+.clipboard-confirm-no {
+  min-height: 24px;
+  border-radius: 6px;
+  padding: 0 8px;
+}
+
+.clipboard-viewbar {
+  min-height: 26px;
+  border-bottom: 1px solid alpha(@outline, 0.3);
+}
+
+.clipboard-view-tab {
+  min-height: 26px;
+  padding: 0 10px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: alpha(@on_surface, 0.6);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.clipboard-view-tab.active {
+  color: @on_surface;
+  border-bottom-color: @primary;
+}
+
+.clipboard-status {
+  font-size: 0.68rem;
+  color: alpha(@on_surface, 0.45);
+  padding-left: 8px;
+}
+
+.clipboard-new-badge {
+  min-height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  border: 1px solid alpha(@secondary, 0.55);
+  background-color: alpha(@secondary, 0.16);
+  color: @on_surface;
+  font-size: 0.68rem;
+}
+
+.clipboard-strip {
+  min-height: 120px;
+}
+
+.clipboard-strip-arrow {
+  min-width: 32px;
+  min-height: 32px;
+  border-radius: 999px;
+  border: 1px solid alpha(@outline, 0.4);
+  background-color: alpha(@surface_container, 0.55);
+  color: @on_surface;
+  padding: 0;
+}
+
+.clipboard-list {
+  min-height: 150px;
+}
+
+.clipboard-open-chip {
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid alpha(@primary, 0.55);
+  background-color: alpha(@primary, 0.16);
+  color: @on_surface;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.clipboard-open-chip:hover {
+  background-color: alpha(@primary, 0.3);
+}
+
+.clipboard-pin-button {
+  min-width: 22px;
+  min-height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background-color: alpha(@surface, 0.3);
+  color: inherit;
+}
+
+.clipboard-pin-button.is-on {
+  background-color: alpha(@surface, 0.55);
+}
+
+.clipboard-pin-mark {
+  opacity: 0.8;
+}
+
+/* Settings popover (app-owned values) */
+
+.clipboard-settings {
+  min-width: 250px;
+}
+
+.clipboard-setting-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: alpha(@on_surface, 0.72);
+}
+
+.clipboard-setting-row.disabled .clipboard-setting-label {
+  color: alpha(@on_surface, 0.35);
+}
+
+.clipboard-segment {
+  padding: 2px;
+}
+
+.clipboard-segment-button {
+  min-height: 28px;
+  padding: 0 9px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: alpha(@on_surface, 0.7);
+  font-size: 0.7rem;
+}
+
+.clipboard-segment-button.selected {
+  background-color: alpha(@primary, 0.2);
+  border-color: @primary;
+  color: @on_surface;
+  font-weight: 700;
+}
+
+.clipboard-segment-button:disabled {
+  opacity: 0.4;
+}

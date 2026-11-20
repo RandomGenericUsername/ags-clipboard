@@ -187,6 +187,35 @@ test("the app reads the clipboard runtime namespace", () => {
   assert.doesNotMatch(history, new RegExp("/" + "hypr" + "[-_]pano" + "/"));
 });
 
+test("UI settings are an app-owned clipboard-ui JSON file, never an AGS link", () => {
+  const settings = readText("lib", "settings.ts");
+  const glib = readText("lib", "settings-glib.ts");
+  const store = readText("lib", "settings-store.ts");
+  assert.match(settings, /card_size/);
+  assert.match(settings, /alignment/);
+  assert.match(settings, /"full"/);
+  assert.match(settings, /"medium"/);
+  assert.match(settings, /"bottom"/);
+  assert.match(glib, /clipboard-ui\/config\.json/);
+  assert.match(glib, /XDG_CONFIG_HOME/);
+  assert.doesNotMatch(glib, /ags\/config|config\.symlink|ags-clipboard/);
+  assert.match(store, /loadSettings/);
+  assert.match(store, /saveSettings/);
+});
+
+test("the settings document is saved on every change", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const persist = functionBody(window, "function persist(): void");
+  assert.match(persist, /saveSettings\(/);
+  for (const setter of [
+    "function setMode(next: LayoutMode): void",
+    "function setCompactSize(next: CompactSize): void",
+    "function setCompactAlign(next: CompactAlignment): void",
+  ]) {
+    assert.match(functionBody(window, setter), /persist\(\)/, `${setter} must persist`);
+  }
+});
+
 test("the launcher and keybind description are documented for consumers", () => {
   const readme = readText("README.md");
   assert.match(readme, /`clipboard-ui`/);
@@ -306,13 +335,13 @@ test("the refresh surface rebuilds the search icon and cards", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const searchIcon = functionBody(window, "function rebuildSearchIcon");
   assert.match(searchIcon, /uiIcon\("search"/);
-  assert.match(searchIcon, /header\.remove\(searchIcon\)/);
-  assert.match(searchIcon, /header\.prepend\(next\)/);
+  assert.match(searchIcon, /searchBox\.remove\(searchIcon\)/);
+  assert.match(searchIcon, /searchBox\.prepend\(next\)/);
   assert.doesNotMatch(searchIcon, /search\.set_text/, "the query entry is untouched");
 
   assert.match(
     window,
-    /appearanceSurfaces\.push\(\{\s*clearCaches: clearVisualCaches,\s*rebuildSearchIcon,\s*rebuildCards: rebuild,/s,
+    /appearanceSurfaces\.push\(\{\s*clearCaches: clearVisualCaches,\s*rebuildSearchIcon,\s*rebuildCards: renderAll,/s,
   );
   const refresh = functionBody(window, "export function refreshClipboardAppearance");
   assert.match(refresh, /applyAppearance\(surface\)/);
@@ -320,16 +349,25 @@ test("the refresh surface rebuilds the search icon and cards", () => {
 
 test("the card rebuild preserves overlay visibility, query, selection and list", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
-  const rebuild = functionBody(window, "function rebuild(): void");
-  assert.doesNotMatch(rebuild, /readHistory\(/);
-  assert.doesNotMatch(rebuild, /query\s*=/);
-  assert.doesNotMatch(rebuild, /items\s*=/);
-  assert.doesNotMatch(rebuild, /paused\s*=/);
-  assert.doesNotMatch(rebuild, /jobId\s*=/);
-  assert.doesNotMatch(rebuild, /search\.set_text/);
-  assert.doesNotMatch(rebuild, /\b(hideWindow|showWindow|toggleWindow)\(/);
-  assert.doesNotMatch(rebuild, /\.visible\s*=/);
-  assert.doesNotMatch(rebuild, /mapped\s*=/);
-  // Selection is retained by index (clamped to the new list), not reset.
-  assert.match(rebuild, /if \(selected >= shown\.length\) selected = shown\.length - 1/);
+  for (const marker of [
+    "function renderAll(): void",
+    "function renderFull(): void",
+    "function renderCompact(): void",
+  ]) {
+    const body = functionBody(window, marker);
+    assert.doesNotMatch(body, /readHistory\(/, `${marker} must not re-read history`);
+    assert.doesNotMatch(body, /query\s*=/, `${marker} must not reset the query`);
+    assert.doesNotMatch(body, /items\s*=\s*\[/, `${marker} must not replace the list`);
+    assert.doesNotMatch(body, /paused\s*=/, `${marker} must not reset incognito`);
+    assert.doesNotMatch(body, /jobId\s*=/, `${marker} must not reset the daemon job`);
+    assert.doesNotMatch(body, /search\.set_text/, `${marker} must not rewrite search`);
+    assert.doesNotMatch(body, /\b(hideWindow|showWindow|toggleWindow)\(/, `${marker} must not move visibility`);
+    assert.doesNotMatch(body, /\.visible\s*=/, `${marker} must not change visibility`);
+    assert.doesNotMatch(body, /mapped\s*=/, `${marker} must not change mapped state`);
+  }
+  // Selection is retained by stable card identity, not reset to the head.
+  assert.match(
+    functionBody(window, "function ensureSelection(): void"),
+    /selectedKey = itemKey\(list\[0\]\)/,
+  );
 });
