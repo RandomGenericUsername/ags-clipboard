@@ -270,11 +270,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 27 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 28 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 31 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,268,804 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 28 conformance, drift "all checks passed", bundle 1,268,804 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,283,540 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 31 conformance, drift "all checks passed", bundle 1,283,540 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -319,7 +319,7 @@ Roles/selectors that need skin paint in
 .clipboard-pins-pill, .clipboard-pin-card.focused
 .clipboard-compact, .clipboard-compact.align-left, .clipboard-compact.align-right
 .clipboard-search-box, .clipboard-chip.selected, .clipboard-view-tab.active
-.clipboard-open-chip, .clipboard-strip-arrow, .clipboard-new-badge
+.clipboard-open-chip, .clipboard-strip-arrow
 .clipboard-settings, .clipboard-segment-button.selected
 
 /* round 2: skin-neutral chrome + shared selection */
@@ -327,11 +327,23 @@ menubutton.clipboard-gear, .clipboard-gear > button
 menubutton.clipboard-gear:hover, .clipboard-gear > button:hover
 menubutton.clipboard-gear:active, .clipboard-gear > button:active
 .clipboard-pin-button, .clipboard-pin-button:hover, .clipboard-pin-button.is-on
-.clipboard-card.selected, .clipboard-pin-card.focused
 /* radii to follow Hyprmod/Hyprland: */
 .clipboard-card, .clipboard-stage-card, .clipboard-peek-card,
 .clipboard-pin-card, .clipboard-compact, .clipboard-control-bar,
 .clipboard-nav-arrow, .clipboard-strip-arrow, .clipboard-gear
+
+/* round 3: per-kind rings + search focus + visible pin fill */
+.kind-text.selected, .kind-code.selected, .kind-color.selected,
+.kind-image.selected, .kind-link.selected, .kind-emoji.selected
+.kind-text.clipboard-pin-card.focused, .kind-code.clipboard-pin-card.focused,
+.kind-color.clipboard-pin-card.focused, .kind-image.clipboard-pin-card.focused,
+.kind-link.clipboard-pin-card.focused, .kind-emoji.clipboard-pin-card.focused
+.kind-text .clipboard-pin-button, .kind-color .clipboard-pin-button,
+.kind-image .clipboard-pin-button, .kind-link .clipboard-pin-button,
+.kind-emoji .clipboard-pin-button
+.clipboard-pin-body
+.clipboard-search-box.focused
+.clipboard-search:focus, .clipboard-search:focus-visible
 ```
 
 ## Feedback round 1 (2026-11-20)
@@ -558,6 +570,98 @@ this round's commit.
 - Selection/focus accent under the active skin.
 - Screenshot target:
   `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-2/`.
+
+## Feedback round 3 (2026-11-20)
+
+Owner live-test feedback after round 2. This round fixes behaviour and actual
+widget geometry, not just property presence.
+
+### 1. Pin background — visible square control
+
+- **Cause:** round 2 made the pin control fully transparent, which the owner
+  rejected.
+- **Fix:** the pin is a real 22×22 square centered in the header: 6 px radius,
+  visible rest fill, stronger hover fill, and an active/pinned fill. Header
+  plates with non-neutral ink use that plate's `on_*` role
+  (`@on_tertiary`, `@on_error`, `@on_error_container`, `@on_primary`,
+  `@on_secondary`); neutral/code headers use `@on_surface`. This keeps the
+  fill visible on both light and dark type headers without fixed hex.
+- **Evidence:** `ui/ItemCard.tsx` pin button size/alignment; `style.css`
+  `.clipboard-pin-button` and per-kind fills; conformance test `gear and pin
+  controls are square and skin-derived`. Live screenshots show the square on
+  compact and pinned cards.
+
+### 2. Compact keyboard navigation
+
+- **Cause:** compact called `search.grab_focus()` on map, so the `typing`
+  branch consumed arrows and returned before navigation.
+- **Fix:** no search autofocus on open. A focusable paint-free root receives
+  focus instead, so arrows reach the compact key map. `/` or a click focuses
+  the entry; while the entry is focused, normal text editing wins. Compact
+  movement now wraps (`moveCompactSelection`) instead of clamping, and
+  `selectByKey(..., true)` scrolls the selection into view.
+- **Evidence:** `ui/ClipboardWindow.tsx` map handler/root focus and `onKey`;
+  `lib/card-modes.ts` wrap; unit test `compact selection wraps and recovers
+  from a stale key`; conformance test `compact opens without focusing search
+  and arrows stay reachable`. Live run confirmed `search.has_focus=false` on
+  compact open (temporary instrumentation, removed before commit).
+
+### 3. Search/filter focus follows the skin
+
+- **Cause:** the inner `Gtk.Entry` drew its own square focus outline inside the
+  rounded search box; chips used neutral chrome for selected state.
+- **Fix:** `notify::has-focus` adds/removes `focused` on
+  `.clipboard-search-box`; the box draws the accent ring and keeps the pill
+  radius. `entry.clipboard-search` focus/outline/box-shadow is neutralized.
+  Filter chips use `@primary` fill/border on selection and the same 999 px pill
+  radius.
+- **Evidence:** `ui/ClipboardWindow.tsx` `notify::has-focus`; `style.css`
+  `.clipboard-search-box.focused`, `.clipboard-search:focus`,
+  `.clipboard-chip.selected`; conformance test `search focus ring lives on the
+  rounded box, not the inner entry`.
+
+### 4. Per-kind card highlight restored
+
+- **Cause:** round 2 wrongly collapsed every selection to `@primary`.
+- **Fix:** six `.kind-*.selected` rules and six
+  `.kind-*.clipboard-pin-card.focused` rules again use the type roles
+  (`@tertiary`, `@surface_container_lowest`, `@error`, `@error_container`,
+  `@primary`, `@secondary`) with subtle fills and soft outer rings. No hex.
+- **Evidence:** `style.css`; conformance test `fallback chrome has no
+  hard-coded hex colors and keeps per-kind rings`.
+
+### 5. Removed unrequested counters
+
+- **Cause:** the compact header showed a `N new` badge and a `N recent/pinned`
+  status label that the owner did not ask for.
+- **Fix:** both widgets, their CSS, `jumpToNewest`, and the now-unused
+  `newKeys` bookkeeping were removed. Recent/Pinned tabs remain.
+- **Evidence:** conformance test `compact view has no duplicate new/recent
+  counters`.
+
+### 6. Pinned view geometry
+
+- **Cause:** the grid was centred at its natural width, three pins collapsed
+  into three wide columns, and pin cards expanded to the viewport height.
+- **Fix:** the grid fills the panel width; four homogeneous columns are kept
+  even in a partially filled last row via invisible fillers; pin cards are
+  exactly 236 px tall (outer card no vexpand, inner header/body fill it), with
+  16 px gaps and 17 px radius. Header order is title → Back + Esc keycap →
+  key hints → spacer → right hint. The stage remains mounted behind the scrim.
+- **Evidence:** `ui/ClipboardWindow.tsx` `renderPins` + `pinsHead`;
+  `ui/ItemCard.tsx` `PinCard`; `style.css` `.clipboard-pins-panel`,
+  `.clipboard-pin-card`, `.clipboard-pin-body`; conformance test `the pinned
+  view is an overlay over the stage with the mock geometry`. Manual/live
+  screenshot confirms the inset, 4-column fill and 236 px rows.
+
+### 7. Remaining visual checks
+
+- Gear hover and pin squareness under the owner's active skin.
+- Arrow movement with the live keyboard in Bottom and Left/Right (focus state
+  verified; key injection tooling was unavailable in this lane).
+- Pinned view Up/Down transition and focus wrap at 1600×1000 and 1280×800.
+- Screenshot target:
+  `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-3/`.
 
 ## Mock
 

@@ -47,6 +47,13 @@
   per-kind selection/focus rules with one shared `@primary` accent rule and
   removed all hard-coded chrome hex; documented the skin radius/selection
   selectors for the shared paint lane.
+- Owner feedback round 3: the pin is a visible 22×22 skin-derived square with
+  rest/hover/pinned fills; compact no longer autofocuses search and arrow
+  navigation wraps and scrolls; search focus is drawn by the rounded box and
+  the inner entry outline is neutralized; per-kind selection/focus rings are
+  restored; the compact `N new` and `N recent/pinned` counters are removed;
+  and the pinned view now fills four homogeneous columns with 236 px rows,
+  16 px gaps and the mock header order.
 
 ## v0.6.2 — 2026-11-12
 
