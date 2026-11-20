@@ -165,9 +165,14 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
   label.set_ellipsize(Pango.EllipsizeMode.END)
   label.set_lines(item.kind === "code" ? (stage ? 10 : 6) : stage ? 8 : 5)
-  // Bound the natural width so a long line cannot stretch the card.
-  label.set_width_chars(stage ? 58 : MAX_CHARS)
-  label.set_max_width_chars(stage ? 58 : MAX_CHARS)
+  // Bound the natural width so a long line cannot stretch the card. The cap
+  // scales with the requested body width, which is what keeps Small/Medium/
+  // Large cards at exactly 220/260/300 px.
+  const maxChars = stage
+    ? Math.max(24, Math.min(58, Math.floor(width / 9)))
+    : Math.max(12, Math.floor((width - 4) / 7))
+  label.set_width_chars(maxChars)
+  label.set_max_width_chars(maxChars)
   label.add_css_class("clipboard-text")
   if (item.kind === "code") label.add_css_class("clipboard-code")
   if (item.kind === "link") label.add_css_class("clipboard-link")

@@ -391,3 +391,148 @@ test("the card rebuild preserves overlay visibility, query, selection and list",
     /selectedKey = itemKey\(list\[0\]\)/,
   );
 });
+
+// ── REQ-009 owner feedback round 1 ─────────────────────────────────────────
+
+test("settings has one visible frame and the mock's anatomy", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const css = readText("style.css");
+  assert.match(window, /popover\.add_css_class\("clipboard-settings-popover"\)/);
+  assert.match(window, /content\.add_css_class\("clipboard-settings"\)/);
+  assert.match(window, /label\("Settings", "clipboard-settings-title"\)/);
+  assert.match(window, /Full stage or compact strip\./);
+  assert.match(window, /220 \/ 260 \/ 300 px\./);
+  assert.match(window, /Bottom strip, or a full-height side column\./);
+  assert.match(window, /clipboard-settings-path/);
+  assert.match(window, /Saved on change\. Not the daemon config\./);
+
+  // Native popover/contents reset, and exactly one painted surface.
+  assert.match(
+    css,
+    /\.clipboard-settings-popover,[\s\S]*?background-color:\s*transparent;[\s\S]*?border:\s*none;[\s\S]*?box-shadow:\s*none;/,
+  );
+  assert.match(css, /\.clipboard-settings\s*\{[^}]*border-radius:\s*15px/s);
+  assert.match(css, /\.clipboard-settings\s*\{[^}]*padding:\s*14px/s);
+  assert.match(css, /\.clipboard-settings\s*\{[^}]*border:\s*1px solid/s);
+  assert.doesNotMatch(css, /\.clipboard-settings\s*\{[^}]*min-width:\s*250px/s);
+});
+
+test("settings closes before a layout change and reopens after settle", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  assert.match(functionBody(window, "function closeSettingsForLayout"), /set_active\(false\)/);
+  assert.match(functionBody(window, "function reopenSettingsAfterLayout"), /GLib\.idle_add/);
+  for (const setter of [
+    "function setMode(next: LayoutMode): void",
+    "function setCompactSize(next: CompactSize): void",
+    "function setCompactAlign(next: CompactAlignment): void",
+  ]) {
+    const body = functionBody(window, setter);
+    assert.match(body, /const keepSettings = closeSettingsForLayout\(\)/, `${setter} must close settings`);
+    assert.match(body, /reopenSettingsAfterLayout\(keepSettings\)/, `${setter} must reopen settings`);
+    assert.match(body, /applyMode\(\)/, `${setter} must re-anchor the window`);
+  }
+});
+
+test("compact cards use the exact size token and vertical columns resize", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const css = readText("style.css");
+  assert.doesNotMatch(css, /\.clipboard-card\s*\{[^}]*min-width:\s*260px/s);
+  assert.match(
+    window,
+    /compactRoot\.set_size_request\(vertical \? compactWidth\(\) : -1, -1\)/,
+  );
+  assert.match(window, /searchBox\.set_size_request\(vertical \? compactWidth\(\) : -1, -1\)/);
+  assert.match(window, /if \(!vertical\) \{[\s\S]*?spacer\.set_hexpand\(true\)/);
+  assert.match(window, /return compactSize === "medium" \? cardWidth\.peek\(\) : compactCardWidth\(compactSize\)/);
+});
+
+test("nav and strip arrows have fixed circular sizes", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const css = readText("style.css");
+  assert.match(window, /arrow\.set_size_request\(46, 46\)/);
+  assert.match(window, /arrow\.set_size_request\(32, 32\)/);
+  assert.match(window, /arrow\.set_valign\(Gtk\.Align\.CENTER\)/);
+  assert.match(window, /arrow\.set_vexpand\(false\)/);
+  assert.match(css, /\.clipboard-nav-arrow\s*\{[^}]*max-width:\s*46px/s);
+  assert.match(css, /\.clipboard-nav-arrow\s*\{[^}]*max-height:\s*46px/s);
+  assert.match(css, /\.clipboard-strip-arrow\s*\{[^}]*max-width:\s*32px/s);
+  assert.match(css, /\.clipboard-strip-arrow\s*\{[^}]*max-height:\s*32px/s);
+});
+
+test("every card kind wires the pin control and guards its click", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const itemCard = readText("ui", "ItemCard.tsx");
+  for (const marker of [
+    "export function ItemCard",
+    "export function StageCard",
+    "export function PeekCard",
+    "export function PinCard",
+  ]) {
+    assert.match(
+      functionBody(itemCard, marker),
+      /onTogglePin/,
+      `${marker} must accept the pin callback`,
+    );
+    assert.match(
+      functionBody(itemCard, marker),
+      /ItemHead\([^)]*onTogglePin/s,
+      `${marker} must pass the pin callback to ItemHead`,
+    );
+  }
+  assert.match(itemCard, /guardChildClick\(pinButton, options\.suppress\)/);
+  assert.match(itemCard, /const claimed = \(\) => suppress !== undefined && Date\.now\(\) < suppress\.until/);
+  assert.match(window, /StageCard\(item, copyAndCollapse, openLink, width, height, togglePin\)/);
+  assert.match(window, /PeekCard\([\s\S]*?togglePin\)/);
+  assert.match(window, /PinCard\([\s\S]*?togglePin,\s*\)/);
+  assert.match(window, /ItemCard\([\s\S]*?togglePin,\s*\)/);
+});
+
+test("compact actions and filter chips carry semantic icons and dots", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const itemCard = readText("ui", "ItemCard.tsx");
+  const css = readText("style.css");
+  assert.match(window, /iconTextButton\("Incognito: off", "clipboard-incognito", "pause"\)/);
+  assert.match(window, /iconTextButton\("Clear", "clipboard-clear", "trash"\)/);
+  assert.match(window, /incognito\.setIcon\(paused \? "play" : "pause"\)/);
+  assert.match(window, /clear\.setIcon\("trash"\)/);
+  for (const token of ["media-playback-pause-symbolic", "media-playback-start-symbolic", "user-trash-symbolic"]) {
+    assert.match(itemCard, new RegExp(token), `missing fallback ${token}`);
+  }
+  assert.match(window, /dot\.add_css_class\("clipboard-filter-dot"\)/);
+  assert.match(window, /dot\.add_css_class\(`kind-\$\{value\}`\)/);
+  for (const kind of ["text", "code", "color", "image", "link", "emoji"]) {
+    assert.match(css, new RegExp(`\\.clipboard-filter-dot\\.kind-${kind}\\s*\\{`), `missing dot role for ${kind}`);
+  }
+});
+
+test("the full bar has icon + keycap controls and Ctrl+Enter opens links", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  assert.match(window, /barButton\("Copy", "copy", "\\u21b5", "primary"\)/);
+  assert.match(window, /barButton\("Pin", "pin", "Ctrl\+F"\)/);
+  assert.match(window, /barButton\("Delete", "trash", "Del", "danger"\)/);
+  assert.match(window, /barButton\("Open", "external", null\)/);
+  assert.match(window, /pinBar\.label\.set_label\(item\.favorite \? "Unpin" : "Pin"\)/);
+  const key = functionBody(window, "function onKey");
+  assert.match(
+    key,
+    /control && \(keyval === Gdk\.KEY_Return \|\| keyval === Gdk\.KEY_KP_Enter\)[\s\S]*?item\.kind === "link"\) openLink\(item\)/,
+  );
+  assert.match(key, /keyval === Gdk\.KEY_Delete/);
+});
+
+test("the pinned view is an overlay over the stage with the mock geometry", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const itemCard = readText("ui", "ItemCard.tsx");
+  const css = readText("style.css");
+  assert.match(window, /const root = new Gtk\.Overlay\(\)/);
+  assert.match(window, /root\.set_child\(stageBase\)/);
+  assert.match(window, /root\.add_overlay\(pinsPanel\)/);
+  assert.match(window, /fullRoot\.set_visible\(full\)/);
+  assert.match(css, /\.clipboard-pins-panel\s*\{[^}]*padding:\s*104px 24px 20px/s);
+  assert.match(css, /\.clipboard-pins-panel\s*\{[^}]*background-color:\s*alpha\(@scrim/s);
+  assert.match(window, /column_homogeneous: true/);
+  assert.match(itemCard, /set_size_request\(width, 236\)/);
+  assert.match(css, /\.clipboard-pin-card\s*\{[^}]*border-radius:\s*17px/s);
+  assert.match(css, /\.kind-text\.clipboard-pin-card\.focused\s*\{[^}]*0 0 0 7px/s);
+  assert.match(window, /pinsBackBar = barButton\("Back", "down", "Esc"\)/);
+});

@@ -52,7 +52,6 @@ import { createGlibSettingsPort } from "../lib/settings-glib"
 import { applyAppearance, type AppearanceSurface } from "../lib/appearance"
 import {
   ItemCard,
-  ItemHead,
   PeekCard,
   PinCard,
   StageCard,
@@ -131,6 +130,92 @@ function button(text: string, cssClass?: string): Gtk.Button {
   const widget = new Gtk.Button({ label: text })
   if (cssClass !== undefined) widget.add_css_class(cssClass)
   return widget
+}
+
+function keycap(text: string): Gtk.Label {
+  const widget = new Gtk.Label({ label: text })
+  widget.add_css_class("clipboard-keycap")
+  widget.set_valign(Gtk.Align.CENTER)
+  return widget
+}
+
+interface ComposedButton {
+  button: Gtk.Button
+  label: Gtk.Label
+  iconHost: Gtk.Box
+  setIcon(variant: string): void
+}
+
+/**
+ * A button whose child is [icon host][label], so the icon can be replaced from
+ * the current palette without recreating the button (and the label stays
+ * available for live text changes such as Incognito on/off).
+ */
+function iconTextButton(
+  text: string,
+  cssClass: string | undefined,
+  iconVariant: string | null,
+): ComposedButton {
+  const widget = new Gtk.Button()
+  if (cssClass !== undefined) widget.add_css_class(cssClass)
+  const content = row(6)
+  content.add_css_class("clipboard-button-content")
+  const iconHost = new Gtk.Box()
+  iconHost.set_valign(Gtk.Align.CENTER)
+  const label = new Gtk.Label({ label: text })
+  label.add_css_class("clipboard-button-label")
+  content.append(iconHost)
+  content.append(label)
+  widget.set_child(content)
+  widget.set_tooltip_text(text)
+  const composed: ComposedButton = {
+    button: widget,
+    label,
+    iconHost,
+    setIcon(variant: string) {
+      clearChildren(iconHost)
+      iconHost.append(uiIcon(variant, 12))
+    },
+  }
+  if (iconVariant !== null) composed.setIcon(iconVariant)
+  return composed
+}
+
+interface BarButton {
+  button: Gtk.Button
+  label: Gtk.Label
+  setIcon(variant: string): void
+}
+
+/** One full-mode control-bar button: icon + label + optional keycap. */
+function barButton(
+  text: string,
+  iconVariant: string | null,
+  key: string | null,
+  cssClass?: string,
+): BarButton {
+  const widget = new Gtk.Button()
+  widget.add_css_class("clipboard-bar-button")
+  if (cssClass !== undefined) widget.add_css_class(cssClass)
+  const content = row(5)
+  content.add_css_class("clipboard-button-content")
+  const iconHost = new Gtk.Box()
+  iconHost.set_valign(Gtk.Align.CENTER)
+  const label = new Gtk.Label({ label: text })
+  label.add_css_class("clipboard-button-label")
+  content.append(iconHost)
+  content.append(label)
+  if (key !== null) content.append(keycap(key))
+  widget.set_child(content)
+  widget.set_tooltip_text(text)
+  return {
+    button: widget,
+    label,
+    setIcon(variant: string) {
+      clearChildren(iconHost)
+      iconHost.append(uiIcon(variant, 13))
+    },
+  }
 }
 
 function row(spacing = 8): Gtk.Box {
@@ -218,10 +303,13 @@ export function ClipboardWindow(
 
   // ── persistent widgets ───────────────────────────────────────────────────
 
-  const root = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 })
+  const root = new Gtk.Overlay()
   root.add_css_class("clipboard-root")
   root.set_vexpand(true)
   root.set_hexpand(true)
+  const stageBase = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 })
+  stageBase.set_vexpand(true)
+  stageBase.set_hexpand(true)
 
   // Full stage
   const fullRoot = column(10)
@@ -270,12 +358,14 @@ export function ClipboardWindow(
   barMeta.add_css_class("clipboard-bar-meta")
   barMeta.append(barIndex)
   barMeta.append(barType)
-  const copyButton = button("Copy", "clipboard-bar-button")
-  copyButton.add_css_class("primary")
-  const pinButton = button("Pin", "clipboard-bar-button")
-  const deleteButton = button("Delete", "clipboard-bar-button")
-  deleteButton.add_css_class("danger")
-  const openButton = button("Open", "clipboard-bar-button")
+  const copyBar = barButton("Copy", "copy", "\u21b5", "primary")
+  const pinBar = barButton("Pin", "pin", "Ctrl+F")
+  const deleteBar = barButton("Delete", "trash", "Del", "danger")
+  const openBar = barButton("Open", "external", null)
+  const copyButton = copyBar.button
+  const pinButton = pinBar.button
+  const deleteButton = deleteBar.button
+  const openButton = openBar.button
   const fullHints = label("\u2190 \u2192 cards \u00b7 \u2191 pinned \u00b7 \u2193 back", "clipboard-hints")
   const controlBar = row(6)
   controlBar.add_css_class("clipboard-control-bar")
@@ -293,7 +383,9 @@ export function ClipboardWindow(
 
   const pinsTitle = label("Pinned \u00b7 0", "clipboard-pins-title")
   const pinsHints = label("\u2190 \u2192 select \u00b7 \u21b5 copy \u00b7 \u2193 back", "clipboard-hints")
-  const pinsBack = button("Back", "clipboard-back")
+  const pinsHint = label("Click a card to copy it", "clipboard-pins-hint")
+  const pinsBackBar = barButton("Back", "down", "Esc")
+  const pinsBack = pinsBackBar.button
   const pinsHead = row(12)
   pinsHead.add_css_class("clipboard-pins-head")
   pinsHead.append(pinsTitle)
@@ -301,8 +393,13 @@ export function ClipboardWindow(
   const pinsSpacer = new Gtk.Box()
   pinsSpacer.set_hexpand(true)
   pinsHead.append(pinsSpacer)
+  pinsHead.append(pinsHint)
   pinsHead.append(pinsBack)
-  const pinsGrid = new Gtk.Grid({ column_spacing: 12, row_spacing: 12 })
+  const pinsGrid = new Gtk.Grid({
+    column_spacing: 16,
+    row_spacing: 16,
+    column_homogeneous: true,
+  })
   pinsGrid.add_css_class("clipboard-pins-grid")
   pinsGrid.set_hexpand(true)
   pinsGrid.set_halign(Gtk.Align.CENTER)
@@ -359,7 +456,24 @@ export function ClipboardWindow(
     emoji: "Emoji",
   }
   for (const value of TYPE_FILTERS) {
-    const chip = button(FILTER_LABEL[value], "clipboard-chip")
+    const chip = new Gtk.Button()
+    chip.add_css_class("clipboard-chip")
+    const content = row(6)
+    content.add_css_class("clipboard-chip-content")
+    if (value !== "all") {
+      // 6 px semantic dot: the dot borrows the same type class as the card
+      // header, so its colour comes from the palette role map in style.css.
+      const dot = new Gtk.Box()
+      dot.add_css_class("clipboard-filter-dot")
+      dot.add_css_class(`kind-${value}`)
+      dot.set_size_request(6, 6)
+      dot.set_halign(Gtk.Align.CENTER)
+      dot.set_valign(Gtk.Align.CENTER)
+      content.append(dot)
+    }
+    content.append(label(FILTER_LABEL[value], "clipboard-chip-label"))
+    chip.set_child(content)
+    chip.set_tooltip_text(`Filter ${FILTER_LABEL[value]}`)
     chip.connect("clicked", () => {
       filter = value
       ensureSelection()
@@ -369,8 +483,9 @@ export function ClipboardWindow(
     filterChips.set(value, chip)
   }
 
-  const incognito = button("Incognito: off", "clipboard-incognito")
-  const clearButton = button("Clear", "clipboard-clear")
+  const incognito = iconTextButton("Incognito: off", "clipboard-incognito", "pause")
+  const clear = iconTextButton("Clear", "clipboard-clear", "trash")
+  const clearButton = clear.button
   const clearYes = button("Clear", "clipboard-confirm-yes")
   const clearNo = button("Cancel", "clipboard-confirm-no")
   const clearConfirmBox = row(4)
@@ -383,7 +498,7 @@ export function ClipboardWindow(
   compactGear.set_tooltip_text("Settings")
   const compactActions = row(6)
   compactActions.add_css_class("clipboard-compact-actions")
-  compactActions.append(incognito)
+  compactActions.append(incognito.button)
   compactActions.append(clearButton)
   compactActions.append(clearConfirmBox)
   compactActions.append(compactGear)
@@ -434,14 +549,32 @@ export function ClipboardWindow(
   strip.append(stripNext)
   strip.append(stripDown)
   const compactHints = label("", "clipboard-hints")
+  for (const arrow of [prevArrow, nextArrow]) {
+    arrow.set_size_request(46, 46)
+    arrow.set_hexpand(false)
+    arrow.set_vexpand(false)
+    arrow.set_halign(Gtk.Align.CENTER)
+    arrow.set_valign(Gtk.Align.CENTER)
+  }
+  for (const arrow of [stripPrev, stripNext, stripUp, stripDown]) {
+    arrow.set_size_request(32, 32)
+    arrow.set_hexpand(false)
+    arrow.set_vexpand(false)
+    arrow.set_halign(Gtk.Align.CENTER)
+    arrow.set_valign(Gtk.Align.CENTER)
+  }
   compactRoot.append(compactTop)
   compactRoot.append(viewBar)
   compactRoot.append(strip)
   compactRoot.append(compactHints)
 
-  root.append(fullRoot)
-  root.append(compactRoot)
-  root.append(pinsPanel)
+  stageBase.append(fullRoot)
+  stageBase.append(compactRoot)
+  root.set_child(stageBase)
+  pinsPanel.set_hexpand(true)
+  pinsPanel.set_halign(Gtk.Align.FILL)
+  pinsPanel.set_valign(Gtk.Align.FILL)
+  root.add_overlay(pinsPanel)
 
   // ── settings popovers ────────────────────────────────────────────────────
 
@@ -462,8 +595,25 @@ export function ClipboardWindow(
     for (const refresh of settingsRefreshers) refresh()
   }
 
+  function closeSettingsForLayout(): boolean {
+    if (!settingsOpen()) return false
+    fullGear.set_active(false)
+    compactGear.set_active(false)
+    return true
+  }
+
+  function reopenSettingsAfterLayout(wasOpen: boolean): void {
+    if (!wasOpen) return
+    GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      const gear = mode === "full" ? fullGear : compactGear
+      gear.set_active(true)
+      return false
+    })
+  }
+
   function setMode(next: LayoutMode): void {
     if (next === mode) return
+    const keepSettings = closeSettingsForLayout()
     mode = next
     if (mode === "compact") {
       pinsOpen = false
@@ -475,37 +625,60 @@ export function ClipboardWindow(
     applyMode()
     renderAll()
     refreshSettings()
+    reopenSettingsAfterLayout(keepSettings)
   }
 
   function setCompactSize(next: CompactSize): void {
     if (mode !== "compact" || next === compactSize) return
+    const keepSettings = closeSettingsForLayout()
     compactSize = next
     persist()
     applyMode()
     renderCompact()
     refreshSettings()
+    reopenSettingsAfterLayout(keepSettings)
   }
 
   function setCompactAlign(next: CompactAlignment): void {
     if (mode !== "compact" || next === compactAlign) return
+    const keepSettings = closeSettingsForLayout()
     compactAlign = next
     persist()
     applyMode()
     renderAll()
     refreshSettings()
+    reopenSettingsAfterLayout(keepSettings)
+  }
+
+  function settingsRow(
+    title: string,
+    description: string,
+    segment: Segment<string>,
+  ): Gtk.Box {
+    const wrapper = row(12)
+    wrapper.add_css_class("clipboard-setting-row")
+    const text = column(2)
+    text.set_hexpand(true)
+    text.append(label(title, "clipboard-setting-label"))
+    text.append(label(description, "clipboard-setting-desc"))
+    wrapper.append(text)
+    wrapper.append(segment.widget)
+    return wrapper
   }
 
   function buildSettingsPopover(): Gtk.Popover {
     const popover = new Gtk.Popover()
-    const content = column(12)
+    popover.add_css_class("clipboard-settings-popover")
+    const content = column(0)
     content.add_css_class("clipboard-settings")
-    content.set_margin_top(12)
-    content.set_margin_bottom(12)
-    content.set_margin_start(12)
-    content.set_margin_end(12)
+    content.set_size_request(342, -1)
 
-    const layoutRow = column(4)
-    layoutRow.append(label("Layout", "clipboard-setting-label"))
+    const head = row(8)
+    head.add_css_class("clipboard-settings-head")
+    head.append(label("Settings", "clipboard-settings-title"))
+    head.append(label("Layout", "clipboard-settings-sub"))
+    content.append(head)
+
     const layoutSeg = segmented<LayoutMode>(
       [
         { value: "full", label: "Full" },
@@ -515,11 +688,12 @@ export function ClipboardWindow(
       setMode,
       () => true,
     )
-    layoutRow.append(layoutSeg.widget)
+    const layoutRow = settingsRow(
+      "Layout",
+      "Full stage or compact strip.",
+      layoutSeg,
+    )
 
-    const sizeRow = column(4)
-    sizeRow.add_css_class("clipboard-setting-row")
-    sizeRow.append(label("Compact card size", "clipboard-setting-label"))
     const sizeSeg = segmented<CompactSize>(
       [
         { value: "small", label: "Small" },
@@ -530,11 +704,8 @@ export function ClipboardWindow(
       setCompactSize,
       () => mode === "compact",
     )
-    sizeRow.append(sizeSeg.widget)
+    const sizeRow = settingsRow("Compact card size", "220 / 260 / 300 px.", sizeSeg)
 
-    const alignRow = column(4)
-    alignRow.add_css_class("clipboard-setting-row")
-    alignRow.append(label("Compact alignment", "clipboard-setting-label"))
     const alignSeg = segmented<CompactAlignment>(
       [
         { value: "bottom", label: "Bottom" },
@@ -545,12 +716,25 @@ export function ClipboardWindow(
       setCompactAlign,
       () => mode === "compact",
     )
-    alignRow.append(alignSeg.widget)
+    const alignRow = settingsRow(
+      "Compact alignment",
+      "Bottom strip, or a full-height side column.",
+      alignSeg,
+    )
 
     content.append(layoutRow)
-    content.append(new Gtk.Separator({ orientation: Gtk.Orientation.HORIZONTAL }))
     content.append(sizeRow)
     content.append(alignRow)
+
+    const foot = column(3)
+    foot.add_css_class("clipboard-settings-foot")
+    foot.append(
+      label("$XDG_CONFIG_HOME/clipboard-ui/config.json", "clipboard-settings-path"),
+    )
+    foot.append(
+      label("Saved on change. Not the daemon config.", "clipboard-settings-note"),
+    )
+    content.append(foot)
     popover.set_child(content)
 
     settingsRefreshers.push(() => {
@@ -561,6 +745,15 @@ export function ClipboardWindow(
         if (mode === "compact") target.remove_css_class("disabled")
         else target.add_css_class("disabled")
       }
+      popover.set_position(
+        mode === "full"
+          ? Gtk.PositionType.BOTTOM
+          : compactAlign === "left"
+            ? Gtk.PositionType.RIGHT
+            : compactAlign === "right"
+              ? Gtk.PositionType.LEFT
+              : Gtk.PositionType.TOP,
+      )
     })
     return popover
   }
@@ -804,11 +997,11 @@ export function ClipboardWindow(
     )
     const item = list[index] ?? list[0]
     selectedKey = itemKey(item)
-    stageSlot.append(StageCard(item, copyAndCollapse, openLink, width, height))
+    stageSlot.append(StageCard(item, copyAndCollapse, openLink, width, height, togglePin))
     const prev = list[(index - 1 + list.length) % list.length]
     const next = list[(index + 1) % list.length]
-    prevPeek.append(PeekCard(list.length > 1 ? prev : null, (target) => selectByKey(itemKey(target)), 152, Math.round(height * 0.72)))
-    nextPeek.append(PeekCard(list.length > 1 ? next : null, (target) => selectByKey(itemKey(target)), 152, Math.round(height * 0.72)))
+    prevPeek.append(PeekCard(list.length > 1 ? prev : null, (target) => selectByKey(itemKey(target)), 152, Math.round(height * 0.72), togglePin))
+    nextPeek.append(PeekCard(list.length > 1 ? next : null, (target) => selectByKey(itemKey(target)), 152, Math.round(height * 0.72), togglePin))
     prevArrow.set_sensitive(list.length > 1)
     nextArrow.set_sensitive(list.length > 1)
 
@@ -818,13 +1011,18 @@ export function ClipboardWindow(
     )
     copyButton.set_sensitive(true)
     pinButton.set_sensitive(true)
-    pinButton.set_label(item.favorite ? "Unpin" : "Pin")
+    copyBar.setIcon("copy")
+    pinBar.setIcon("pin")
+    deleteBar.setIcon("trash")
+    openBar.setIcon("external")
+    pinBar.label.set_label(item.favorite ? "Unpin" : "Pin")
+    pinButton.set_tooltip_text(item.favorite ? "Unpin card" : "Pin card")
     if (item.favorite) pinButton.add_css_class("is-on")
     else pinButton.remove_css_class("is-on")
     deleteButton.set_sensitive(true)
     openButton.set_visible(item.kind === "link")
     openButton.set_sensitive(item.kind === "link")
-    fullHints.set_label("\u2190 \u2192 cards \u00b7 \u2191 pinned \u00b7 \u2193 back")
+    fullHints.set_label("\u2190 \u2192 cards \u00b7 \u2191 pinned \u00b7 \u21b5 copy \u00b7 Ctrl+\u21b5 open \u00b7 \u2193 back")
   }
 
   function renderPins(): void {
@@ -848,7 +1046,7 @@ export function ClipboardWindow(
         focusedPinKey = initialPinFocus(items, selectedKey)
       }
     }
-    const cardW = Math.max(180, Math.floor((geometry.width - 120) / 4) - 12)
+    const cardW = Math.max(180, Math.floor((geometry.width - 96) / 4))
     pins.forEach((item, index) => {
       const deckIndex = list.findIndex((entry) => itemKey(entry) === itemKey(item)) + 1
       const card = PinCard(
@@ -860,6 +1058,7 @@ export function ClipboardWindow(
           copyFocusedPin(itemKey(target))
         },
         cardW,
+        togglePin,
       )
       pinsGrid.attach(card, index % 4, Math.floor(index / 4), 1, 1)
     })
@@ -962,6 +1161,10 @@ export function ClipboardWindow(
       vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
     )
     compactList.set_halign(vertical ? Gtk.Align.FILL : Gtk.Align.START)
+    compactList.set_hexpand(!vertical)
+    compactRoot.set_size_request(vertical ? compactWidth() : -1, -1)
+    searchBox.set_size_request(vertical ? compactWidth() : -1, -1)
+    filters.set_max_children_per_line(vertical ? 3 : 8)
     strip.set_orientation(vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)
     compactTop.set_orientation(vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)
     compactScroll.set_policy(
@@ -977,9 +1180,12 @@ export function ClipboardWindow(
     compactRoot.remove_css_class("align-right")
     compactRoot.add_css_class(`align-${compactAlign}`)
 
-    incognito.set_label(paused ? "Incognito: on" : "Incognito: off")
-    if (paused) incognito.add_css_class("is-on")
-    else incognito.remove_css_class("is-on")
+    incognito.label.set_label(paused ? "Incognito: on" : "Incognito: off")
+    incognito.button.set_tooltip_text(paused ? "Resume clipboard captures" : "Pause clipboard captures")
+    incognito.setIcon(paused ? "play" : "pause")
+    if (paused) incognito.button.add_css_class("is-on")
+    else incognito.button.remove_css_class("is-on")
+    clear.setIcon("trash")
     clearButton.set_visible(!clearConfirm)
     clearConfirmBox.set_visible(clearConfirm)
 
@@ -1021,17 +1227,21 @@ export function ClipboardWindow(
         openLink,
         width,
         (target) => copyOnly(target),
+        togglePin,
       )
-      if (vertical) card.set_halign(Gtk.Align.FILL)
+      if (vertical) card.set_halign(Gtk.Align.CENTER)
       card.add_css_class(`key-${cssKey(itemKey(item))}`)
       if (itemKey(item) === selectedKey) card.add_css_class("selected")
       compactList.append(card)
     })
     // Trailing spacer: absorbs any extra width so the fixed-width cards keep
-    // their natural size instead of being stretched by the box.
-    const spacer = new Gtk.Box()
-    spacer.set_hexpand(true)
-    compactList.append(spacer)
+    // their natural size instead of being stretched by the box. The vertical
+    // column has no extra width to absorb.
+    if (!vertical) {
+      const spacer = new Gtk.Box()
+      spacer.set_hexpand(true)
+      compactList.append(spacer)
+    }
     GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
       scrollSelectedIntoView()
       return false
@@ -1042,12 +1252,12 @@ export function ClipboardWindow(
     const hasPins = items.some((item) => item.favorite)
     const typing = search.has_focus
     if (compactIsVertical(compactAlign)) {
-      if (!hasPins) return "\u2191\u2193 cards \u00b7 \u21b5 copy"
+      if (!hasPins) return "\u2191\u2193 cards \u00b7 \u21b5 copy \u00b7 Ctrl+\u21b5 open"
       return typing
         ? "\u2191\u2193 cards \u00b7 Tab view"
-        : "\u2191\u2193 cards \u00b7 \u2190\u2192 view \u00b7 Tab view"
+        : "\u2191\u2193 cards \u00b7 \u2190\u2192 view \u00b7 Tab view \u00b7 Ctrl+\u21b5 open"
     }
-    if (!hasPins) return "\u2190 \u2192 cards \u00b7 \u21b5 copy \u00b7 Esc"
+    if (!hasPins) return "\u2190 \u2192 cards \u00b7 \u21b5 copy \u00b7 Ctrl+\u21b5 open \u00b7 Esc"
     return "\u2190 \u2192 cards \u00b7 \u2191\u2193 view \u00b7 Tab view \u00b7 \u21b5 copy \u00b7 Esc"
   }
 
@@ -1097,7 +1307,9 @@ export function ClipboardWindow(
 
   function applyMode(): void {
     const full = mode === "full"
-    fullRoot.set_visible(full && !pinsOpen)
+    // Keep the stage mounted behind the pinned grid (the panel is an
+    // overlay child with its own scrim), matching the mock's pins-open look.
+    fullRoot.set_visible(full)
     compactRoot.set_visible(!full)
     pinsPanel.set_visible(full && pinsOpen)
     root.remove_css_class("clipboard-mode-full")
@@ -1154,6 +1366,12 @@ export function ClipboardWindow(
       !clearConfirm
     ) {
       toggleCompactView()
+      return true
+    }
+
+    if (control && (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter)) {
+      const item = selectedItem()
+      if (item !== null && item.kind === "link") openLink(item)
       return true
     }
 
@@ -1334,7 +1552,7 @@ export function ClipboardWindow(
   stripUp.connect("clicked", () => selectByKey(moveCompactSelection(compactListItems(), selectedKey, -1), true))
   stripDown.connect("clicked", () => selectByKey(moveCompactSelection(compactListItems(), selectedKey, 1), true))
 
-  incognito.connect("clicked", () => {
+  incognito.button.connect("clicked", () => {
     if (jobId === null) return
     domainEvents.control(jobId, paused ? "resume" : "pause")
   })

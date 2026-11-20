@@ -68,7 +68,6 @@ window#clipboard-window {
 /* ── Card ─────────────────────────────────────────────────────────── */
 
 .clipboard-card {
-  min-width: 260px;
   border-radius: 12px;
   background-color: alpha(@surface, 0.45);
   border: 1px solid alpha(@on_surface, 0.12);
@@ -369,8 +368,10 @@ window#clipboard-window {
 }
 
 .clipboard-nav-arrow {
-  min-width: 38px;
-  min-height: 38px;
+  min-width: 46px;
+  min-height: 46px;
+  max-width: 46px;
+  max-height: 46px;
   border-radius: 999px;
   border: 1px solid alpha(@outline, 0.45);
   background-color: alpha(@surface_container, 0.55);
@@ -431,63 +432,117 @@ window#clipboard-window {
   color: alpha(@on_surface, 0.45);
 }
 
+.clipboard-keycap {
+  font-size: 0.58rem;
+  font-weight: 650;
+  color: alpha(@on_surface, 0.65);
+  background-color: alpha(@on_surface, 0.08);
+  border: 1px solid alpha(@on_surface, 0.12);
+  border-radius: 5px;
+  padding: 2px 4px;
+}
+
+.clipboard-button-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.clipboard-bar-button.primary .clipboard-keycap {
+  color: @on_primary;
+  background-color: alpha(@on_primary, 0.14);
+  border-color: alpha(@on_primary, 0.2);
+}
+
 .clipboard-pins-panel {
-  padding: 24px 28px;
+  background-color: alpha(@scrim, 0.56);
+  padding: 104px 24px 20px;
 }
 
 .clipboard-pins-head {
-  min-height: 38px;
+  min-height: 42px;
 }
 
 .clipboard-pins-title {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
 }
 
+.clipboard-pins-hint {
+  font-size: 0.68rem;
+  color: alpha(@on_surface, 0.45);
+}
+
 .clipboard-pins-grid {
-  padding: 4px;
+  padding: 2px;
 }
 
 .clipboard-pin-card {
   background-color: alpha(@surface, 0.9);
   border: 1px solid alpha(@outline, 0.4);
-  border-radius: 14px;
+  border-radius: 17px;
   padding: 0;
+  box-shadow: 0 18px 50px alpha(@shadow, 0.3);
+}
+
+.clipboard-pin-card:hover {
+  border-color: alpha(@on_surface, 0.3);
+  box-shadow: 0 24px 64px alpha(@shadow, 0.44);
 }
 
 .clipboard-pin-card.focused {
   border-color: @primary;
-  box-shadow: 0 0 0 2px alpha(@primary, 0.55);
+  box-shadow:
+    0 0 0 2px @primary,
+    0 0 0 7px alpha(@primary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .kind-text.clipboard-pin-card.focused {
   border-color: @tertiary;
-  box-shadow: 0 0 0 2px alpha(@tertiary, 0.55);
+  box-shadow:
+    0 0 0 2px @tertiary,
+    0 0 0 7px alpha(@tertiary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .kind-code.clipboard-pin-card.focused {
   border-color: @surface_container_lowest;
-  box-shadow: 0 0 0 2px alpha(@surface_container_lowest, 0.55);
+  box-shadow:
+    0 0 0 2px @surface_container_lowest,
+    0 0 0 7px alpha(@surface_container_lowest, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .kind-color.clipboard-pin-card.focused {
   border-color: @error;
-  box-shadow: 0 0 0 2px alpha(@error, 0.55);
+  box-shadow:
+    0 0 0 2px @error,
+    0 0 0 7px alpha(@error, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .kind-image.clipboard-pin-card.focused {
   border-color: @error_container;
-  box-shadow: 0 0 0 2px alpha(@error_container, 0.55);
+  box-shadow:
+    0 0 0 2px @error_container,
+    0 0 0 7px alpha(@error_container, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .kind-link.clipboard-pin-card.focused {
   border-color: @primary;
-  box-shadow: 0 0 0 2px alpha(@primary, 0.55);
+  box-shadow:
+    0 0 0 2px @primary,
+    0 0 0 7px alpha(@primary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .kind-emoji.clipboard-pin-card.focused {
   border-color: @secondary;
-  box-shadow: 0 0 0 2px alpha(@secondary, 0.55);
+  box-shadow:
+    0 0 0 2px @secondary,
+    0 0 0 7px alpha(@secondary, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
 }
 
 .clipboard-pin-body {
@@ -495,7 +550,9 @@ window#clipboard-window {
 }
 
 .clipboard-pins-empty {
-  padding: 40px;
+  padding: 48px 24px;
+  border: 1px dashed alpha(@on_surface, 0.16);
+  border-radius: 18px;
   color: alpha(@on_surface, 0.6);
 }
 
@@ -568,6 +625,43 @@ window#clipboard-window {
   border-color: alpha(@outline, 0.45);
   color: @on_surface;
   font-weight: 700;
+}
+
+.clipboard-chip-content {
+  padding: 0 1px;
+}
+
+.clipboard-chip-label {
+  font-size: 0.7rem;
+}
+
+/* Filter dots borrow the card-kind role map, so chrome stays semantic. */
+.clipboard-filter-dot {
+  border-radius: 999px;
+}
+
+.clipboard-filter-dot.kind-text {
+  background-color: @tertiary;
+}
+
+.clipboard-filter-dot.kind-code {
+  background-color: @surface_container_lowest;
+}
+
+.clipboard-filter-dot.kind-color {
+  background-color: @error;
+}
+
+.clipboard-filter-dot.kind-image {
+  background-color: @error_container;
+}
+
+.clipboard-filter-dot.kind-link {
+  background-color: @primary;
+}
+
+.clipboard-filter-dot.kind-emoji {
+  background-color: @secondary;
 }
 
 .clipboard-compact-actions {
@@ -668,6 +762,8 @@ window#clipboard-window {
 .clipboard-strip-arrow {
   min-width: 32px;
   min-height: 32px;
+  max-width: 32px;
+  max-height: 32px;
   border-radius: 999px;
   border: 1px solid alpha(@outline, 0.4);
   background-color: alpha(@surface_container, 0.55);
@@ -712,41 +808,111 @@ window#clipboard-window {
   opacity: 0.8;
 }
 
-/* Settings popover (app-owned values) */
+/* Settings popover (app-owned values)
+ *
+ * The native popover/contents node is stripped: `.clipboard-settings` is the
+ * one and only visible frame. This avoids the nested rounded container that
+ * appeared when both the popover node and the content box were painted.
+ */
+
+.clipboard-settings-popover,
+.clipboard-settings-popover > contents,
+.clipboard-settings-popover contents,
+.clipboard-settings-popover > arrow,
+.clipboard-settings-popover arrow {
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
 
 .clipboard-settings {
-  min-width: 250px;
+  background-color: alpha(@surface, 0.96);
+  border: 1px solid alpha(@outline, 0.45);
+  border-radius: 15px;
+  padding: 14px;
+  box-shadow: 0 30px 90px alpha(@shadow, 0.58);
+}
+
+.clipboard-settings-head {
+  padding: 2px 2px 12px;
+}
+
+.clipboard-settings-title {
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.clipboard-settings-sub {
+  font-size: 0.62rem;
+  color: alpha(@on_surface, 0.45);
+}
+
+.clipboard-setting-row {
+  padding: 11px 2px;
+  border-top: 1px solid alpha(@on_surface, 0.08);
+}
+
+.clipboard-setting-row.disabled {
+  opacity: 0.42;
 }
 
 .clipboard-setting-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: alpha(@on_surface, 0.72);
+  color: @on_surface;
 }
 
-.clipboard-setting-row.disabled .clipboard-setting-label {
-  color: alpha(@on_surface, 0.35);
+.clipboard-setting-desc {
+  font-size: 0.6rem;
+  color: alpha(@on_surface, 0.45);
+}
+
+.clipboard-settings-foot {
+  padding: 10px 2px 2px;
+  border-top: 1px solid alpha(@on_surface, 0.08);
+}
+
+.clipboard-settings-path {
+  font-family: monospace;
+  font-size: 0.6rem;
+  color: alpha(@on_surface, 0.55);
+}
+
+.clipboard-settings-note {
+  font-size: 0.6rem;
+  color: alpha(@on_surface, 0.4);
 }
 
 .clipboard-segment {
   padding: 2px;
+  border-radius: 8px;
+  background-color: alpha(@on_surface, 0.06);
+  border: 1px solid alpha(@on_surface, 0.08);
 }
 
 .clipboard-segment-button {
   min-height: 28px;
   padding: 0 9px;
-  border-radius: 7px;
+  border-radius: 6px;
   border: 1px solid transparent;
   background: transparent;
   color: alpha(@on_surface, 0.7);
-  font-size: 0.7rem;
+  font-size: 0.62rem;
+  font-weight: 550;
+}
+
+.clipboard-segment-button:hover {
+  color: @on_surface;
 }
 
 .clipboard-segment-button.selected {
-  background-color: alpha(@primary, 0.2);
-  border-color: @primary;
+  background-color: alpha(@on_surface, 0.16);
+  border-color: alpha(@on_surface, 0.1);
   color: @on_surface;
-  font-weight: 700;
+  font-weight: 650;
 }
 
 .clipboard-segment-button:disabled {

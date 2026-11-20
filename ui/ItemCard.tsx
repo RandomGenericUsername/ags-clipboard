@@ -16,7 +16,13 @@ const FALLBACK_ICON: Record<string, string> = {
   emoji: "face-smile-symbolic",
   pin: "view-pin-symbolic",
   open: "external-link-symbolic",
+  external: "external-link-symbolic",
   settings: "emblem-system-symbolic",
+  pause: "media-playback-pause-symbolic",
+  play: "media-playback-start-symbolic",
+  trash: "user-trash-symbolic",
+  copy: "edit-copy-symbolic",
+  down: "go-down-symbolic",
 }
 
 //: Rasterized-at-size icon textures, shared across cards.
@@ -115,6 +121,22 @@ export interface HeadOptions {
   /** Show a pin marker (or a pin button when `onTogglePin` is given). */
   pin?: boolean
   onTogglePin?: (item: ClipboardItem) => void
+  /** Shared per-card guard: a child control sets this before the card gesture. */
+  suppress?: { until: number }
+}
+
+/**
+ * Mark a child control (pin/Open) as claiming the click so the enclosing card
+ * gesture does not also select/copy. The controller runs in the capture phase,
+ * before the card's bubble-phase gesture.
+ */
+function guardChildClick(widget: Gtk.Widget, suppress: { until: number }): void {
+  const guard = new Gtk.GestureClick()
+  guard.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+  guard.connect("pressed", () => {
+    suppress.until = Date.now() + 300
+  })
+  widget.add_controller(guard)
 }
 
 /**
@@ -144,6 +166,7 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
       const pinButton = new Gtk.Button({ css_classes: ["clipboard-pin-button"] })
       pinButton.set_child(uiIcon("pin", 13))
       pinButton.set_tooltip_text(item.favorite ? "Unpin" : "Pin")
+      if (options.suppress !== undefined) guardChildClick(pinButton, options.suppress)
       if (item.favorite) pinButton.add_css_class("is-on")
       pinButton.connect("clicked", () => options.onTogglePin?.(item))
       headStart.append(pinButton)
@@ -168,17 +191,23 @@ function attachCardGestures(
   onSelect: (item: ClipboardItem) => void,
   onActivate?: (item: ClipboardItem) => void,
   onOpenLink?: (item: ClipboardItem) => void,
+  suppress?: { until: number },
 ): void {
+  const claimed = () => suppress !== undefined && Date.now() < suppress.until
+
   const gesture = new Gtk.GestureClick()
   gesture.set_button(Gdk.BUTTON_PRIMARY)
-  gesture.connect("released", () => onSelect(item))
+  gesture.connect("released", () => {
+    if (claimed()) return
+    onSelect(item)
+  })
   card.add_controller(gesture)
 
   if (onActivate !== undefined) {
     const doubleClick = new Gtk.GestureClick()
     doubleClick.set_button(Gdk.BUTTON_PRIMARY)
     doubleClick.connect("pressed", (_gesture, nPress: number) => {
-      if (nPress === 2) onActivate(item)
+      if (nPress === 2 && !claimed()) onActivate(item)
     })
     card.add_controller(doubleClick)
   }
@@ -187,7 +216,10 @@ function attachCardGestures(
   if (item.kind === "link" && onOpenLink !== undefined) {
     const rightClick = new Gtk.GestureClick()
     rightClick.set_button(Gdk.BUTTON_SECONDARY)
-    rightClick.connect("released", () => onOpenLink(item))
+    rightClick.connect("released", () => {
+      if (claimed()) return
+      onOpenLink(item)
+    })
     card.add_controller(rightClick)
   }
 }
@@ -204,6 +236,7 @@ export function ItemCard(
   onOpenLink: ((item: ClipboardItem) => void) | undefined,
   cardWidth: number,
   onActivate?: (item: ClipboardItem) => void,
+  onTogglePin?: (item: ClipboardItem) => void,
 ): Gtk.Box {
   const card = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -217,23 +250,26 @@ export function ItemCard(
   card.set_hexpand(false)
   card.set_halign(Gtk.Align.START)
 
-  card.append(ItemHead(item, { index, pin: true }))
+  const suppress = { until: 0 }
+  card.append(ItemHead(item, { index, pin: true, onTogglePin, suppress }))
 
   const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 8 })
   body.add_css_class("clipboard-body")
   body.append(Preview(item, { width: cardWidth - 24 }))
   if (item.kind === "link" && onOpenLink !== undefined) {
     // Visible, always-present chip (not hover-only) in every compact view and
-    // alignment. It calls the same openLink path as full mode.
+    // alignment. It calls the same openLink path as full mode and claims the
+    // click so the card selection does not change.
     const open = new Gtk.Button({ label: "Open", css_classes: ["clipboard-open-chip"] })
     open.set_halign(Gtk.Align.START)
     open.set_tooltip_text(`Open ${item.text ?? "link"}`)
+    guardChildClick(open, suppress)
     open.connect("clicked", () => onOpenLink(item))
     body.append(open)
   }
   card.append(body)
 
-  attachCardGestures(card, item, onSelect, onActivate, onOpenLink)
+  attachCardGestures(card, item, onSelect, onActivate, onOpenLink, suppress)
   return card
 }
 
@@ -244,6 +280,7 @@ export function StageCard(
   onOpenLink: ((item: ClipboardItem) => void) | undefined,
   width: number,
   height: number,
+  onTogglePin?: (item: ClipboardItem) => void,
 ): Gtk.Box {
   const card = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
@@ -255,7 +292,8 @@ export function StageCard(
   card.set_hexpand(false)
   card.set_halign(Gtk.Align.CENTER)
   card.set_valign(Gtk.Align.CENTER)
-  card.append(ItemHead(item, { stage: true, pin: true }))
+  const suppress = { until: 0 }
+  card.append(ItemHead(item, { stage: true, pin: true, onTogglePin, suppress }))
 
   const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   body.add_css_class("clipboard-stage-body")
@@ -270,7 +308,7 @@ export function StageCard(
   )
   card.append(body)
 
-  attachCardGestures(card, item, onSelect, undefined, onOpenLink)
+  attachCardGestures(card, item, onSelect, undefined, onOpenLink, suppress)
   return card
 }
 
@@ -280,8 +318,9 @@ export function PeekCard(
   onSelect: (item: ClipboardItem) => void,
   width: number,
   height: number,
-): Gtk.Button {
-  const button = new Gtk.Button({ css_classes: ["clipboard-peek"] })
+  onTogglePin?: (item: ClipboardItem) => void,
+): Gtk.Box {
+  const button = new Gtk.Box({ css_classes: ["clipboard-peek"] })
   button.set_size_request(width, height)
   button.set_halign(Gtk.Align.CENTER)
   button.set_valign(Gtk.Align.CENTER)
@@ -297,13 +336,14 @@ export function PeekCard(
   })
   card.add_css_class("clipboard-peek-card")
   card.set_overflow(Gtk.Overflow.HIDDEN)
-  card.append(ItemHead(item, { pin: true }))
+  const suppress = { until: 0 }
+  card.append(ItemHead(item, { pin: true, onTogglePin, suppress }))
   const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   body.add_css_class("clipboard-peek-body")
   body.append(Preview(item, { width: width - 24, height: Math.max(60, height - 90) }))
   card.append(body)
-  button.set_child(card)
-  button.connect("clicked", () => onSelect(item))
+  button.append(card)
+  attachCardGestures(button, item, onSelect, undefined, undefined, suppress)
   return button
 }
 
@@ -314,11 +354,12 @@ export function PinCard(
   focused: boolean,
   onActivate: (item: ClipboardItem) => void,
   width: number,
-): Gtk.Button {
-  const button = new Gtk.Button({
+  onTogglePin?: (item: ClipboardItem) => void,
+): Gtk.Box {
+  const button = new Gtk.Box({
     css_classes: ["clipboard-pin-card", `kind-${item.kind}`],
   })
-  button.set_size_request(width, -1)
+  button.set_size_request(width, 236)
   button.set_halign(Gtk.Align.FILL)
   button.set_valign(Gtk.Align.FILL)
   if (focused) button.add_css_class("focused")
@@ -330,12 +371,13 @@ export function PinCard(
     css_classes: [`kind-${item.kind}`],
   })
   card.set_overflow(Gtk.Overflow.HIDDEN)
-  card.append(ItemHead(item, { index, pin: true }))
+  const suppress = { until: 0 }
+  card.append(ItemHead(item, { index, pin: true, onTogglePin, suppress }))
   const body = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL })
   body.add_css_class("clipboard-pin-body")
-  body.append(Preview(item, { width: width - 26 }))
+  body.append(Preview(item, { width: Math.max(140, width - 26) }))
   card.append(body)
-  button.set_child(card)
-  button.connect("clicked", () => onActivate(item))
+  button.append(card)
+  attachCardGestures(button, item, onActivate, undefined, undefined, suppress)
   return button
 }
