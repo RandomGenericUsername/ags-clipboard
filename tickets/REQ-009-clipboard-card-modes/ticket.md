@@ -270,11 +270,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 27 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 25 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 28 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,271,196 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 25 conformance, drift "all checks passed", bundle 1,271,196 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,268,804 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 28 conformance, drift "all checks passed", bundle 1,268,804 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -316,11 +316,22 @@ Roles/selectors that need skin paint in
 .clipboard-stage-card, .clipboard-stage-body
 .clipboard-peek, .clipboard-peek-card, .clipboard-peek-body
 .clipboard-nav-arrow, .clipboard-control-bar, .clipboard-bar-button
-.clipboard-pins-pill, .clipboard-gear, .clipboard-pin-card.focused
+.clipboard-pins-pill, .clipboard-pin-card.focused
 .clipboard-compact, .clipboard-compact.align-left, .clipboard-compact.align-right
 .clipboard-search-box, .clipboard-chip.selected, .clipboard-view-tab.active
 .clipboard-open-chip, .clipboard-strip-arrow, .clipboard-new-badge
 .clipboard-settings, .clipboard-segment-button.selected
+
+/* round 2: skin-neutral chrome + shared selection */
+menubutton.clipboard-gear, .clipboard-gear > button
+menubutton.clipboard-gear:hover, .clipboard-gear > button:hover
+menubutton.clipboard-gear:active, .clipboard-gear > button:active
+.clipboard-pin-button, .clipboard-pin-button:hover, .clipboard-pin-button.is-on
+.clipboard-card.selected, .clipboard-pin-card.focused
+/* radii to follow Hyprmod/Hyprland: */
+.clipboard-card, .clipboard-stage-card, .clipboard-peek-card,
+.clipboard-pin-card, .clipboard-compact, .clipboard-control-bar,
+.clipboard-nav-arrow, .clipboard-strip-arrow, .clipboard-gear
 ```
 
 ## Feedback round 1 (2026-11-20)
@@ -468,6 +479,85 @@ checks list the manual resolution and screenshot path.
   confirm the stage remains visible under the scrim, focus wraps, `Enter`
   copies+collapses, and `↓`/`Esc`/Back restore the stage. Screenshot target:
   `.../feedback-1/pins-<resolution>.png`.
+
+## Feedback round 2 (2026-11-20)
+
+Owner live-test feedback after round 1. The owner had already removed the
+unsupported `max-width`/`max-height` lines locally; that change is folded into
+this round's commit.
+
+### A. CSS validity / app startup
+
+- **Symptom:** `ags run -d .` logged `CSS Error :373 No property named
+  "max-width"`, `:374 max-height`, `:765 max-width`, `:766 max-height`; the app
+  appeared to stop working.
+- **Cause:** GTK 4 CSS has no `max-width`/`max-height`. The round-1 arrow fix
+  used them to cap button size.
+- **Fix:** the `max-*` declarations are gone. Arrow size is enforced by
+  `set_size_request(46,46)` / `(32,32)` plus `halign/valign = CENTER` and
+  `vexpand = false`. The `background:` shorthand was also replaced with
+  `background-color:` for GTK consistency. A regression test scans the
+  stylesheet for `max-width`, `max-height` and the other web-only properties we
+  do not use.
+- **Live evidence:** after `ags quit -i clipboard` (the running instance was
+  the dev `ags run -d .` from this worktree):
+  - `timeout 12s ags run -d .` → exit `124` (still alive at timeout), empty
+    log, `grep "CSS Error"` → none.
+  - Background start → `ags list` shows `clipboard`, process alive; `ags quit
+    -i clipboard` → process exits cleanly.
+
+### B. Gear icon / hover
+
+- **Symptom:** gear hover drew a rounded-square outline/background that did not
+  follow the skin/Hyprland rounding.
+- **Cause:** `Gtk.MenuButton` contains a child `button` node; only the
+  menubutton was styled, so theme button paint leaked through.
+- **Fix:** gear is 38×38 with 10 px radius, transparent by default, no border
+  and no shadow. Both `menubutton.clipboard-gear` and
+  `.clipboard-gear > button` are neutralized; hover uses
+  `alpha(@on_surface, 0.08)` plus a 1 px `@primary` ring, active uses
+  `alpha(@primary, 0.18)` and the accent ring. No fixed chrome hex.
+- **Evidence:** `ui/ClipboardWindow.tsx` gear `set_size_request(38,38)`;
+  `style.css` gear selectors; conformance test `gear and pin controls are
+  square and skin-neutral by default`.
+
+### C. Pin button square
+
+- **Symptom:** the pin icon/button stretched into a tall rounded rectangle.
+- **Cause:** the header is 36 px tall and the pin button had no explicit size
+  or vertical alignment.
+- **Fix:** `ItemHead` sets `set_size_request(22,22)`, `hexpand/vexpand=false`,
+  `halign/valign = CENTER`; CSS keeps 22×22, 6 px radius, transparent default,
+  hover fill only, and an active/pinned `@primary` tint. The capture-phase
+  click guard still prevents pinning from selecting/copying/collapsing.
+- **Evidence:** `ui/ItemCard.tsx` pin button construction; `style.css`
+  `.clipboard-pin-button`; conformance test above.
+
+### D. Cards follow skin / Hyprmod radii and accent
+
+- **Symptom:** card highlight colours looked hardcoded/per-kind and card
+  rounding did not read as skin-driven.
+- **Cause:** six `.kind-*.selected` rules painted selection with the type hue;
+  six `.kind-*.clipboard-pin-card.focused` rules did the same for pin focus.
+- **Fix:** selection is now one shared `.clipboard-card.selected` rule and pin
+  focus is one shared `.clipboard-pin-card.focused` rule, both using `@primary`
+  plus `alpha(@primary, ...)`. Type roles remain only on the header plate
+  (`.kind-* .clipboard-head`) and filter dots. No `#` hex colours exist in the
+  stylesheet; chrome uses palette roles. Radii remain app-fallback values in
+  `style.css` and are listed for the skin lane to override with
+  Hyprmod/Hyprland values.
+- **Evidence:** `style.css` `.clipboard-card.selected`,
+  `.clipboard-pin-card.focused`; conformance tests `fallback chrome has no
+  hard-coded hex colors and uses the accent role` and `the pinned view is an
+  overlay over the stage with the mock geometry`.
+
+### Remaining visual checks
+
+- Gear hover shape and skin radii on a live compositor.
+- Pin squareness on stage, peek, compact and pinned cards.
+- Selection/focus accent under the active skin.
+- Screenshot target:
+  `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-2/`.
 
 ## Mock
 

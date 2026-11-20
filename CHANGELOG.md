@@ -39,6 +39,14 @@
   gained icon+keycap controls and `Ctrl+Enter` opens the selected link; the
   pinned view is now a stage-preserving overlay with the mock inset, 4-column
   grid, focus rings and Back keycap.
+- Owner feedback round 2: removed the GTK-unsupported `max-width`/`max-height`
+  CSS (arrows keep their circular size through widget size requests) and added
+  a stylesheet validity guard; neutralized the `Gtk.MenuButton` child button so
+  the 38×38 gear has skin-transparent default paint and an accent-ring hover;
+  made the 22×22 pin button square in every card header; replaced the six
+  per-kind selection/focus rules with one shared `@primary` accent rule and
+  removed all hard-coded chrome hex; documented the skin radius/selection
+  selectors for the shared paint lane.
 
 ## v0.6.2 — 2026-11-12
 
