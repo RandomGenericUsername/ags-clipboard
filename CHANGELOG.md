@@ -29,6 +29,16 @@
 - `make test` now executes the settings domain/port and the deck, view,
   selection and pinned-focus logic; conformance pins the app-owned settings
   path and save-on-change setters.
+- Owner feedback round 1: one-frame settings popover with the mock's anatomy;
+  settings closes/reopens around window re-anchoring so alignment changes are
+  never clipped; compact cards are exactly 220/260/300 px (the old 260 px CSS
+  clamp is gone) and vertical columns track the selected width; nav/strip
+  arrows stay 46×46/32×32 circles; every card header carries a working pin
+  control that does not trigger select/copy; Incognito/Clear gained pause-play
+  and trash icons; type filter chips gained semantic 6 px dots; the full bar
+  gained icon+keycap controls and `Ctrl+Enter` opens the selected link; the
+  pinned view is now a stage-preserving overlay with the mock inset, 4-column
+  grid, focus rings and Back keycap.
 
 ## v0.6.2 — 2026-11-12
 

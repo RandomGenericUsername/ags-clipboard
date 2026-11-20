@@ -270,11 +270,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 27 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 17 tests pass (manifest identity, settings path, save-on-change, compact Open chip/view keys, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 25 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,224,816 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 17 conformance, drift "all checks passed", bundle 1,224,816 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,271,196 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (27 unit + 25 conformance, drift "all checks passed", bundle 1,271,196 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -322,6 +322,152 @@ Roles/selectors that need skin paint in
 .clipboard-open-chip, .clipboard-strip-arrow, .clipboard-new-badge
 .clipboard-settings, .clipboard-segment-button.selected
 ```
+
+## Feedback round 1 (2026-11-20)
+
+Owner live-test feedback against HEAD `9331c25`. Each item records the
+before-state (code at that HEAD), the fix and the check that keeps it fixed.
+Static invariants are covered by `tests/app-contract.test.mjs`; live-only
+checks list the manual resolution and screenshot path.
+
+### 1. Settings was a container within a container
+
+- **Before:** `buildSettingsPopover` created a bare `Gtk.Popover` and only
+  margin-padded `.clipboard-settings`; the popover node and the content box
+  both drew a rounded/shadowed frame.
+- **After:** the popover carries `clipboard-settings-popover`; CSS resets the
+  popover, `contents` and `arrow` nodes to transparent/no border/no padding/no
+  shadow, and `.clipboard-settings` is the single glass surface (surface fill,
+  1 px hairline, 15 px radius, 14 px padding, one shadow). The panel now has
+  the mock's `Settings` + `Layout` head, label + description rows, separators,
+  a subtle segment track, disabled size/alignment rows in Full, and the
+  config-path footer.
+- **Evidence:** `ui/ClipboardWindow.tsx` `buildSettingsPopover`;
+  `style.css` `.clipboard-settings-popover` reset + `.clipboard-settings`;
+  conformance test `settings has one visible frame and the mock's anatomy`.
+
+### 2. Settings clipped when changing compact alignment
+
+- **Before:** `setCompactAlign` changed the window anchor while the popover was
+  still open, so MenuButton kept the old geometry and the popover was cut by
+  the monitor edge.
+- **After:** every layout/size change closes the open settings popover before
+  `applyMode()` re-anchors the window, then reopens it on the new gear in a
+  `GLib.idle_add` callback. The popover position is set from the active
+  alignment (`TOP` bottom strip, `RIGHT` left column, `LEFT` right column,
+  `BOTTOM` full stage).
+- **Evidence:** `closeSettingsForLayout` / `reopenSettingsAfterLayout`;
+  conformance test `settings closes before a layout change and reopens after
+  settle`.
+- **Manual check (not run in this lane; live pass required):** at 1600×1000
+  and 1280×800, open compact settings and step Left→Bottom, Bottom→Left,
+  Left→Right and Right→Bottom. The popover must remain fully inside the
+  monitor. Screenshot target:
+  `tickets/REQ-009-clipboard-card-modes/screenshots/feedback-1/settings-<from>-<to>-<resolution>.png`.
+
+### 3. Compact card size did not change card width
+
+- **Before:** `style.css` `.clipboard-card { min-width: 260px; }` clamped
+  Small (220) up to 260, so Small and Medium looked identical.
+- **After:** the clamp is removed. The card is sized by the settings token
+  (220/260/300), the preview's character cap scales with the requested body
+  width, vertical columns set their content width from the active card size,
+  the search box follows that width, and the trailing list spacer exists only
+  in the horizontal strip so it cannot stretch cards.
+- **Evidence:** `ui/ClipboardWindow.tsx` `renderCompact`
+  (`compactRoot.set_size_request`, `searchBox.set_size_request`, spacer only
+  when `!vertical`); `ui/Preview.tsx` width-derived character cap;
+  conformance test `compact cards use the exact size token and vertical
+  columns resize`.
+- **Manual check:** Small/Medium/Large in Bottom/Left/Right must measure
+  220/260/300 px; the vertical column width must track the selected size.
+  Screenshot target: `.../feedback-1/cards-<size>-<alignment>.png`.
+
+### 4. Nav arrows were tall pills
+
+- **Before:** only min sizes existed (`38px` full, `32px` strip), and no
+  alignment/expand guard, so buttons filled the cross-axis.
+- **After:** both full arrows are `46×46`, all four strip arrows are `32×32`,
+  with `hexpand/vexpand = false`, `halign/valign = CENTER` and CSS
+  min/max widths and heights plus `border-radius: 999px`.
+- **Evidence:** `ui/ClipboardWindow.tsx` arrow sizing loop; `style.css`
+  `.clipboard-nav-arrow`, `.clipboard-strip-arrow`; conformance test `nav and
+  strip arrows have fixed circular sizes`.
+
+### 5. Pin functionality / pin icon missing
+
+- **Before:** `ItemHead` supported a pin button, but `ItemCard`, `StageCard`,
+  `PeekCard` and `PinCard` omitted `onTogglePin`, so only already-pinned cards
+  showed a static mark.
+- **After:** every card builder accepts and forwards `onTogglePin`, the window
+  passes `togglePin`, and each header shows an active pin control. A
+  capture-phase child guard marks pin/Open clicks as claimed so the card
+  gesture does not also select/copy/collapse. `PeekCard` and `PinCard` are now
+  plain boxes with gestures rather than nested GTK buttons.
+- **Evidence:** `ui/ItemCard.tsx` `HeadOptions.suppress`, `guardChildClick`,
+  all four card builders; `ui/ClipboardWindow.tsx` render call sites;
+  conformance test `every card kind wires the pin control and guards its
+  click`.
+
+### 6. No icons on Incognito / Clear
+
+- **Before:** both compact buttons were label-only `Gtk.Button`s.
+- **After:** Incognito is `[pause|play icon] + Incognito: off|on`; Clear is
+  `[trash icon] + Clear`, both built through `uiIcon` with local fallbacks
+  (`media-playback-pause-symbolic`, `media-playback-start-symbolic`,
+  `user-trash-symbolic`). Icons are recreated on every `renderCompact`, so an
+  appearance refresh repaints them from the new palette. Tooltips update with
+  the incognito state.
+- **Evidence:** `iconTextButton`; `ui/ItemCard.tsx` fallback map; render
+  `setIcon` calls; conformance test `compact actions and filter chips carry
+  semantic icons and dots`.
+
+### 7. Filter chip dots missing
+
+- **Before:** chips were label-only.
+- **After:** every type chip except `All` has a 6 px dot using the card kind's
+  semantic role class (`kind-text` → `@tertiary`, `kind-code` →
+  `@surface_container_lowest`, `kind-color` → `@error`, `kind-image` →
+  `@error_container`, `kind-link` → `@primary`, `kind-emoji` → `@secondary`).
+  Dots remain visible in horizontal and vertical compact layouts.
+- **Evidence:** chip construction in `ui/ClipboardWindow.tsx`;
+  `style.css` `.clipboard-filter-dot.kind-*`; conformance test above.
+
+### 8. Full bar icons, keycaps and Ctrl+Enter open
+
+- **Before:** the bar used plain text buttons; the Pin label was replaced at
+  render time and there was no Ctrl+Enter path.
+- **After:** Copy is `copy icon + Copy + ↵`; Pin is `pin icon + Pin/Unpin +
+  Ctrl+F`; Delete is `trash icon + Delete + Del`; Open is `external icon +
+  Open` and only visible for links. Button content is built once and icons are
+  refreshed on each render, so no duplicate/ghost child remains. `Ctrl+Enter`
+  opens the selected link (hides the overlay and hands off to `openUrl`) in
+  full and compact; plain `Enter` keeps copy semantics. Hints name the real
+  bindings.
+- **Evidence:** `barButton` and the four bar controls in
+  `ui/ClipboardWindow.tsx`; `onKey` Ctrl+Enter branch; conformance test `the
+  full bar has icon + keycap controls and Ctrl+Enter opens links`.
+
+### 9. Pinned view looked nothing like the mock
+
+- **Before:** opening pins hid the stage and replaced the window content with
+  a sparse padded grid.
+- **After:** the root is a `Gtk.Overlay`; the stage stays mounted behind a
+  translucent scrim overlay. The pinned surface uses the mock inset (104 px
+  top, 24 px sides, 20 px bottom), header `Pinned · n` with key hints,
+  `Click a card to copy it`, a Back control with `Esc` keycap, a
+  homogeneous 4-column grid with 236 px rows and 16 px gaps, 17 px card
+  radius, header/body cards, and a type-coloured focus ring plus soft outer
+  ring. `←`/`→` wrap, `Enter` copies and collapses, `↓`/`Esc`/Back return;
+  empty and single-pin states stay honest.
+- **Evidence:** `ui/ClipboardWindow.tsx` `Gtk.Overlay` root, `applyMode`,
+  `renderPins`, `pinsBackBar`; `style.css` `.clipboard-pins-panel`,
+  `.clipboard-pins-grid`, `.clipboard-pin-card`; conformance test `the pinned
+  view is an overlay over the stage with the mock geometry`.
+- **Manual check:** at 1600×1000 and 1280×800, press `↑` from the stage and
+  confirm the stage remains visible under the scrim, focus wraps, `Enter`
+  copies+collapses, and `↓`/`Esc`/Back restore the stage. Screenshot target:
+  `.../feedback-1/pins-<resolution>.png`.
 
 ## Mock
 
