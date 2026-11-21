@@ -303,3 +303,10 @@ The mock is the first source of truth for look and interaction. This ticket is
 the source of truth for intent and acceptance. The design is frozen at commit
 `6242101` (`mock.sha256`); the accepted compact extension is part of the intent,
 and there is no pending proposal.
+
+## Batch context
+
+This design is part of the frozen redesign batch. Canonical architecture,
+live state and the pending design index (including this ticket and its mock):
+`dotfiles-v3/docs/117-redesign-batch.md` (workspace path). Follow the
+appearance/skin rules and the in-page-panel/popover lesson there.
