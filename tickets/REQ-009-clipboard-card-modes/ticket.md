@@ -296,11 +296,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 28 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch, header/type-role gates) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 33 tests pass (manifest identity, in-page settings/catcher, no Popover, app-owned card width, content accents at USER+1, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 34 tests pass (manifest identity, in-page settings/catcher, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,305,356 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 33 conformance, drift "all checks passed", bundle 1,305,356 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,306,712 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 34 conformance, drift "all checks passed", bundle 1,306,712 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -436,13 +436,75 @@ changes, no tag).
   asserts the in-page catcher/panel, asserts the app-owned constant and no
   `appearance.value`, and asserts the content-accent providers at USER + 1.
   Existing per-kind header/selection/focus/pin assertions remain.
-- **Gates (app worktree):** `make test` 28 pass; `make conformance` 33 pass;
+- **Gates (app worktree):** `make test` 28 pass; `make conformance` 34 pass;
   `make drift` all checks passed; `make typecheck` 0 app errors; `make bundle`
-  1,305,356 bytes; `make gates` green. Final numbers in the Evidence table.
+  1,306,712 bytes; `make gates` green. Final numbers in the Evidence table.
 - **Visual checks that still need the skin lane:** four-column pinned geometry
   under each of the five skins, settings panel/catcher paint, gear hover, and
   the one-ring selected state after the skin template removes its base
   duplicate/old per-kind rules.
+
+## Live feedback round (2026-11-22)
+
+Owner tested the preview after the batch build.
+
+### 1-2. Compact Left/Right tiny; Left→Right stale bottom layout
+
+- **Cause:** `compactSpacer` was visible in every compact mode and expanded
+  before `compactRoot`, pushing vertical columns to the bottom; `compactRoot`
+  had `vexpand=false` and no alignment/width reset, so alignment changes kept
+  stale shell geometry.
+- **Fix:** one `applyCompactShell()` helper owns the full compact shell:
+  vertical → spacer hidden, `vexpand=true`, `valign=FILL`, width
+  `compactWidth()`, `hexpand=false`, `halign=START/END`; bottom → spacer
+  visible, `vexpand=false`, `valign=END`, `halign=FILL`, `hexpand=true`; plus
+  list orientation, scroll policies, search/filters and arrow visibility. It is
+  called by `applyMode()`, `renderCompact()` and every alignment change.
+- **Evidence:** `ui/ClipboardWindow.tsx` `applyCompactShell`; conformance test
+  `compact selection is incremental and shell resets on alignment`.
+- **Live:** Left and Right at 1920×1080 render full-height columns with visible
+  stacked cards (`/tmp/req009-shots/r5-left.png`,
+  `/tmp/req009-shots/r5-right.png`).
+
+### 3. Massive lag on filter/Esc/arrow keys
+
+- **Cause A:** per-widget `Gtk.CssProvider` on every header/dot/pin/card on
+  every render caused repeated style invalidation.
+- **Fix A:** one display-wide content provider at `USER + 1`
+  (`installContentAccents` → `Gtk.StyleContext.add_provider_for_display`) with
+  all per-kind content rules. Per-widget paint calls/cache removed.
+- **Cause B:** compact arrow selection rebuilt every card (`renderCompact`).
+- **Fix B:** `compactCards: Map<key, widget>` + `selectCompactKey` toggles
+  `.selected` on the previous/next card and scrolls; no rebuild on movement.
+  Filter/search/view changes still rebuild; `copyOnly` and Esc/hide no longer
+  rebuild.
+- **Evidence:** `lib/type-accents.ts` `contentAccentCss`, `ui/content-accent.ts`,
+  `selectCompactKey`; conformance tests `type accents use one app-owned display
+  provider at USER + 1` and `compact selection is incremental and shell resets
+  on alignment`.
+- **Live timing:** 100 incremental selection moves (including scroll) measured
+  **7 ms** total in the preview log (`bench-select 100 moves: 7ms`; temporary
+  instrumentation removed).
+
+### 4. Settings open showed compact bottom layout at top
+
+- **Cause:** the full-monitor settings-open anchor was combined with stale
+  shell alignment/valign/spacer state.
+- **Fix:** the same `applyCompactShell()` runs while settings are open: compact
+  bottom keeps spacer+`valign=END` so the strip stays at the bottom; vertical
+  keeps `vexpand=true` so the column stays full height. The panel remains an
+  overlay top-right, fully inside the monitor.
+- **Live:** `/tmp/req009-shots/r5-settings-bottom.png` shows the panel fully
+  inside the monitor with the compact strip pinned at the bottom.
+
+### Batch constraints retained
+
+`surface.panel` only (no `surface.overlay`/assets v0.23.0), no `Gtk.Popover`
+or `MenuButton`, no `appearance.value` (`CARD_WIDTH` app-owned), one app-owned
+content provider at `USER + 1`, and one-ring selected/focused paint replacing
+the skin hairline.
+
+## Feedback round 1 (2026-11-20)
 
 Owner live-test feedback against HEAD `9331c25`. Each item records the
 before-state (code at that HEAD), the fix and the check that keeps it fixed.
@@ -854,7 +916,7 @@ semantic accent families, so cards should use them instead of `@error` /
   identity rule, and checks dot mappings.
 - `tests/app-contract.test.mjs` asserts per-kind selection/focus/pin fills,
   the six header families, no hex and no `min-width: 260px`.
-- Evidence: `make test` 28 pass; `make conformance` 33 pass; full gates below.
+- Evidence: `make test` 28 pass; `make conformance` 34 pass; full gates below.
 
 ### D. Skin caveat
 

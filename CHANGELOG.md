@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased — REQ-009 live preview fixes
+
+- Fix compact Left/Right collapsing to the bottom: one `applyCompactShell()`
+  now sets spacer visibility, `vexpand`, `valign`, `halign`, width, list
+  orientation, scroll policies and arrow visibility for vertical vs bottom
+  layouts. Alignment changes and settings open/close reapply the full shell.
+- Replace per-widget content-accent providers with one display-wide provider at
+  `USER + 1`, removing repeated style invalidation on every render.
+- Make compact arrow selection incremental (`compactCards` key→widget map);
+  no full `renderCompact()` on movement, and `copyOnly`/Esc/hide no longer
+  rebuild. Live 100-move benchmark: 7 ms.
+- Keep the compact bottom strip pinned at the bottom while the in-page settings
+  panel is open full-monitor; vertical columns stay full height.
+
 ## Unreleased — REQ-009 117 batch alignment
 
 - Move overlay settings from `Gtk.Popover`/`MenuButton` to one in-page
