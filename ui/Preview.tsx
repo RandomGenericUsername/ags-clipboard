@@ -7,8 +7,6 @@ import { itemTitle } from "../lib/clipboard-types"
 
 const BODY_WIDTH = 236
 const BODY_HEIGHT = 118
-//: Cap a label's natural width (chars) so long lines cannot widen the card.
-const MAX_CHARS = 34
 
 export interface PreviewOptions {
   /** Body width in px (stage cards are wider than strip cards). */
@@ -138,10 +136,14 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   if (stage && item.kind === "link") {
     const box = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 6 })
     box.set_valign(Gtk.Align.CENTER)
-    box.set_halign(Gtk.Align.CENTER)
+    box.set_halign(Gtk.Align.START)
+    const linkChars = Math.max(12, Math.floor(width / 8))
     const domain = new Gtk.Label({ label: domainOf(item.text), xalign: 0 })
     domain.add_css_class("clipboard-stage-domain")
     domain.set_ellipsize(Pango.EllipsizeMode.END)
+    domain.set_width_chars(linkChars)
+    domain.set_max_width_chars(linkChars)
+    domain.set_halign(Gtk.Align.START)
     box.append(domain)
     const url = new Gtk.Label({ label: (item.text ?? "").trim(), xalign: 0 })
     url.add_css_class("clipboard-stage-url")
@@ -149,7 +151,9 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
     url.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
     url.set_ellipsize(Pango.EllipsizeMode.END)
     url.set_lines(2)
-    url.set_max_width_chars(stage ? 64 : MAX_CHARS)
+    url.set_width_chars(linkChars)
+    url.set_max_width_chars(linkChars)
+    url.set_halign(Gtk.Align.START)
     box.append(url)
     const hint = new Gtk.Label({
       label: "Right-click the card or use Open",
@@ -160,21 +164,29 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
     return box
   }
 
-  const label = new Gtk.Label({ label: itemTitle(item), xalign: 0, yalign: 0 })
+  const labelText =
+    stage && (item.kind === "text" || item.kind === "code")
+      ? (item.text ?? itemTitle(item))
+      : itemTitle(item)
+  const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
   label.set_wrap(true)
   label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-  label.set_ellipsize(Pango.EllipsizeMode.END)
+  label.set_ellipsize(stage ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END)
   label.set_lines(item.kind === "code" ? (stage ? 10 : 6) : stage ? 8 : 5)
   // Bound the natural width so a long line cannot stretch the card. The cap
   // scales with the requested body width, which is what keeps Small/Medium/
   // Large cards at exactly 220/260/300 px.
   const maxChars = stage
-    ? Math.max(24, Math.min(58, Math.floor(width / 9)))
+    ? Math.max(18, Math.min(56, Math.floor(width / 8)))
     : Math.max(12, Math.floor((width - 4) / 7))
   label.set_width_chars(maxChars)
   label.set_max_width_chars(maxChars)
+  label.set_halign(Gtk.Align.START)
   label.add_css_class("clipboard-text")
-  if (item.kind === "code") label.add_css_class("clipboard-code")
+  if (item.kind === "code") {
+    label.add_css_class("clipboard-code")
+    if (stage) label.add_css_class("clipboard-code-stage")
+  }
   if (item.kind === "link") label.add_css_class("clipboard-link")
   if (item.kind === "emoji") {
     label.add_css_class("clipboard-emoji")

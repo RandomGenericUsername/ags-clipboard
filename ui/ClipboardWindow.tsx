@@ -24,6 +24,7 @@ import {
   toggleFavorite,
 } from "../lib/history"
 import {
+  filterItems,
   filterCompactView,
   initialPinFocus,
   itemByKey,
@@ -63,6 +64,16 @@ import {
 import { installContentAccents } from "./content-accent"
 
 export const WINDOW_NAME = "clipboard-window"
+
+const FILTER_LABEL: Record<TypeFilter, string> = {
+  all: "All",
+  text: "Text",
+  link: "Links",
+  code: "Code",
+  image: "Images",
+  color: "Colors",
+  emoji: "Emoji",
+}
 
 //: One refresh surface per monitor overlay, built on first construction. The
 //: appearance-refresh handler walks this list; it never reaches for window
@@ -331,6 +342,54 @@ export function ClipboardWindow(
   fullGear.set_child(uiIcon("settings", 18))
   fullGear.set_size_request(38, 38)
   fullGear.set_tooltip_text("Settings")
+
+  function makeFilterChip(value: TypeFilter): Gtk.Button {
+    const chip = new Gtk.Button()
+    chip.add_css_class("clipboard-chip")
+    const content = row(6)
+    content.add_css_class("clipboard-chip-content")
+    if (value !== "all") {
+      const dot = new Gtk.Box()
+      dot.add_css_class("clipboard-filter-dot")
+      dot.add_css_class(`kind-${value}`)
+      dot.set_size_request(6, 6)
+      dot.set_halign(Gtk.Align.CENTER)
+      dot.set_valign(Gtk.Align.CENTER)
+      content.append(dot)
+    }
+    content.append(label(FILTER_LABEL[value], "clipboard-chip-label"))
+    chip.set_child(content)
+    chip.set_tooltip_text(`Filter ${FILTER_LABEL[value]}`)
+    chip.connect("clicked", () => applyFilter(value))
+    return chip
+  }
+
+  const fullFilterChips = new Map<TypeFilter, Gtk.Button>()
+  const fullFilters = new Gtk.FlowBox({
+    selection_mode: Gtk.SelectionMode.NONE,
+    row_spacing: 4,
+    column_spacing: 4,
+    max_children_per_line: 7,
+  })
+  fullFilters.add_css_class("clipboard-filters")
+  fullFilters.set_hexpand(false)
+  for (const value of TYPE_FILTERS) {
+    const chip = makeFilterChip(value)
+    fullFilters.append(chip)
+    fullFilterChips.set(value, chip)
+  }
+
+  const fullSearch = new Gtk.Entry({
+    placeholder_text: "Search clipboard\u2026",
+    hexpand: true,
+  })
+  fullSearch.add_css_class("clipboard-search")
+  const fullSearchBox = row(8)
+  fullSearchBox.add_css_class("clipboard-search-box")
+  fullSearchBox.append(uiIcon("search", 18))
+  fullSearchBox.append(fullSearch)
+  fullSearchBox.append(keycap("/"))
+
   const fullTop = row(10)
   fullTop.add_css_class("clipboard-full-top")
   const fullTopSpacer = new Gtk.Box()
@@ -339,6 +398,8 @@ export function ClipboardWindow(
   fullTop.append(fullCount)
   fullTop.append(fullTopSpacer)
   fullTop.append(pinsPill)
+  fullTop.append(fullSearchBox)
+  fullTop.append(fullFilters)
   fullTop.append(fullGear)
 
   const stageSlot = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0 })
@@ -370,10 +431,20 @@ export function ClipboardWindow(
   const pinBar = barButton("Pin", "pin", "Ctrl+F")
   const deleteBar = barButton("Delete", "trash", "Del", "danger")
   const openBar = barButton("Open", "external", null)
+  const fullClearBar = barButton("Clear", "trash", null, "danger")
   const copyButton = copyBar.button
   const pinButton = pinBar.button
   const deleteButton = deleteBar.button
   const openButton = openBar.button
+  const fullClearButton = fullClearBar.button
+  const fullClearYes = button("Clear", "clipboard-confirm-yes")
+  const fullClearNo = button("Cancel", "clipboard-confirm-no")
+  const fullClearConfirmBox = row(4)
+  fullClearConfirmBox.add_css_class("clipboard-clear-confirm")
+  fullClearConfirmBox.append(label("Clear all?", "clipboard-confirm-label"))
+  fullClearConfirmBox.append(fullClearNo)
+  fullClearConfirmBox.append(fullClearYes)
+  fullClearConfirmBox.set_visible(false)
   const fullHints = label("\u2190 \u2192 cards \u00b7 \u2191 pinned \u00b7 \u2193 back", "clipboard-hints")
   const controlBar = row(6)
   controlBar.add_css_class("clipboard-control-bar")
@@ -381,6 +452,8 @@ export function ClipboardWindow(
   barActions.append(copyButton)
   barActions.append(pinButton)
   barActions.append(deleteButton)
+  barActions.append(fullClearButton)
+  barActions.append(fullClearConfirmBox)
   barActions.append(openButton)
   const barSpacer = new Gtk.Box()
   barSpacer.set_hexpand(true)
@@ -458,6 +531,7 @@ export function ClipboardWindow(
   searchBox.add_css_class("clipboard-search-box")
   searchBox.append(searchIcon)
   searchBox.append(search)
+  searchBox.append(keycap("/"))
 
   const filterChips = new Map<TypeFilter, Gtk.Button>()
   const filters = new Gtk.FlowBox({
@@ -468,39 +542,8 @@ export function ClipboardWindow(
   })
   filters.add_css_class("clipboard-filters")
   filters.set_hexpand(true)
-  const FILTER_LABEL: Record<TypeFilter, string> = {
-    all: "All",
-    text: "Text",
-    link: "Links",
-    code: "Code",
-    image: "Images",
-    color: "Colors",
-    emoji: "Emoji",
-  }
   for (const value of TYPE_FILTERS) {
-    const chip = new Gtk.Button()
-    chip.add_css_class("clipboard-chip")
-    const content = row(6)
-    content.add_css_class("clipboard-chip-content")
-    if (value !== "all") {
-      // 6 px semantic dot: the dot borrows the same type class as the card
-      // header, so its colour comes from the palette role map in style.css.
-      const dot = new Gtk.Box()
-      dot.add_css_class("clipboard-filter-dot")
-      dot.add_css_class(`kind-${value}`)
-      dot.set_size_request(6, 6)
-      dot.set_halign(Gtk.Align.CENTER)
-      dot.set_valign(Gtk.Align.CENTER)
-      content.append(dot)
-    }
-    content.append(label(FILTER_LABEL[value], "clipboard-chip-label"))
-    chip.set_child(content)
-    chip.set_tooltip_text(`Filter ${FILTER_LABEL[value]}`)
-    chip.connect("clicked", () => {
-      filter = value
-      ensureSelection()
-      renderCompact()
-    })
+    const chip = makeFilterChip(value)
     filters.append(chip)
     filterChips.set(value, chip)
   }
@@ -720,16 +763,6 @@ export function ClipboardWindow(
     content.append(sizeRow)
     content.append(alignRow)
 
-    const foot = column(3)
-    foot.add_css_class("clipboard-settings-foot")
-    foot.append(
-      label("$XDG_CONFIG_HOME/clipboard-ui/config.json", "clipboard-settings-path"),
-    )
-    foot.append(
-      label("Saved on change. Not the daemon config.", "clipboard-settings-note"),
-    )
-    content.append(foot)
-
     settingsRefreshers.push(() => {
       layoutSeg.refresh()
       sizeSeg.refresh()
@@ -782,12 +815,58 @@ export function ClipboardWindow(
     return ordered(items)
   }
 
+  function fullList(): ClipboardItem[] {
+    return filterItems(items, query, filter)
+  }
+
   function compactListItems(): ClipboardItem[] {
     return filterCompactView(items, query, filter, compactView)
   }
 
+  function syncFilterChips(): void {
+    for (const [value, chip] of fullFilterChips) {
+      if (value === filter) chip.add_css_class("selected")
+      else chip.remove_css_class("selected")
+    }
+    for (const [value, chip] of filterChips) {
+      if (value === filter) chip.add_css_class("selected")
+      else chip.remove_css_class("selected")
+    }
+  }
+
+  function applyFilter(value: TypeFilter): void {
+    filter = value
+    syncFilterChips()
+    ensureSelection()
+    if (mode === "full") renderFull()
+    else renderCompact()
+  }
+
+  let syncingSearch = false
+
+  function setSearchQuery(text: string, source: Gtk.Entry): void {
+    if (syncingSearch) return
+    syncingSearch = true
+    query = text
+    for (const entry of [search, fullSearch]) {
+      if (entry !== source && entry.get_text() !== text) entry.set_text(text)
+    }
+    syncingSearch = false
+    ensureSelection()
+    if (mode === "full") renderFull()
+    else renderCompact()
+  }
+
+  function bindSearchFocus(entry: Gtk.Entry, box: Gtk.Box): void {
+    entry.connect("notify::has-focus", () => {
+      if (entry.has_focus) box.add_css_class("focused")
+      else box.remove_css_class("focused")
+      if (entry === search) compactHints.set_label(compactHintText())
+    })
+  }
+
   function activeList(): ClipboardItem[] {
-    return mode === "full" ? deck() : compactListItems()
+    return mode === "full" ? fullList() : compactListItems()
   }
 
   function selectedItem(): ClipboardItem | null {
@@ -926,6 +1005,25 @@ export function ClipboardWindow(
     if (pinsOpen) renderPins()
   }
 
+  function askClear(): void {
+    clearConfirm = true
+    renderAll()
+  }
+
+  function cancelClear(): void {
+    clearConfirm = false
+    renderAll()
+  }
+
+  function performClear(): void {
+    clearHistory()
+    clearConfirm = false
+    items = readHistory()
+    selectedKey = null
+    undo = null
+    renderAll()
+  }
+
   function undoDelete(): void {
     if (undo === null) return
     const entry = undo
@@ -974,8 +1072,9 @@ export function ClipboardWindow(
   }
 
   function renderFull(): void {
-    const list = deck()
+    const list = fullList()
     ensureSelection()
+    syncFilterChips()
     const pins = pinnedOrdered(items)
     fullCount.set_label(String(items.length))
     pinsPill.set_label(`Pinned (${pins.length})`)
@@ -987,18 +1086,35 @@ export function ClipboardWindow(
     clearChildren(prevPeek)
     clearChildren(nextPeek)
 
+    fullClearButton.set_visible(!clearConfirm)
+    fullClearConfirmBox.set_visible(clearConfirm)
+    fullClearButton.set_sensitive(items.length > 0)
+
     if (list.length === 0) {
       const empty = column(6)
       empty.add_css_class("clipboard-stage-empty")
       empty.set_valign(Gtk.Align.CENTER)
       empty.set_halign(Gtk.Align.CENTER)
-      empty.append(label("Clipboard is empty", "clipboard-empty-title"))
-      empty.append(label("Copy something and it will appear here.", "clipboard-empty-detail"))
+      const noHistory = items.length === 0
+      empty.append(
+        label(
+          noHistory ? "Clipboard is empty" : "No matching cards",
+          "clipboard-empty-title",
+        ),
+      )
+      empty.append(
+        label(
+          noHistory
+            ? "Copy something and it will appear here."
+            : "Try another search or filter.",
+          "clipboard-empty-detail",
+        ),
+      )
       stageSlot.append(empty)
       prevArrow.set_sensitive(false)
       nextArrow.set_sensitive(false)
       barIndex.set_label("0 / 0")
-      barType.set_label("No cards")
+      barType.set_label(noHistory ? "No cards" : "No matches")
       for (const target of [copyButton, pinButton, deleteButton, openButton]) {
         target.set_sensitive(false)
       }
@@ -1219,10 +1335,7 @@ export function ClipboardWindow(
     const list = compactListItems()
     const vertical = compactIsVertical(compactAlign)
 
-    for (const [value, chip] of filterChips) {
-      if (value === filter) chip.add_css_class("selected")
-      else chip.remove_css_class("selected")
-    }
+    syncFilterChips()
 
     pinnedTab.set_label(`Pinned (${pins})`)
     pinnedTab.set_visible(pins > 0)
@@ -1425,6 +1538,14 @@ export function ClipboardWindow(
     fullRoot.set_visible(full)
     compactRoot.set_visible(!full)
     pinsPanel.set_visible(full && pinsOpen)
+    if (full && pinsOpen) {
+      pinsPanel.set_halign(Gtk.Align.FILL)
+      pinsPanel.set_valign(Gtk.Align.FILL)
+      pinsPanel.set_hexpand(true)
+      pinsPanel.set_vexpand(true)
+      pinsGrid.set_halign(Gtk.Align.FILL)
+      pinsGrid.set_hexpand(true)
+    }
     applyCompactShell()
     settingsCatcher.set_visible(settingsPanelOpen)
     settingsPanelWidget?.set_visible(settingsPanelOpen)
@@ -1446,7 +1567,7 @@ export function ClipboardWindow(
     const control = (state & Gdk.ModifierType.CONTROL_MASK) !== 0
     const shift = (state & Gdk.ModifierType.SHIFT_MASK) !== 0
     const list = activeList()
-    const typing = search.has_focus
+    const typing = mode === "full" ? fullSearch.has_focus : search.has_focus
 
     if (keyval === Gdk.KEY_Escape) {
       if (settingsOpen()) {
@@ -1458,11 +1579,10 @@ export function ClipboardWindow(
         return true
       }
       if (clearConfirm) {
-        clearConfirm = false
-        renderCompact()
+        cancelClear()
         return true
       }
-      if (mode === "compact" && typing) {
+      if (typing) {
         root.grab_focus()
         return true
       }
@@ -1496,7 +1616,10 @@ export function ClipboardWindow(
     if (typing) {
       if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
         const item = selectedItem()
-        if (item !== null) copyOnly(item)
+        if (item !== null) {
+          if (mode === "full") copyAndCollapse(item)
+          else copyOnly(item)
+        }
         return true
       }
       if (keyval === Gdk.KEY_Delete) {
@@ -1506,9 +1629,10 @@ export function ClipboardWindow(
       return false
     }
 
-    if (keyval === Gdk.KEY_slash && mode === "compact") {
-      search.grab_focus()
-      search.select_region(0, -1)
+    if (keyval === Gdk.KEY_slash) {
+      const entry = mode === "full" ? fullSearch : search
+      entry.grab_focus()
+      entry.select_region(0, -1)
       return true
     }
 
@@ -1622,13 +1746,13 @@ export function ClipboardWindow(
   }
 
   prevArrow.connect("clicked", () => {
-    const list = deck()
+    const list = fullList()
     if (list.length < 2) return
     const index = list.findIndex((item) => itemKey(item) === selectedKey)
     selectByKey(itemKey(list[(index - 1 + list.length) % list.length]))
   })
   nextArrow.connect("clicked", () => {
-    const list = deck()
+    const list = fullList()
     if (list.length < 2) return
     const index = list.findIndex((item) => itemKey(item) === selectedKey)
     selectByKey(itemKey(list[(index + 1) % list.length]))
@@ -1653,16 +1777,10 @@ export function ClipboardWindow(
     if (item !== null) openLink(item)
   })
 
-  search.connect("changed", () => {
-    query = search.get_text()
-    ensureSelection()
-    renderCompact()
-  })
-  search.connect("notify::has-focus", () => {
-    if (search.has_focus) searchBox.add_css_class("focused")
-    else searchBox.remove_css_class("focused")
-    compactHints.set_label(compactHintText())
-  })
+  search.connect("changed", () => setSearchQuery(search.get_text(), search))
+  fullSearch.connect("changed", () => setSearchQuery(fullSearch.get_text(), fullSearch))
+  bindSearchFocus(search, searchBox)
+  bindSearchFocus(fullSearch, fullSearchBox)
 
   recentTab.connect("clicked", () => setView("recent"))
   pinnedTab.connect("clicked", () => setView("pinned"))
@@ -1675,22 +1793,12 @@ export function ClipboardWindow(
     if (jobId === null) return
     domainEvents.control(jobId, paused ? "resume" : "pause")
   })
-  clearButton.connect("clicked", () => {
-    clearConfirm = true
-    renderCompact()
-  })
-  clearNo.connect("clicked", () => {
-    clearConfirm = false
-    renderCompact()
-  })
-  clearYes.connect("clicked", () => {
-    clearHistory()
-    clearConfirm = false
-    items = readHistory()
-    selectedKey = null
-    undo = null
-    renderAll()
-  })
+  fullClearButton.connect("clicked", askClear)
+  fullClearNo.connect("clicked", cancelClear)
+  fullClearYes.connect("clicked", performClear)
+  clearButton.connect("clicked", askClear)
+  clearNo.connect("clicked", cancelClear)
+  clearYes.connect("clicked", performClear)
 
   // Live updates: the daemon pushes clipboard.update per capture and
   // clipboard.state on transitions (subscribe-before-read; the platform's

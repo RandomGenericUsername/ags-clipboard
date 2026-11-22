@@ -172,7 +172,14 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
   if (options.pin === true) {
     if (options.onTogglePin !== undefined) {
       const pinButton = new Gtk.Button({ css_classes: ["clipboard-pin-button"] })
-      pinButton.set_child(uiIcon("pin", 13))
+      const pinIcon = uiIcon("pin", 13)
+      pinIcon.set_halign(Gtk.Align.CENTER)
+      pinIcon.set_valign(Gtk.Align.CENTER)
+      const pinCenter = new Gtk.CenterBox()
+      pinCenter.set_hexpand(true)
+      pinCenter.set_vexpand(true)
+      pinCenter.set_center_widget(pinIcon)
+      pinButton.set_child(pinCenter)
       pinButton.set_size_request(22, 22)
       pinButton.set_hexpand(false)
       pinButton.set_vexpand(false)
@@ -294,7 +301,7 @@ export function StageCard(
   width: number,
   height: number,
   onTogglePin?: (item: ClipboardItem) => void,
-): Gtk.Box {
+): Gtk.Widget {
   const card = new Gtk.Box({
     orientation: Gtk.Orientation.VERTICAL,
     spacing: 0,
@@ -303,8 +310,8 @@ export function StageCard(
   card.set_overflow(Gtk.Overflow.HIDDEN)
   card.set_size_request(width, height)
   card.set_hexpand(false)
-  card.set_halign(Gtk.Align.CENTER)
-  card.set_valign(Gtk.Align.CENTER)
+  card.set_halign(Gtk.Align.START)
+  card.set_valign(Gtk.Align.START)
   const suppress = { until: 0 }
   card.append(ItemHead(item, { stage: true, pin: true, onTogglePin, suppress }))
 
@@ -322,7 +329,13 @@ export function StageCard(
   card.append(body)
 
   attachCardGestures(card, item, onSelect, undefined, onOpenLink, suppress)
-  return card
+  // Gtk fixed-size frame: a child's natural width can never widen the stage
+  // card, even if a label misbehaves. The frame clips to the standard size.
+  const frame = new Gtk.Fixed()
+  frame.set_size_request(width, height)
+  frame.set_overflow(Gtk.Overflow.HIDDEN)
+  frame.put(card, 0, 0)
+  return frame
 }
 
 /** A narrow, dimmed previous/next card on the full stage. */

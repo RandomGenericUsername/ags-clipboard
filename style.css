@@ -980,22 +980,6 @@ window#clipboard-window {
   color: alpha(@on_surface, 0.45);
 }
 
-.clipboard-settings-foot {
-  padding: 10px 2px 2px;
-  border-top: 1px solid alpha(@on_surface, 0.08);
-}
-
-.clipboard-settings-path {
-  font-family: monospace;
-  font-size: 0.6rem;
-  color: alpha(@on_surface, 0.55);
-}
-
-.clipboard-settings-note {
-  font-size: 0.6rem;
-  color: alpha(@on_surface, 0.4);
-}
-
 .clipboard-segment {
   padding: 2px;
   border-radius: 8px;
