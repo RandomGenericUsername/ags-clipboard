@@ -669,6 +669,7 @@ export function ClipboardWindow(
     applyMode()
     renderAll()
     refreshSettings()
+    if (settingsPanelOpen) closeSettings()
   }
 
   function setCompactSize(next: CompactSize): void {
@@ -687,6 +688,7 @@ export function ClipboardWindow(
     applyMode()
     renderAll()
     refreshSettings()
+    if (settingsPanelOpen) closeSettings()
   }
 
   function settingsRow(
