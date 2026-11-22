@@ -2,7 +2,7 @@
 id: REQ-009
 title: "Card-stage clipboard: full card deck + compact card strip"
 kind: requirement
-status: in-progress
+status: done
 lane: direct
 links:
   openspec: none
@@ -285,8 +285,8 @@ does not frame the surface.
       Recent/Pinned view, tab keys, compact link Open, settings adapter,
       persistence, all preserved behaviours.
 - [x] `make ci` / `make gates` pass in the ticket worktree (evidence below).
-- [ ] The composition pin is bumped (release/composition lane; explicitly out
-      of scope for this app worktree — do not bump here).
+- [x] The composition pin is bumped in the release/composition lane
+      (`dotfiles-v3` release ticket).
 
 ## Implementation evidence (2026-11-20)
 
@@ -1059,3 +1059,13 @@ This design is part of the frozen redesign batch. Canonical architecture,
 live state and the pending design index (including this ticket and its mock):
 `dotfiles-v3/docs/117-redesign-batch.md` (workspace path). Follow the
 appearance/skin rules and the in-page-panel/popover lesson there.
+
+## Closure (2026-11-22)
+
+Released as **v0.7.0**. The full card stage, compact Bottom/Left/Right strip,
+in-page settings, app-owned type/content accents, incremental compact
+selection, stable full-monitor layer-shell window with bounded input region,
+full-layout search/filter/clear, fixed stage-card sizing and Enter-to-collapse
+are all in the release. Skin paint is `dotfiles-assets` **v0.22.4**
+(`surface.panel`, paint-only). Composition pin is owned by the `dotfiles-v3`
+release lane.

@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased — REQ-009 full-layout polish
+## v0.7.0 — 2026-11-22
+
+### REQ-009 full-layout polish
 
 - Enforce a fixed stage-card frame and width-capped link/text/code previews so
   long links cannot widen the stage; code/text stage cards wrap the full text
@@ -17,7 +19,7 @@
   closes the panel after applying the change; card-size changes keep it open.
 - Remove the settings config-path footer; persistence is unchanged.
 
-## Unreleased — REQ-009 settings-open stability
+### REQ-009 settings-open stability
 
 - Keep the layer-shell surface full-monitor with zero margins for all modes;
   settings open/close and alignment changes no longer re-anchor/remap it.
@@ -27,7 +29,7 @@
   closed (`cairo.Region` from `compactRoot.get_allocation()`); use the full
   window when settings is open so the in-page catcher/panel receive input.
 
-## Unreleased — REQ-009 live preview fixes
+### REQ-009 live preview fixes
 
 - Fix compact Left/Right collapsing to the bottom: one `applyCompactShell()`
   now sets spacer visibility, `vexpand`, `valign`, `halign`, width, list
@@ -41,7 +43,7 @@
 - Keep the compact bottom strip pinned at the bottom while the in-page settings
   panel is open full-monitor; vertical columns stay full height.
 
-## Unreleased — REQ-009 117 batch alignment
+### REQ-009 117 batch alignment
 
 - Move overlay settings from `Gtk.Popover`/`MenuButton` to one in-page
   `.clipboard-settings` panel over a full-window `.clipboard-settings-catcher`.
@@ -57,7 +59,7 @@
   remove/replace; clipboard stays on `surface.panel` (no `surface.overlay`,
   contracts v0.14.0 / assets v0.23.0).
 
-## Unreleased — REQ-009 card-stage clipboard
+### REQ-009 card-stage clipboard
 
 - Replace the REQ-005 rail + preview surface with the card-stage clipboard.
   Full mode (default) is a full-monitor stage over a dimmed scrim: one focused
