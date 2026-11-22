@@ -36,6 +36,32 @@ REQ-005's rail + preview is frozen on `main` and is **not** modified by this
 ticket. REQ-009 replaces its interaction model; REQ-005 remains the historical
 record. The live app keeps the current card strip until REQ-009 is implemented.
 
+## Audit against 117 (2026-11-21)
+
+Binding brief: `dotfiles-v3/docs/117-redesign-batch.md` + `dotfiles-assets/skins/README.md`
+(“Overlay app implementation pattern”, “Skin boundary”). Clipboard is an AGS
+layer-shell overlay, so its outer role is **`surface.panel`**, never
+`surface.window` and never the `surface.overlay` experiment (contracts v0.14.0
+/ assets v0.23.0 are not consumed; the release line is assets v0.22.3).
+
+Conflicts found in the current implementation and the decisions taken:
+
+| # | Conflict | Decision |
+| --- | --- | --- |
+| 1 | Settings are `Gtk.MenuButton`/`Gtk.Popover` inside a layer-shell overlay. | Replace with one in-page `.clipboard-settings` panel plus a full-window `.clipboard-settings-catcher`. Gears become plain `Gtk.Button`s. Esc and outside click close; changes still save immediately. |
+| 2 | Compact mode is a strip-height layer-shell window, so an in-page panel would be clipped above it. | While settings are open, temporarily anchor the same window full-monitor (`surface.panel`), keep the compact strip pinned at the bottom with an expanding spacer, and place the settings panel top-right inside the monitor. Closing settings restores the compact anchor/margins. The catcher makes it modal for that interval. |
+| 3 | The skin template owns per-kind clipboard colours (headers, dots, selected/focused rings, pin fills) and even `min-width: 260px`. Those are content accents/layout. | Keep type accents app-side as content paint. Use per-widget `Gtk.CssProvider` paint at `USER + 1` for headers/dots/pins/selected/focused cards so content wins over skin role rules. The skin template must remove the per-kind roles and `min-width`; it keeps only role surfaces/base states. |
+| 4 | `app.tsx` reads `appearance.value("layout.ags-clipboard.card-width", 260)`. | Remove the read. Use an app-owned `CARD_WIDTH = 260` layout constant in `app.tsx`; update ticket/README/AGENTS. |
+| 5 | Selected cards stack the skin base hairline plus an app ring (border + box-shadow). | Selected/focused paint replaces the base border: a `USER + 1` per-widget provider sets `border-color: transparent` and draws exactly one ring/tint. |
+| 6 | Per-item type colours could drift into the skin template. | Keep the accent-family mapping
+(Text `@primary`, Link `@primary_container`, Code `@secondary_container`,
+Image `@secondary`, Color `@tertiary`, Emoji `@tertiary_container`) as
+app-owned content paint; the skin only paints role surfaces/base states. |
+| 7 | Five skins must remain in scope. | App CSS stays layout + fallback; no skin-specific branches, no appearance token reads, no `surface.overlay`. |
+
+No blocking conflict remains after these decisions. The app-side changes are
+staged in this worktree; `dotfiles-assets` is not edited.
+
 ## Frozen final (approved 2026-11-09)
 
 This is the final approved design and the **intent** for the feature:
