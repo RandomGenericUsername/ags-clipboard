@@ -25,6 +25,7 @@ import {
   checkAppRepoAt,
   formatAppConformanceReport,
 } from "ags-platform/conformance/app-conformance";
+import { contentAccentCss } from "../lib/type-accents.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -634,30 +635,56 @@ test("card headers use the six accent families and matching on_* ink", () => {
   assert.match(readText("ui", "ItemCard.tsx"), /clipboard-type-dot/);
 });
 
-test("type accents are app-owned content paint at USER + 1", () => {
+test("type accents use one app-owned display provider at USER + 1", () => {
   const accents = readText("lib", "type-accents.ts");
-  const paint = readText("ui", "accent.ts");
-  const itemCard = readText("ui", "ItemCard.tsx");
+  const paint = readText("ui", "content-accent.ts");
   const window = readText("ui", "ClipboardWindow.tsx");
+  const accentCss = contentAccentCss();
   for (const [kind, [fill, ink]] of Object.entries(TYPE_ROLES)) {
     assert.match(accents, new RegExp(`${kind}:\\s*\\{\\s*fill:\\s*"${fill}",\\s*ink:\\s*"${ink}"\\s*\\}`));
+    assert.match(accentCss, new RegExp(`\\.kind-${kind} \\.clipboard-head[\\s\\S]*?@${fill}[\\s\\S]*?@${ink}`));
+    assert.match(accentCss, new RegExp(`\\.clipboard-type-dot\\.kind-${kind}`));
+    assert.match(accentCss, new RegExp(`\\.clipboard-filter-dot\\.kind-${kind}`));
+    assert.match(accentCss, new RegExp(`\\.kind-${kind} \\.clipboard-pin-button`));
+    assert.match(accentCss, new RegExp(`\\.kind-${kind}\\.selected`));
+    assert.match(accentCss, new RegExp(`\\.kind-${kind}\\.clipboard-pin-card\\.focused`));
   }
+  assert.match(paint, /Gtk\.StyleContext\.add_provider_for_display/);
   assert.match(paint, /Gtk\.STYLE_PROVIDER_PRIORITY_USER \+ 1/);
-  assert.match(paint, /paintTypeHeader/);
-  assert.match(paint, /paintTypeDot/);
-  assert.match(paint, /paintFilterDot/);
-  assert.match(paint, /paintPinButton/);
-  assert.match(paint, /paintSelectedCard/);
-  assert.match(paint, /paintFocusedPinCard/);
-  // Selected state replaces the skin hairline with one app ring.
-  assert.match(paint, /\.clipboard-card\.selected[\s\S]*?border-color:\s*transparent/);
-  assert.match(paint, /\.clipboard-pin-card\.focused[\s\S]*?border-color:\s*transparent/);
-  assert.match(itemCard, /paintTypeHeader\(header, item\.kind\)/);
-  assert.match(itemCard, /paintTypeDot\(dot, item\.kind\)/);
-  assert.match(itemCard, /paintPinButton\(pinButton, item\.kind\)/);
-  assert.match(itemCard, /paintFocusedPinCard\(button, item\.kind\)/);
-  assert.match(window, /paintFilterDot\(dot, value\)/);
-  assert.match(window, /paintSelectedCard\(card, item\.kind\)/);
+  assert.doesNotMatch(paint, /get_style_context\(\)\.add_provider/);
+  assert.match(window, /installContentAccents\(\)/);
+  assert.doesNotMatch(window, /paintTypeHeader|paintTypeDot|paintFilterDot|paintPinButton|paintSelectedCard|paintFocusedPinCard/);
+  assert.match(accentCss, /\.kind-.*\.selected[\s\S]*?border-color:\s*transparent/);
+  assert.match(accentCss, /\.kind-.*\.clipboard-pin-card\.focused[\s\S]*?border-color:\s*transparent/);
+});
+
+test("compact selection is incremental and shell resets on alignment", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const select = functionBody(window, "function selectCompactKey");
+  assert.match(select, /compactCards\.get\(key\)/);
+  assert.match(select, /previous\?\.remove_css_class\("selected"\)/);
+  assert.match(select, /next\.add_css_class\("selected"\)/);
+  assert.doesNotMatch(select, /renderCompact\(\)/);
+  const move = functionBody(window, "function selectByKey");
+  assert.match(move, /if \(selectCompactKey\(key, scroll\)\) return/);
+  const copy = functionBody(window, "function copyOnly");
+  assert.doesNotMatch(copy, /renderCompact\(\)|renderFull\(\)/);
+
+  const shell = functionBody(window, "function applyCompactShell");
+  assert.match(shell, /compactSpacer\.set_visible\(activeCompact && !vertical\)/);
+  assert.match(shell, /compactRoot\.set_vexpand\(true\)/);
+  assert.match(shell, /compactRoot\.set_valign\(Gtk\.Align\.FILL\)/);
+  assert.match(shell, /compactRoot\.set_halign\([\s\S]*?Gtk\.Align\.START/);
+  assert.match(shell, /compactRoot\.set_vexpand\(false\)/);
+  assert.match(shell, /compactRoot\.set_valign\(Gtk\.Align\.END\)/);
+  assert.match(shell, /compactRoot\.set_size_request\(vertical \? compactWidth\(\) : -1, -1\)/);
+  for (const marker of [
+    "function applyMode",
+    "function renderCompact",
+  ]) {
+    assert.match(functionBody(window, marker), /applyCompactShell\(\)/, `${marker} must reapply the shell`);
+  }
+  assert.match(functionBody(window, "function setCompactAlign"), /applyMode\(\)/);
 });
 
 test("gear and pin controls are square and skin-derived", () => {
