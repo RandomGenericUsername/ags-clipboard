@@ -167,27 +167,32 @@ assert.doesNotMatch(
   "work must not double-apply; the helper owns the appearance apply",
 );
 
-// ── 4. Card width is the TSX-owned layout token ───────────────────────────
+// ── 4. Card width is an app-owned layout constant (no token read) ──────────
 
-assert.match(
+assert.doesNotMatch(
   app,
-  /appearance\.value\(\s*"layout\.ags-clipboard\.card-width",\s*260\s*\)/,
-  "the card width must come from the ags-clipboard layout token, with 260 as fallback",
+  /appearance\.value\(/,
+  "the app must not read appearance tokens (117 batch layout gate)",
 );
 assert.match(
   app,
-  /ClipboardWindow\(monitor, cardWidth\)/,
-  "the accessor is passed to the overlay instead of a duplicated constant",
+  /const CARD_WIDTH = 260/,
+  "the card width is an app-owned layout constant",
+);
+assert.match(
+  app,
+  /ClipboardWindow\(monitor, CARD_WIDTH\)/,
+  "the layout constant is passed to the overlay",
 );
 assert.match(
   window,
-  /return compactSize === "medium" \? cardWidth\.peek\(\) : compactCardWidth\(compactSize\)/,
-  "the compact width comes from the card-size token, with the layout token for medium",
+  /return compactSize === "medium" \? cardWidth : compactCardWidth\(compactSize\)/,
+  "the compact width uses the app-owned medium width or the size token",
 );
 assert.match(
   window,
   /ItemCard\(\s*item,\s*index \+ 1,[\s\S]*?openLink,\s*width,/,
-  "every compact card is built from the current width token",
+  "every compact card is built from the current width value",
 );
 assert.doesNotMatch(itemCard, /set_size_request\(260,/, "the hard card width is gone");
 assert.match(itemCard, /set_size_request\(cardWidth, -1\)/);

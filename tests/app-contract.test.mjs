@@ -394,11 +394,15 @@ test("the card rebuild preserves overlay visibility, query, selection and list",
 
 // ── REQ-009 owner feedback round 1 ─────────────────────────────────────────
 
-test("settings has one visible frame and the mock's anatomy", () => {
+test("settings is an in-page panel with a full-window catcher", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const css = readText("style.css");
-  assert.match(window, /popover\.add_css_class\("clipboard-settings-popover"\)/);
-  assert.match(window, /content\.add_css_class\("clipboard-settings"\)/);
+  assert.match(window, /function buildSettingsPanel\(\): Gtk\.Box/);
+  assert.match(window, /settingsCatcher\.add_css_class\("clipboard-settings-catcher"\)/);
+  assert.match(window, /settingsCatcherClick\.connect\("pressed", \(\) => closeSettings\(\)\)/);
+  assert.match(window, /root\.add_overlay\(settingsCatcher\)/);
+  assert.match(window, /root\.add_overlay\(settingsPanelWidget\)/);
+  assert.doesNotMatch(window, /Gtk\.Popover|Gtk\.MenuButton|set_popover|clipboard-settings-popover/);
   assert.match(window, /label\("Settings", "clipboard-settings-title"\)/);
   assert.match(window, /Full stage or compact strip\./);
   assert.match(window, /220 \/ 260 \/ 300 px\./);
@@ -406,31 +410,28 @@ test("settings has one visible frame and the mock's anatomy", () => {
   assert.match(window, /clipboard-settings-path/);
   assert.match(window, /Saved on change\. Not the daemon config\./);
 
-  // Native popover/contents reset, and exactly one painted surface.
-  assert.match(
-    css,
-    /\.clipboard-settings-popover,[\s\S]*?background-color:\s*transparent;[\s\S]*?border:\s*none;[\s\S]*?box-shadow:\s*none;/,
-  );
+  assert.match(css, /\.clipboard-settings-catcher\s*\{[^}]*background-color:\s*transparent/s);
   assert.match(css, /\.clipboard-settings\s*\{[^}]*border-radius:\s*15px/s);
   assert.match(css, /\.clipboard-settings\s*\{[^}]*padding:\s*14px/s);
   assert.match(css, /\.clipboard-settings\s*\{[^}]*border:\s*1px solid/s);
   assert.doesNotMatch(css, /\.clipboard-settings\s*\{[^}]*min-width:\s*250px/s);
 });
 
-test("settings closes before a layout change and reopens after settle", () => {
+test("in-page settings opens modally and closes on Esc or outside click", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
-  assert.match(functionBody(window, "function closeSettingsForLayout"), /set_active\(false\)/);
-  assert.match(functionBody(window, "function reopenSettingsAfterLayout"), /GLib\.idle_add/);
-  for (const setter of [
-    "function setMode(next: LayoutMode): void",
-    "function setCompactSize(next: CompactSize): void",
-    "function setCompactAlign(next: CompactAlignment): void",
-  ]) {
-    const body = functionBody(window, setter);
-    assert.match(body, /const keepSettings = closeSettingsForLayout\(\)/, `${setter} must close settings`);
-    assert.match(body, /reopenSettingsAfterLayout\(keepSettings\)/, `${setter} must reopen settings`);
-    assert.match(body, /applyMode\(\)/, `${setter} must re-anchor the window`);
-  }
+  assert.match(functionBody(window, "function openSettings"), /settingsPanelOpen = true/);
+  assert.match(functionBody(window, "function openSettings"), /settingsCatcher\.set_visible\(true\)/);
+  assert.match(functionBody(window, "function openSettings"), /settingsPanelWidget\?\.set_visible\(true\)/);
+  assert.match(functionBody(window, "function closeSettings"), /settingsPanelOpen = false/);
+  assert.match(functionBody(window, "function closeSettings"), /settingsCatcher\.set_visible\(false\)/);
+  assert.match(functionBody(window, "function closeSettings"), /settingsPanelWidget\?\.set_visible\(false\)/);
+  assert.match(functionBody(window, "function toggleSettings"), /settingsPanelOpen/);
+  assert.match(functionBody(window, "function applyWindowLayout"), /settingsPanelOpen/);
+  const mode = functionBody(window, "function applyMode");
+  assert.match(mode, /settingsCatcher\.set_visible\(settingsPanelOpen\)/);
+  assert.match(mode, /settingsPanelWidget\?\.set_visible\(settingsPanelOpen\)/);
+  const key = functionBody(window, "function onKey");
+  assert.match(key, /if \(settingsOpen\(\)\)[\s\S]*?closeSettings\(\)/);
 });
 
 test("compact cards use the exact size token and vertical columns resize", () => {
@@ -443,7 +444,7 @@ test("compact cards use the exact size token and vertical columns resize", () =>
   );
   assert.match(window, /searchBox\.set_size_request\(vertical \? compactWidth\(\) : -1, -1\)/);
   assert.match(window, /if \(!vertical\) \{[\s\S]*?spacer\.set_hexpand\(true\)/);
-  assert.match(window, /return compactSize === "medium" \? cardWidth\.peek\(\) : compactCardWidth\(compactSize\)/);
+  assert.match(window, /return compactSize === "medium" \? cardWidth : compactCardWidth\(compactSize\)/);
 });
 
 test("nav and strip arrows have fixed circular sizes", () => {
@@ -606,10 +607,11 @@ test("fallback chrome has no hard-coded hex and keeps per-kind rings", () => {
 
   for (const [kind, [fill]] of Object.entries(TYPE_ROLES)) {
     const selected = functionBodyCss(css, `.kind-${kind}.selected`);
-    assert.match(selected, new RegExp(`border-color:\\s*@${fill}\\b`));
+    assert.match(selected, /border-color:\s*transparent/);
     assert.match(selected, new RegExp(`box-shadow:[^;]*alpha\\(@${fill}\\b`));
     const focused = functionBodyCss(css, `.kind-${kind}.clipboard-pin-card.focused`);
-    assert.match(focused, new RegExp(`border-color:\\s*@${fill}\\b`));
+    assert.match(focused, /border-color:\s*transparent/);
+    assert.match(focused, new RegExp(`box-shadow:[^;]*@${fill}\\b`));
     assert.match(focused, /0 0 0 7px/);
   }
   assert.doesNotMatch(css, /\.clipboard-card\.selected\s*\{/, "selection is per-kind");
@@ -632,6 +634,32 @@ test("card headers use the six accent families and matching on_* ink", () => {
   assert.match(readText("ui", "ItemCard.tsx"), /clipboard-type-dot/);
 });
 
+test("type accents are app-owned content paint at USER + 1", () => {
+  const accents = readText("lib", "type-accents.ts");
+  const paint = readText("ui", "accent.ts");
+  const itemCard = readText("ui", "ItemCard.tsx");
+  const window = readText("ui", "ClipboardWindow.tsx");
+  for (const [kind, [fill, ink]] of Object.entries(TYPE_ROLES)) {
+    assert.match(accents, new RegExp(`${kind}:\\s*\\{\\s*fill:\\s*"${fill}",\\s*ink:\\s*"${ink}"\\s*\\}`));
+  }
+  assert.match(paint, /Gtk\.STYLE_PROVIDER_PRIORITY_USER \+ 1/);
+  assert.match(paint, /paintTypeHeader/);
+  assert.match(paint, /paintTypeDot/);
+  assert.match(paint, /paintFilterDot/);
+  assert.match(paint, /paintPinButton/);
+  assert.match(paint, /paintSelectedCard/);
+  assert.match(paint, /paintFocusedPinCard/);
+  // Selected state replaces the skin hairline with one app ring.
+  assert.match(paint, /\.clipboard-card\.selected[\s\S]*?border-color:\s*transparent/);
+  assert.match(paint, /\.clipboard-pin-card\.focused[\s\S]*?border-color:\s*transparent/);
+  assert.match(itemCard, /paintTypeHeader\(header, item\.kind\)/);
+  assert.match(itemCard, /paintTypeDot\(dot, item\.kind\)/);
+  assert.match(itemCard, /paintPinButton\(pinButton, item\.kind\)/);
+  assert.match(itemCard, /paintFocusedPinCard\(button, item\.kind\)/);
+  assert.match(window, /paintFilterDot\(dot, value\)/);
+  assert.match(window, /paintSelectedCard\(card, item\.kind\)/);
+});
+
 test("gear and pin controls are square and skin-derived", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const itemCard = readText("ui", "ItemCard.tsx");
@@ -640,12 +668,14 @@ test("gear and pin controls are square and skin-derived", () => {
   assert.match(itemCard, /pinButton\.set_size_request\(22, 22\)/);
   assert.match(itemCard, /pinButton\.set_valign\(Gtk\.Align\.CENTER\)/);
 
-  // MenuButton's child button node must be neutralized explicitly.
-  assert.match(css, /menubutton\.clipboard-gear > button/);
-  assert.match(css, /\.clipboard-gear > button\s*\{[^}]*background-color:\s*transparent/s);
-  assert.match(css, /\.clipboard-gear > button\s*\{[^}]*border:\s*none/s);
-  assert.match(css, /\.clipboard-gear > button\s*\{[^}]*box-shadow:\s*none/s);
-  assert.match(css, /menubutton\.clipboard-gear:hover[\s\S]*?box-shadow:\s*0 0 0 1px alpha\(@primary/s);
+  // Plain gear button (no MenuButton/popover child node).
+  assert.match(window, /new Gtk\.Button\(\{ css_classes: \["clipboard-gear"\] \}\)/);
+  assert.doesNotMatch(window, /Gtk\.MenuButton/);
+  assert.match(css, /\.clipboard-gear\s*\{[^}]*background-color:\s*transparent/s);
+  assert.match(css, /\.clipboard-gear\s*\{[^}]*border:\s*none/s);
+  assert.match(css, /\.clipboard-gear\s*\{[^}]*box-shadow:\s*none/s);
+  assert.match(css, /\.clipboard-gear:hover\s*\{[^}]*box-shadow:\s*0 0 0 1px alpha\(@primary/s);
+  assert.doesNotMatch(css, /menubutton\.clipboard-gear/);
 
   // The pin is a visible square; coloured headers tint it with on_* ink.
   assert.match(css, /\.clipboard-pin-button\s*\{[^}]*min-width:\s*22px/s);
