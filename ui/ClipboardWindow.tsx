@@ -1153,7 +1153,7 @@ export function ClipboardWindow(
     deleteButton.set_sensitive(true)
     openButton.set_visible(item.kind === "link")
     openButton.set_sensitive(item.kind === "link")
-    fullHints.set_label("\u2190 \u2192 cards \u00b7 \u2191 pinned \u00b7 \u21b5 copy \u00b7 Ctrl+\u21b5 open \u00b7 \u2193 back")
+    fullHints.set_label("\u2190 \u2192 cards \u00b7 \u2191 pinned \u00b7 \u21b5 copy+close \u00b7 Ctrl+\u21b5 open \u00b7 \u2193 back")
   }
 
   function renderPins(): void {
@@ -1423,13 +1423,13 @@ export function ClipboardWindow(
     const hasPins = items.some((item) => item.favorite)
     const typing = search.has_focus
     if (compactIsVertical(compactAlign)) {
-      if (!hasPins) return "\u2191\u2193 cards \u00b7 \u21b5 copy \u00b7 Ctrl+\u21b5 open"
+      if (!hasPins) return "\u2191\u2193 cards \u00b7 \u21b5 copy+close \u00b7 Ctrl+\u21b5 open"
       return typing
         ? "\u2191\u2193 cards \u00b7 Tab view"
         : "\u2191\u2193 cards \u00b7 \u2190\u2192 view \u00b7 Tab view \u00b7 Ctrl+\u21b5 open"
     }
-    if (!hasPins) return "\u2190 \u2192 cards \u00b7 \u21b5 copy \u00b7 Ctrl+\u21b5 open \u00b7 Esc"
-    return "\u2190 \u2192 cards \u00b7 \u2191\u2193 view \u00b7 Tab view \u00b7 \u21b5 copy \u00b7 Esc"
+    if (!hasPins) return "\u2190 \u2192 cards \u00b7 \u21b5 copy+close \u00b7 Ctrl+\u21b5 open \u00b7 Esc"
+    return "\u2190 \u2192 cards \u00b7 \u2191\u2193 view \u00b7 Tab view \u00b7 \u21b5 copy+close \u00b7 Esc"
   }
 
   function renderAll(): void {
@@ -1616,10 +1616,7 @@ export function ClipboardWindow(
     if (typing) {
       if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
         const item = selectedItem()
-        if (item !== null) {
-          if (mode === "full") copyAndCollapse(item)
-          else copyOnly(item)
-        }
+        if (item !== null) copyAndCollapse(item)
         return true
       }
       if (keyval === Gdk.KEY_Delete) {
@@ -1723,10 +1720,7 @@ export function ClipboardWindow(
 
     if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
       const item = selectedItem()
-      if (item !== null) {
-        if (mode === "full") copyAndCollapse(item)
-        else copyOnly(item)
-      }
+      if (item !== null) copyAndCollapse(item)
       return true
     }
     if (keyval === Gdk.KEY_Delete) {
