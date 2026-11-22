@@ -24,3 +24,56 @@ export const TYPE_ACCENT: Readonly<Record<ItemKind, TypeAccent>> = {
   color: { fill: "tertiary", ink: "on_tertiary" },
   emoji: { fill: "tertiary_container", ink: "on_tertiary_container" },
 }
+
+/** The one display-wide content-accent stylesheet (pure string). */
+export function contentAccentCss(): string {
+  const kinds = Object.keys(TYPE_ACCENT) as ItemKind[]
+  return kinds
+    .map((kind) => {
+      const { fill, ink } = TYPE_ACCENT[kind]
+      return `
+.kind-${kind} .clipboard-head {
+  background-color: @${fill};
+  color: @${ink};
+}
+
+.clipboard-type-dot.kind-${kind} {
+  background-color: @${ink};
+}
+
+.clipboard-filter-dot.kind-${kind} {
+  background-color: @${fill};
+}
+
+.kind-${kind} .clipboard-pin-button {
+  background-color: alpha(@${ink}, 0.20);
+  border-color: alpha(@${ink}, 0.30);
+}
+
+.kind-${kind} .clipboard-pin-button:hover {
+  background-color: alpha(@${ink}, 0.34);
+}
+
+.kind-${kind} .clipboard-pin-button.is-on {
+  background-color: alpha(@${ink}, 0.46);
+  border-color: alpha(@${ink}, 0.58);
+  box-shadow: inset 0 0 0 1px alpha(@${ink}, 0.35);
+}
+
+.kind-${kind}.selected {
+  border-color: transparent;
+  background-color: alpha(@${fill}, 0.12);
+  box-shadow: 0 0 0 2px alpha(@${fill}, 0.65);
+}
+
+.kind-${kind}.clipboard-pin-card.focused {
+  border-color: transparent;
+  box-shadow:
+    0 0 0 2px @${fill},
+    0 0 0 7px alpha(@${fill}, 0.22),
+    0 26px 70px alpha(@shadow, 0.5);
+}
+`
+    })
+    .join("\n")
+}

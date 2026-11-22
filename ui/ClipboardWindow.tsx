@@ -59,7 +59,7 @@ import {
   relativeTime,
   uiIcon,
 } from "./ItemCard"
-import { paintFilterDot, paintSelectedCard } from "./accent"
+import { installContentAccents } from "./content-accent"
 
 export const WINDOW_NAME = "clipboard-window"
 
@@ -273,6 +273,7 @@ export function ClipboardWindow(
   cardWidth: number,
   settingsPort: SettingsPort = createGlibSettingsPort(),
 ) {
+  installContentAccents()
   const geometry = gdkmonitor.get_geometry()
 
   let items: ClipboardItem[] = []
@@ -299,6 +300,8 @@ export function ClipboardWindow(
   let overlay: Astal.Window | null = null
   let settingsPanelWidget: Gtk.Box | null = null
   let settingsPanelOpen = false
+  //: Rendered compact cards by stable key, for incremental selection.
+  const compactCards = new Map<string, Gtk.Widget>()
 
   // ── persistent widgets ───────────────────────────────────────────────────
 
@@ -487,7 +490,6 @@ export function ClipboardWindow(
       dot.set_size_request(6, 6)
       dot.set_halign(Gtk.Align.CENTER)
       dot.set_valign(Gtk.Align.CENTER)
-      paintFilterDot(dot, value)
       content.append(dot)
     }
     content.append(label(FILTER_LABEL[value], "clipboard-chip-label"))
@@ -799,19 +801,36 @@ export function ClipboardWindow(
     }
   }
 
+  function selectCompactKey(key: string, scroll: boolean): boolean {
+    const next = compactCards.get(key)
+    if (next === undefined) return false
+    const previous = selectedKey === null ? undefined : compactCards.get(selectedKey)
+    previous?.remove_css_class("selected")
+    next.add_css_class("selected")
+    selectedKey = key
+    if (scroll) scrollSelectedIntoView()
+    return true
+  }
+
   function selectByKey(key: string | null, scroll = false): void {
     if (key === null) return
+    if (mode === "full") {
+      selectedKey = key
+      renderFull()
+      if (pinsOpen) renderPins()
+      if (scroll) scrollSelectedIntoView()
+      return
+    }
+    if (selectCompactKey(key, scroll)) return
+    // The key is not in the current rendered view (filtered out); rebuild.
     selectedKey = key
-    if (mode === "full") renderFull()
-    else renderCompact()
-    if (mode === "full" && pinsOpen) renderPins()
+    renderCompact()
     if (scroll) scrollSelectedIntoView()
   }
 
   function scrollSelectedIntoView(): void {
     if (mode !== "compact") return
-    const card = childrenOf(compactList)
-      .find((child) => child.get_css_classes().includes(`key-${cssKey(selectedKey)}`))
+    const card = selectedKey === null ? undefined : compactCards.get(selectedKey)
     if (card === undefined) return
     try {
       const allocation = card.get_allocation()
@@ -845,14 +864,9 @@ export function ClipboardWindow(
   // ── copy / pin / delete / open ───────────────────────────────────────────
 
   function copyOnly(item: ClipboardItem): void {
-    copyItem(item)
-      .then(() => {
-        if (mapped) {
-          if (mode === "full") renderFull()
-          else renderCompact()
-        }
-      })
-      .catch((error: unknown) => console.error(`clipboard: copy failed: ${error}`))
+    copyItem(item).catch((error: unknown) =>
+      console.error(`clipboard: copy failed: ${error}`),
+    )
   }
 
   function copyAndCollapse(item: ClipboardItem): void {
@@ -1136,7 +1150,54 @@ export function ClipboardWindow(
     })
   }
 
+  function applyCompactShell(): void {
+    const activeCompact = mode === "compact"
+    const vertical = activeCompact && compactIsVertical(compactAlign)
+    compactSpacer.set_visible(activeCompact && !vertical)
+    if (vertical) {
+      compactRoot.set_vexpand(true)
+      compactRoot.set_valign(Gtk.Align.FILL)
+      compactRoot.set_halign(
+        compactAlign === "left" ? Gtk.Align.START : Gtk.Align.END,
+      )
+      compactRoot.set_hexpand(false)
+    } else {
+      compactRoot.set_vexpand(false)
+      compactRoot.set_valign(Gtk.Align.END)
+      compactRoot.set_halign(Gtk.Align.FILL)
+      compactRoot.set_hexpand(true)
+    }
+    compactRoot.set_size_request(vertical ? compactWidth() : -1, -1)
+    compactRoot.remove_css_class("align-bottom")
+    compactRoot.remove_css_class("align-left")
+    compactRoot.remove_css_class("align-right")
+    compactRoot.add_css_class(`align-${compactAlign}`)
+
+    searchBox.set_size_request(vertical ? compactWidth() : -1, -1)
+    filters.set_max_children_per_line(vertical ? 3 : 8)
+    compactList.set_orientation(
+      vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+    )
+    compactList.set_halign(vertical ? Gtk.Align.FILL : Gtk.Align.START)
+    compactList.set_hexpand(!vertical)
+    strip.set_orientation(
+      vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+    )
+    compactTop.set_orientation(
+      vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
+    )
+    compactScroll.set_policy(
+      vertical ? Gtk.PolicyType.NEVER : Gtk.PolicyType.AUTOMATIC,
+      vertical ? Gtk.PolicyType.AUTOMATIC : Gtk.PolicyType.NEVER,
+    )
+    stripPrev.set_visible(!vertical)
+    stripNext.set_visible(!vertical)
+    stripUp.set_visible(vertical)
+    stripDown.set_visible(vertical)
+  }
+
   function renderCompact(): void {
+    applyCompactShell()
     const pins = items.filter((item) => item.favorite).length
     if (compactView === "pinned" && pins === 0) {
       compactView = "recent"
@@ -1162,29 +1223,6 @@ export function ClipboardWindow(
     }
     recentTab.set_sensitive(true)
 
-    compactList.set_orientation(
-      vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL,
-    )
-    compactList.set_halign(vertical ? Gtk.Align.FILL : Gtk.Align.START)
-    compactList.set_hexpand(!vertical)
-    compactRoot.set_size_request(vertical ? compactWidth() : -1, -1)
-    searchBox.set_size_request(vertical ? compactWidth() : -1, -1)
-    filters.set_max_children_per_line(vertical ? 3 : 8)
-    strip.set_orientation(vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)
-    compactTop.set_orientation(vertical ? Gtk.Orientation.VERTICAL : Gtk.Orientation.HORIZONTAL)
-    compactScroll.set_policy(
-      vertical ? Gtk.PolicyType.NEVER : Gtk.PolicyType.AUTOMATIC,
-      vertical ? Gtk.PolicyType.AUTOMATIC : Gtk.PolicyType.NEVER,
-    )
-    stripPrev.set_visible(!vertical)
-    stripNext.set_visible(!vertical)
-    stripUp.set_visible(vertical)
-    stripDown.set_visible(vertical)
-    compactRoot.remove_css_class("align-bottom")
-    compactRoot.remove_css_class("align-left")
-    compactRoot.remove_css_class("align-right")
-    compactRoot.add_css_class(`align-${compactAlign}`)
-
     incognito.label.set_label(paused ? "Incognito: on" : "Incognito: off")
     incognito.button.set_tooltip_text(paused ? "Resume clipboard captures" : "Pause clipboard captures")
     incognito.setIcon(paused ? "play" : "pause")
@@ -1197,6 +1235,7 @@ export function ClipboardWindow(
     compactHints.set_label(compactHintText())
 
     clearChildren(compactList)
+    compactCards.clear()
     if (items.length === 0) {
       const empty = column(4)
       empty.add_css_class("clipboard-empty")
@@ -1236,10 +1275,8 @@ export function ClipboardWindow(
       )
       if (vertical) card.set_halign(Gtk.Align.CENTER)
       card.add_css_class(`key-${cssKey(itemKey(item))}`)
-      if (itemKey(item) === selectedKey) {
-        card.add_css_class("selected")
-        paintSelectedCard(card, item.kind)
-      }
+      if (itemKey(item) === selectedKey) card.add_css_class("selected")
+      compactCards.set(itemKey(item), card)
       compactList.append(card)
     })
     // Trailing spacer: absorbs any extra width so the fixed-width cards keep
@@ -1353,9 +1390,9 @@ export function ClipboardWindow(
     // Keep the stage mounted behind the pinned grid (the panel is an
     // overlay child with its own scrim), matching the mock's pins-open look.
     fullRoot.set_visible(full)
-    compactSpacer.set_visible(!full)
     compactRoot.set_visible(!full)
     pinsPanel.set_visible(full && pinsOpen)
+    applyCompactShell()
     settingsCatcher.set_visible(settingsPanelOpen)
     settingsPanelWidget?.set_visible(settingsPanelOpen)
     root.remove_css_class("clipboard-mode-full")

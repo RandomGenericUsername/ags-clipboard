@@ -4,12 +4,6 @@ import GdkPixbuf from "gi://GdkPixbuf?version=2.0"
 import type { ClipboardItem, ItemKind } from "../lib/clipboard-types"
 import { registryProvider } from "ags-platform/adapters/icon"
 import { Preview } from "./Preview"
-import {
-  paintFocusedPinCard,
-  paintPinButton,
-  paintTypeDot,
-  paintTypeHeader,
-} from "./accent"
 
 //: Stock symbolic fallbacks (used only until the themed `ui-*.svg` renders).
 const FALLBACK_ICON: Record<string, string> = {
@@ -154,7 +148,6 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
   // CenterBox lays start/end out itself — no child hexpand, which would
   // otherwise propagate up and make the card stretch in the list.
   const header = new Gtk.CenterBox({ css_classes: ["clipboard-head"] })
-  paintTypeHeader(header, item.kind)
   const headStart = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 4 })
   if (options.index !== undefined) {
     const badge = new Gtk.Label({ label: String(options.index), xalign: 0.5 })
@@ -171,7 +164,6 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
   dot.set_size_request(6, 6)
   dot.set_halign(Gtk.Align.CENTER)
   dot.set_valign(Gtk.Align.CENTER)
-  paintTypeDot(dot, item.kind)
   headStart.append(dot)
   const label = new Gtk.Label({ label: TYPE_LABEL[item.kind], xalign: 0 })
   label.add_css_class("clipboard-head-label")
@@ -188,7 +180,6 @@ export function ItemHead(item: ClipboardItem, options: HeadOptions = {}): Gtk.Ce
       pinButton.set_valign(Gtk.Align.CENTER)
       pinButton.set_tooltip_text(item.favorite ? "Unpin" : "Pin")
       if (options.suppress !== undefined) guardChildClick(pinButton, options.suppress)
-      paintPinButton(pinButton, item.kind)
       if (item.favorite) pinButton.add_css_class("is-on")
       pinButton.connect("clicked", () => options.onTogglePin?.(item))
       headStart.append(pinButton)
@@ -388,7 +379,6 @@ export function PinCard(
   button.set_valign(Gtk.Align.FILL)
   if (focused) {
     button.add_css_class("focused")
-    paintFocusedPinCard(button, item.kind)
   }
   button.set_tooltip_text(`Copy ${TYPE_LABEL[item.kind]} card`)
 
