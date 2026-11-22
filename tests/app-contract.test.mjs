@@ -786,6 +786,23 @@ test("pinned panel fills the full stage and search boxes show the slash keycap",
   assert.equal((window.match(/keycap\("\/"\)/g) ?? []).length, 2);
 });
 
+test("layout and orientation changes close the in-page settings panel", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  for (const setter of [
+    "function setMode(next: LayoutMode): void",
+    "function setCompactAlign(next: CompactAlignment): void",
+  ]) {
+    const body = functionBody(window, setter);
+    assert.match(
+      body,
+      /applyMode\(\)[\s\S]*?renderAll\(\)[\s\S]*?refreshSettings\(\)[\s\S]*?if \(settingsPanelOpen\) closeSettings\(\)/,
+      `${setter} must close settings after applying the new layout`,
+    );
+  }
+  const size = functionBody(window, "function setCompactSize(next: CompactSize): void");
+  assert.doesNotMatch(size, /closeSettings\(\)/, "card-size changes keep the panel open");
+});
+
 test("Enter copies and collapses in full and compact", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const key = functionBody(window, "function onKey");
