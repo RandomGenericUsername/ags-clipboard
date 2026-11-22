@@ -786,6 +786,24 @@ test("pinned panel fills the full stage and search boxes show the slash keycap",
   assert.equal((window.match(/keycap\("\/"\)/g) ?? []).length, 2);
 });
 
+test("Enter copies and collapses in full and compact", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const key = functionBody(window, "function onKey");
+  // Typing branch: Enter also collapses in compact.
+  assert.match(
+    key,
+    /if \(typing\)[\s\S]*?if \(keyval === Gdk\.KEY_Return \|\| keyval === Gdk\.KEY_KP_Enter\) \{[\s\S]*?copyAndCollapse\(item\)/,
+  );
+  // Final Enter branch: same for both modes.
+  assert.match(
+    key,
+    /if \(keyval === Gdk\.KEY_Return \|\| keyval === Gdk\.KEY_KP_Enter\) \{\s*const item = selectedItem\(\)\s*if \(item !== null\) copyAndCollapse\(item\)\s*return true/s,
+  );
+  // Ctrl+1..9 remains copy-only in compact.
+  assert.equal((key.match(/else copyOnly\(item\)/g) ?? []).length, 1);
+  assert.match(window, /copy\+close/);
+});
+
 test("gear and pin controls are square and skin-derived", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const itemCard = readText("ui", "ItemCard.tsx");
