@@ -408,8 +408,9 @@ test("settings is an in-page panel with a full-window catcher", () => {
   assert.match(window, /Full stage or compact strip\./);
   assert.match(window, /220 \/ 260 \/ 300 px\./);
   assert.match(window, /Bottom strip, or a full-height side column\./);
-  assert.match(window, /clipboard-settings-path/);
-  assert.match(window, /Saved on change\. Not the daemon config\./);
+  assert.doesNotMatch(window, /clipboard-settings-path/);
+  assert.doesNotMatch(window, /Saved on change\. Not the daemon config\./);
+  assert.doesNotMatch(css, /\.clipboard-settings-path|\.clipboard-settings-note|\.clipboard-settings-foot/);
 
   assert.match(css, /\.clipboard-settings-catcher\s*\{[^}]*background-color:\s*transparent/s);
   assert.match(css, /\.clipboard-settings\s*\{[^}]*border-radius:\s*15px/s);
@@ -729,6 +730,62 @@ test("compact selection is incremental and shell resets on alignment", () => {
   assert.match(functionBody(window, "function setCompactAlign"), /applyMode\(\)/);
 });
 
+test("stage cards are fixed-size and link/code labels are width-capped", () => {
+  const itemCard = readText("ui", "ItemCard.tsx");
+  const preview = readText("ui", "Preview.tsx");
+  const stage = functionBody(itemCard, "export function StageCard");
+  assert.match(stage, /new Gtk\.Fixed\(\)/);
+  assert.match(stage, /frame\.set_size_request\(width, height\)/);
+  assert.match(stage, /card\.set_size_request\(width, height\)/);
+  assert.match(preview, /const linkChars = Math\.max\(12, Math\.floor\(width \/ 8\)\)/);
+  assert.match(preview, /url\.set_width_chars\(linkChars\)/);
+  assert.match(preview, /url\.set_max_width_chars\(linkChars\)/);
+  assert.match(preview, /url\.set_ellipsize\(Pango\.EllipsizeMode\.END\)/);
+  assert.match(preview, /url\.set_lines\(2\)/);
+  assert.match(preview, /label\.set_ellipsize\(stage \? Pango\.EllipsizeMode\.NONE/);
+  assert.match(preview, /stage && \(item\.kind === "text" \|\| item\.kind === "code"\)/);
+  assert.match(preview, /set_lines\(item\.kind === "code" \? \(stage \? 10 : 6\)/);
+});
+
+test("pin button centers a single child", () => {
+  const itemCard = readText("ui", "ItemCard.tsx");
+  assert.match(itemCard, /new Gtk\.CenterBox\(\)/);
+  assert.match(itemCard, /pinCenter\.set_center_widget\(pinIcon\)/);
+  assert.match(itemCard, /pinIcon\.set_halign\(Gtk\.Align\.CENTER\)/);
+  assert.match(itemCard, /pinIcon\.set_valign\(Gtk\.Align\.CENTER\)/);
+  assert.match(itemCard, /pinButton\.set_size_request\(22, 22\)/);
+  assert.match(itemCard, /pinButton\.set_valign\(Gtk\.Align\.CENTER\)/);
+});
+
+test("full layout has synced search/filter and inline clear", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  assert.match(window, /const fullSearch = new Gtk\.Entry/);
+  assert.match(window, /const fullFilters = new Gtk\.FlowBox/);
+  assert.match(window, /fullSearch\.connect\("changed", \(\) => setSearchQuery\(fullSearch\.get_text\(\), fullSearch\)\)/);
+  assert.match(window, /for \(const entry of \[search, fullSearch\]\)/);
+  assert.match(window, /function applyFilter\(value: TypeFilter\)/);
+  assert.match(window, /function syncFilterChips\(\)/);
+  assert.match(window, /function fullList\(\): ClipboardItem\[\]/);
+  assert.match(window, /return filterItems\(items, query, filter\)/);
+  assert.match(window, /const entry = mode === "full" \? fullSearch : search/);
+
+  assert.match(window, /fullClearBar = barButton\("Clear", "trash", null, "danger"\)/);
+  assert.match(window, /fullClearButton\.connect\("clicked", askClear\)/);
+  assert.match(window, /fullClearConfirmBox/);
+  assert.match(window, /function performClear\(\): void/);
+  assert.match(window, /clearConfirm = true/);
+  assert.match(window, /fullClearButton\.set_visible\(!clearConfirm\)/);
+});
+
+test("pinned panel fills the full stage and search boxes show the slash keycap", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const mode = functionBody(window, "function applyMode");
+  assert.match(mode, /pinsPanel\.set_halign\(Gtk\.Align\.FILL\)/);
+  assert.match(mode, /pinsPanel\.set_valign\(Gtk\.Align\.FILL\)/);
+  assert.match(mode, /pinsGrid\.set_halign\(Gtk\.Align\.FILL\)/);
+  assert.equal((window.match(/keycap\("\/"\)/g) ?? []).length, 2);
+});
+
 test("gear and pin controls are square and skin-derived", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const itemCard = readText("ui", "ItemCard.tsx");
@@ -766,8 +823,8 @@ test("compact opens without focusing search and arrows stay reachable", () => {
   assert.match(window, /root\.set_can_focus\(true\)/);
   assert.match(map, /root\.grab_focus\(\)/);
   const key = functionBody(window, "function onKey");
-  assert.match(key, /keyval === Gdk\.KEY_slash[\s\S]*?search\.grab_focus\(\)/);
-  assert.match(key, /const typing = search\.has_focus/);
+  assert.match(key, /keyval === Gdk\.KEY_slash[\s\S]*?const entry = mode === "full" \? fullSearch : search[\s\S]*?entry\.grab_focus\(\)/);
+  assert.match(key, /const typing = mode === "full" \? fullSearch\.has_focus : search\.has_focus/);
   assert.match(key, /moveCompactSelection\(list, selectedKey, -1\)/);
   assert.match(key, /moveCompactSelection\(list, selectedKey, 1\)/);
   assert.match(key, /toggleCompactView\(\)/);
@@ -777,8 +834,11 @@ test("compact opens without focusing search and arrows stay reachable", () => {
 test("search focus ring lives on the rounded box, not the inner entry", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const css = readText("style.css");
-  assert.match(window, /if \(search\.has_focus\) searchBox\.add_css_class\("focused"\)/);
-  assert.match(window, /else searchBox\.remove_css_class\("focused"\)/);
+  const bind = functionBody(window, "function bindSearchFocus");
+  assert.match(bind, /if \(entry\.has_focus\) box\.add_css_class\("focused"\)/);
+  assert.match(bind, /else box\.remove_css_class\("focused"\)/);
+  assert.match(window, /bindSearchFocus\(search, searchBox\)/);
+  assert.match(window, /bindSearchFocus\(fullSearch, fullSearchBox\)/);
   assert.match(css, /\.clipboard-search-box\.focused\s*\{[^}]*border-color:\s*@primary/s);
   assert.match(css, /\.clipboard-search-box\.focused\s*\{[^}]*box-shadow:\s*0 0 0 1px alpha\(@primary/s);
   assert.match(css, /\.clipboard-search:focus,[\s\S]*?outline:\s*none/);
