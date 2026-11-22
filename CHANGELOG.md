@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased — REQ-009 full-layout polish
+
+- Enforce a fixed stage-card frame and width-capped link/text/code previews so
+  long links cannot widen the stage; code/text stage cards wrap the full text
+  with an 8/10-line cap instead of collapsing to one line.
+- Center the 22×22 pin glyph with a `Gtk.CenterBox`.
+- Make the pinned overlay fill the full stage with 4 full-width columns.
+- Add a full-layout Clear control with inline confirm, full-layout search and
+  type filters synced with compact state, and a `/` keycap + `/` focus in both
+  search boxes.
+- Remove the settings config-path footer; persistence is unchanged.
+
 ## Unreleased — REQ-009 settings-open stability
 
 - Keep the layer-shell surface full-monitor with zero margins for all modes;

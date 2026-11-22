@@ -296,11 +296,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 28 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch, header/type-role gates) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 35 tests pass (manifest identity, in-page settings/catcher, stable full-monitor anchor + input region, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 39 tests pass (manifest identity, in-page settings/catcher, stable full-monitor anchor + input region, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, full fixed stage + link caps, pin centering, full clear/search/filter, pinned overlay, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,307,796 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 35 conformance, drift "all checks passed", bundle 1,307,796 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,325,364 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 39 conformance, drift "all checks passed", bundle 1,325,364 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -438,11 +438,46 @@ changes, no tag).
   Existing per-kind header/selection/focus/pin assertions remain.
 - **Gates (app worktree):** `make test` 28 pass; `make conformance` 34 pass;
   `make drift` all checks passed; `make typecheck` 0 app errors; `make bundle`
-  1,307,796 bytes; `make gates` green. Final numbers in the Evidence table.
+  1,325,364 bytes; `make gates` green. Final numbers in the Evidence table.
 - **Visual checks that still need the skin lane:** four-column pinned geometry
   under each of the five skins, settings panel/catcher paint, gear hover, and
   the one-ring selected state after the skin template removes its base
   duplicate/old per-kind rules.
+
+## Full layout follow-up (2026-11-22)
+
+Owner feedback on the full stage.
+
+- **Standard stage size:** `StageCard` now returns a fixed-size `Gtk.Fixed`
+  frame (`width × height`) with the card clipped inside, so a child's natural
+  width can never widen the stage. Link stage labels cap `width_chars` /
+  `max_width_chars` from the actual body width, wrap to 2 lines, ellipsize END
+  and align start. Text/code stage labels wrap without ellipsize, cap at 8/10
+  lines, and render the full item text (not just the first line). Evidence:
+  conformance test `stage cards are fixed-size and link/code labels are
+  width-capped`; live `/tmp/req009-shots/full-code2.png`.
+- **Pin centering:** the 22×22 pin button wraps its glyph in a
+  `Gtk.CenterBox` with a centered child in both axes. Evidence: test `pin
+  button centers a single child`.
+- **Pinned view:** the overlay panel explicitly fills both axes and the grid
+  spans the full panel width (4 homogeneous columns), with the stage dimmed
+  behind. Evidence: test `pinned panel fills the full stage`; live
+  `/tmp/req009-shots/full-pins.png`.
+- **Full Clear:** toolbar `Clear` + inline `Clear all? No/Yes` confirm using
+  the shared `clearConfirm` state. No popover. Evidence: test `full layout has
+  synced search/filter and inline clear`.
+- **Full search/filter:** top bar now has a search box and the same type chips
+  immediately left of the gear. Query/filter state is shared with compact
+  (one `query`/`filter`, synced entries/chips). `/` focuses the active search
+  (full or compact) and both search boxes show a `/` keycap. Evidence: same
+  test, plus `keycap("/")` count.
+- **Settings footer removed:** config-path/“Saved on change” footer removed
+  from the panel; persistence unchanged. Evidence: test asserts the footer is
+  absent.
+- Gates: `make test` 28, `make conformance` 39, drift/typecheck/bundle/gates
+  green. Live full-mode screenshots:
+  `/tmp/req009-shots/full-fix.png` (image), `full-code2.png` (code),
+  `full-pins.png` (pinned), no CSS/JS errors.
 
 ## Settings-open stability (2026-11-22)
 
