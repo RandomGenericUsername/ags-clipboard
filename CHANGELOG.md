@@ -10,6 +10,9 @@
 - Add a full-layout Clear control with inline confirm, full-layout search and
   type filters synced with compact state, and a `/` keycap + `/` focus in both
   search boxes.
+- Compact Enter now copies the selected item and collapses the overlay like
+  full mode; Ctrl+1..9 and double-click remain copy-only. Hints say
+  `copy+close`.
 - Remove the settings config-path footer; persistence is unchanged.
 
 ## Unreleased — REQ-009 settings-open stability

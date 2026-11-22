@@ -296,11 +296,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 28 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch, header/type-role gates) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 39 tests pass (manifest identity, in-page settings/catcher, stable full-monitor anchor + input region, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, full fixed stage + link caps, pin centering, full clear/search/filter, pinned overlay, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 40 tests pass (manifest identity, in-page settings/catcher, stable full-monitor anchor + input region, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, full fixed stage + link caps, pin centering, full clear/search/filter, compact Enter collapse, pinned overlay, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,325,364 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 39 conformance, drift "all checks passed", bundle 1,325,364 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,324,796 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 40 conformance, drift "all checks passed", bundle 1,324,796 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -438,7 +438,7 @@ changes, no tag).
   Existing per-kind header/selection/focus/pin assertions remain.
 - **Gates (app worktree):** `make test` 28 pass; `make conformance` 34 pass;
   `make drift` all checks passed; `make typecheck` 0 app errors; `make bundle`
-  1,325,364 bytes; `make gates` green. Final numbers in the Evidence table.
+  1,324,796 bytes; `make gates` green. Final numbers in the Evidence table.
 - **Visual checks that still need the skin lane:** four-column pinned geometry
   under each of the five skins, settings panel/catcher paint, gear hover, and
   the one-ring selected state after the skin template removes its base
@@ -471,6 +471,10 @@ Owner feedback on the full stage.
   (one `query`/`filter`, synced entries/chips). `/` focuses the active search
   (full or compact) and both search boxes show a `/` keycap. Evidence: same
   test, plus `keycap("/")` count.
+- **Enter:** compact Enter now copies the selected item and collapses the
+  overlay exactly like full mode (both the typing and final Enter branches);
+  Ctrl+1..9 and double-click remain copy-only. Hints read `copy+close`.
+  Evidence: conformance test `Enter copies and collapses in full and compact`.
 - **Settings footer removed:** config-path/“Saved on change” footer removed
   from the panel; persistence unchanged. Evidence: test asserts the footer is
   absent.
