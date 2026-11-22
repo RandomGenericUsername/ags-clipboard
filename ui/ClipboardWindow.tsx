@@ -1,5 +1,6 @@
 import { Astal, Gdk, Gtk } from "ags/gtk4"
 import app from "ags/gtk4/app"
+import cairo from "gi://cairo?version=1.0"
 import GLib from "gi://GLib?version=2.0"
 // The one domain-event client (spine AD-5): the app consumes the platform's
 // shared client instead of a local event-bus copy. Topics are the contract
@@ -1154,6 +1155,10 @@ export function ClipboardWindow(
     const activeCompact = mode === "compact"
     const vertical = activeCompact && compactIsVertical(compactAlign)
     compactSpacer.set_visible(activeCompact && !vertical)
+    compactRoot.set_margin_top(0)
+    compactRoot.set_margin_bottom(0)
+    compactRoot.set_margin_start(0)
+    compactRoot.set_margin_end(0)
     if (vertical) {
       compactRoot.set_vexpand(true)
       compactRoot.set_valign(Gtk.Align.FILL)
@@ -1161,11 +1166,18 @@ export function ClipboardWindow(
         compactAlign === "left" ? Gtk.Align.START : Gtk.Align.END,
       )
       compactRoot.set_hexpand(false)
+      compactRoot.set_margin_top(52)
+      compactRoot.set_margin_bottom(12)
+      if (compactAlign === "left") compactRoot.set_margin_start(12)
+      else compactRoot.set_margin_end(12)
     } else {
       compactRoot.set_vexpand(false)
       compactRoot.set_valign(Gtk.Align.END)
       compactRoot.set_halign(Gtk.Align.FILL)
       compactRoot.set_hexpand(true)
+      compactRoot.set_margin_start(12)
+      compactRoot.set_margin_end(12)
+      compactRoot.set_margin_bottom(12)
     }
     compactRoot.set_size_request(vertical ? compactWidth() : -1, -1)
     compactRoot.remove_css_class("align-bottom")
@@ -1194,6 +1206,7 @@ export function ClipboardWindow(
     stripNext.set_visible(!vertical)
     stripUp.set_visible(vertical)
     stripDown.set_visible(vertical)
+    scheduleInputRegion()
   }
 
   function renderCompact(): void {
@@ -1317,40 +1330,60 @@ export function ClipboardWindow(
 
   function applyWindowLayout(): void {
     if (overlay === null) return
-    const top = Astal.WindowAnchor.TOP
-    const bottom = Astal.WindowAnchor.BOTTOM
-    const left = Astal.WindowAnchor.LEFT
-    const right = Astal.WindowAnchor.RIGHT
+    // The layer-shell surface is STABLE for every mode: full-monitor, zero
+    // margins. Opening settings or switching compact alignment never
+    // re-anchors/resizes it (that caused a compositor remap/flash).
+    overlay.anchor = (
+      Astal.WindowAnchor.TOP |
+      Astal.WindowAnchor.BOTTOM |
+      Astal.WindowAnchor.LEFT |
+      Astal.WindowAnchor.RIGHT
+    ) as Astal.WindowAnchor
+    overlay.margin_top = 0
+    overlay.margin_bottom = 0
+    overlay.margin_left = 0
+    overlay.margin_right = 0
+  }
+
+  let inputRegionPending = 0
+
+  function applyInputRegion(): void {
+    const surface = overlay?.get_surface()
+    if (surface === null || surface === undefined) return
     if (mode === "full" || settingsPanelOpen) {
-      // Settings are an in-page panel: in compact mode the same window
-      // temporarily covers the monitor so the panel and catcher are never
-      // clipped by the strip-height surface.
-      overlay.anchor = (top | bottom | left | right) as Astal.WindowAnchor
-      overlay.margin_top = 0
-      overlay.margin_bottom = 0
-      overlay.margin_left = 0
-      overlay.margin_right = 0
+      surface.set_input_region(null)
       return
     }
-    if (compactAlign === "left") {
-      overlay.anchor = (top | bottom | left) as Astal.WindowAnchor
-      overlay.margin_top = 52
-      overlay.margin_bottom = 12
-      overlay.margin_left = 12
-      overlay.margin_right = 0
-    } else if (compactAlign === "right") {
-      overlay.anchor = (top | bottom | right) as Astal.WindowAnchor
-      overlay.margin_top = 52
-      overlay.margin_bottom = 12
-      overlay.margin_left = 0
-      overlay.margin_right = 12
-    } else {
-      overlay.anchor = (bottom | left | right) as Astal.WindowAnchor
-      overlay.margin_top = 0
-      overlay.margin_bottom = 12
-      overlay.margin_left = 12
-      overlay.margin_right = 12
+    const width = compactRoot.get_width()
+    const height = compactRoot.get_height()
+    if (width <= 0 || height <= 0) return
+    const allocation = compactRoot.get_allocation()
+    // GJS exposes the cairo region from gi://cairo, while Gdk's typings import
+    // the cairo module's Region. The runtime object is the same; cast at the
+    // boundary.
+    const region = new cairo.Region() as unknown as {
+      unionRectangle(rect: { x: number; y: number; width: number; height: number }): void
     }
+    region.unionRectangle(
+      new cairo.Rectangle({
+        x: allocation.x,
+        y: allocation.y,
+        width,
+        height,
+      }) as unknown as { x: number; y: number; width: number; height: number },
+    )
+    surface.set_input_region(
+      region as unknown as Parameters<Gdk.Surface["set_input_region"]>[0],
+    )
+  }
+
+  function scheduleInputRegion(): void {
+    if (inputRegionPending !== 0) return
+    inputRegionPending = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+      inputRegionPending = 0
+      applyInputRegion()
+      return false
+    })
   }
 
   function positionSettingsPanel(): void {
@@ -1705,22 +1738,10 @@ export function ClipboardWindow(
   renderAll()
 
   const initialAnchor =
-    mode === "full"
-      ? Astal.WindowAnchor.TOP |
-        Astal.WindowAnchor.BOTTOM |
-        Astal.WindowAnchor.LEFT |
-        Astal.WindowAnchor.RIGHT
-      : compactAlign === "left"
-        ? Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.LEFT
-        : compactAlign === "right"
-          ? Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.RIGHT
-          : Astal.WindowAnchor.BOTTOM | Astal.WindowAnchor.LEFT | Astal.WindowAnchor.RIGHT
-  const initialMargins =
-    mode === "full"
-      ? { top: 0, bottom: 0, left: 0, right: 0 }
-      : compactAlign === "bottom"
-        ? { top: 0, bottom: 12, left: 12, right: 12 }
-        : { top: 52, bottom: 12, left: 12, right: 12 }
+    Astal.WindowAnchor.TOP |
+    Astal.WindowAnchor.BOTTOM |
+    Astal.WindowAnchor.LEFT |
+    Astal.WindowAnchor.RIGHT
 
   return (
     <window
@@ -1731,10 +1752,10 @@ export function ClipboardWindow(
       anchor={initialAnchor}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
-      margin_top={initialMargins.top}
-      margin_bottom={initialMargins.bottom}
-      margin_left={initialMargins.left}
-      margin_right={initialMargins.right}
+      margin_top={0}
+      margin_bottom={0}
+      margin_left={0}
+      margin_right={0}
       $={(self) => {
         overlay = self
         applyWindowLayout()
@@ -1765,6 +1786,7 @@ export function ClipboardWindow(
           items = readHistory()
           ensureSelection()
           renderAll()
+          scheduleInputRegion()
         })
         self.connect("unmap", () => {
           mapped = false
