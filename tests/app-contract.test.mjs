@@ -427,7 +427,11 @@ test("in-page settings opens modally and closes on Esc or outside click", () => 
   assert.match(functionBody(window, "function closeSettings"), /settingsCatcher\.set_visible\(false\)/);
   assert.match(functionBody(window, "function closeSettings"), /settingsPanelWidget\?\.set_visible\(false\)/);
   assert.match(functionBody(window, "function toggleSettings"), /settingsPanelOpen/);
-  assert.match(functionBody(window, "function applyWindowLayout"), /settingsPanelOpen/);
+  assert.doesNotMatch(
+    functionBody(window, "function applyWindowLayout"),
+    /settingsPanelOpen|compactAlign|mode ===/,
+    "the window anchor is stable; settings never re-anchor it",
+  );
   const mode = functionBody(window, "function applyMode");
   assert.match(mode, /settingsCatcher\.set_visible\(settingsPanelOpen\)/);
   assert.match(mode, /settingsPanelWidget\?\.set_visible\(settingsPanelOpen\)/);
@@ -656,6 +660,44 @@ test("type accents use one app-owned display provider at USER + 1", () => {
   assert.doesNotMatch(window, /paintTypeHeader|paintTypeDot|paintFilterDot|paintPinButton|paintSelectedCard|paintFocusedPinCard/);
   assert.match(accentCss, /\.kind-.*\.selected[\s\S]*?border-color:\s*transparent/);
   assert.match(accentCss, /\.kind-.*\.clipboard-pin-card\.focused[\s\S]*?border-color:\s*transparent/);
+});
+
+test("the layer-shell window stays full-monitor and input region follows the compact shell", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const layout = functionBody(window, "function applyWindowLayout");
+  assert.match(layout, /Astal\.WindowAnchor\.TOP/);
+  assert.match(layout, /Astal\.WindowAnchor\.BOTTOM/);
+  assert.match(layout, /Astal\.WindowAnchor\.LEFT/);
+  assert.match(layout, /Astal\.WindowAnchor\.RIGHT/);
+  assert.doesNotMatch(layout, /compactAlign|settingsPanelOpen|mode ===/);
+  assert.match(layout, /overlay\.margin_top = 0/);
+  assert.match(layout, /overlay\.margin_bottom = 0/);
+  assert.doesNotMatch(window, /initialMargins/);
+
+  const region = functionBody(window, "function applyInputRegion");
+  assert.match(region, /overlay\?\.get_surface\(\)/);
+  assert.match(region, /surface\.set_input_region\(null\)/);
+  assert.match(region, /mode === "full" \|\| settingsPanelOpen/);
+  assert.match(region, /compactRoot\.get_allocation\(\)/);
+  assert.match(region, /new cairo\.Region\(\)/);
+  assert.match(region, /unionRectangle/);
+  assert.match(region, /surface\.set_input_region\(/);
+  const schedule = functionBody(window, "function scheduleInputRegion");
+  assert.match(schedule, /GLib\.idle_add/);
+  assert.match(window, /scheduleInputRegion\(\)/);
+
+  // Opening/closing settings only toggles visibility + reapplies the shell.
+  for (const marker of ["function openSettings", "function closeSettings"]) {
+    const body = functionBody(window, marker);
+    assert.doesNotMatch(body, /overlay\.anchor|margin_top|margin_bottom/);
+    assert.match(body, /applyMode\(\)/);
+  }
+
+  const shell = functionBody(window, "function applyCompactShell");
+  assert.match(shell, /compactRoot\.set_margin_start\(12\)/);
+  assert.match(shell, /compactRoot\.set_margin_end\(12\)/);
+  assert.match(shell, /compactRoot\.set_margin_bottom\(12\)/);
+  assert.match(shell, /compactRoot\.set_margin_top\(52\)/);
 });
 
 test("compact selection is incremental and shell resets on alignment", () => {
