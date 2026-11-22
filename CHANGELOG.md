@@ -13,6 +13,8 @@
 - Compact Enter now copies the selected item and collapses the overlay like
   full mode; Ctrl+1..9 and double-click remain copy-only. Hints say
   `copy+close`.
+- Changing Layout or compact alignment from the in-page settings panel now
+  closes the panel after applying the change; card-size changes keep it open.
 - Remove the settings config-path footer; persistence is unchanged.
 
 ## Unreleased — REQ-009 settings-open stability
