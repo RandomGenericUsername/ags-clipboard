@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased — REQ-009 settings-open stability
+
+- Keep the layer-shell surface full-monitor with zero margins for all modes;
+  settings open/close and alignment changes no longer re-anchor/remap it.
+- Position `.clipboard-compact` inside the transparent surface (bottom strip or
+  full-height left/right column) with 12 px insets.
+- Restrict the window input region to the compact shell when settings is
+  closed (`cairo.Region` from `compactRoot.get_allocation()`); use the full
+  window when settings is open so the in-page catcher/panel receive input.
+
 ## Unreleased — REQ-009 live preview fixes
 
 - Fix compact Left/Right collapsing to the bottom: one `applyCompactShell()`

@@ -296,11 +296,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 28 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch, header/type-role gates) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 34 tests pass (manifest identity, in-page settings/catcher, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 35 tests pass (manifest identity, in-page settings/catcher, stable full-monitor anchor + input region, no Popover, app-owned card width, one content-accent provider at USER+1, incremental compact selection/shell, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,306,712 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 34 conformance, drift "all checks passed", bundle 1,306,712 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,307,796 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 35 conformance, drift "all checks passed", bundle 1,307,796 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -438,11 +438,52 @@ changes, no tag).
   Existing per-kind header/selection/focus/pin assertions remain.
 - **Gates (app worktree):** `make test` 28 pass; `make conformance` 34 pass;
   `make drift` all checks passed; `make typecheck` 0 app errors; `make bundle`
-  1,306,712 bytes; `make gates` green. Final numbers in the Evidence table.
+  1,307,796 bytes; `make gates` green. Final numbers in the Evidence table.
 - **Visual checks that still need the skin lane:** four-column pinned geometry
   under each of the five skins, settings panel/catcher paint, gear hover, and
   the one-ring selected state after the skin template removes its base
   duplicate/old per-kind rules.
+
+## Settings-open stability (2026-11-22)
+
+Owner: the gear caused a blink/layout shift because `applyWindowLayout()`
+re-anchored the compact layer-shell surface from strip/column geometry to
+full-monitor on open, then back on close.
+
+- The layer-shell window is now **stable full-monitor for every mode**:
+  `TOP|BOTTOM|LEFT|RIGHT`, margin 0, set once at construction and reasserted
+  idempotently. Settings open/close and alignment changes never change the
+  anchor or margins.
+- `.clipboard-compact` is positioned inside that transparent surface:
+  - bottom: `halign=FILL`, `valign=END`, 12 px start/end/bottom margins;
+  - left: `halign=START`, `valign=FILL`, width `compactWidth()`, 12 px
+    left/bottom margins, 52 px top;
+  - right: `halign=END`, `valign=FILL`, width `compactWidth()`, 12 px
+    right/bottom margins, 52 px top.
+- Input is restricted while settings is closed:
+  `overlay.get_surface()?.set_input_region(...)` with a `cairo.Region`
+  union-rectangle from `compactRoot.get_allocation()`. Full mode and
+  compact+settings open use `set_input_region(null)` so the catcher/panel
+  receive input. The region is refreshed after map, `applyCompactShell()`,
+  alignment/size changes, settings open/close and via an idle tick.
+- Settings open/close only toggles the catcher/panel visibility; the shell
+  helper repositions the strip without re-anchoring the window.
+
+**Live observations:**
+
+```text
+input-region compact x=12 y=715 w=1860 h=280   # settings closed
+input-region full mode=compact settings=true    # settings open -> whole window
+```
+
+- No CSS/JS errors in the preview logs, settings open/close, or compact
+  left/right.
+- Settings-open compact bottom: panel fully inside monitor, strip pinned at the
+  bottom (`/tmp/req009-shots/stable-settings-bottom3.png`).
+- Compact Left/Right remain full-height with visible stacked cards
+  (`/tmp/req009-shots/r5-left.png`, `/tmp/req009-shots/r5-right.png`).
+- No window remap/flash was observed on gear open/close after the stable
+  anchor change.
 
 ## Live feedback round (2026-11-22)
 
