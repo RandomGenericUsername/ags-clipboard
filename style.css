@@ -89,37 +89,37 @@ window#clipboard-window {
 
 /* Selection follows the same accent family as the header plate. */
 .kind-text.selected {
-  border-color: @primary;
+  border-color: transparent;
   background-color: alpha(@primary, 0.12);
   box-shadow: 0 0 0 2px alpha(@primary, 0.6);
 }
 
 .kind-link.selected {
-  border-color: @primary_container;
+  border-color: transparent;
   background-color: alpha(@primary_container, 0.12);
   box-shadow: 0 0 0 2px alpha(@primary_container, 0.6);
 }
 
 .kind-code.selected {
-  border-color: @secondary_container;
+  border-color: transparent;
   background-color: alpha(@secondary_container, 0.12);
   box-shadow: 0 0 0 2px alpha(@secondary_container, 0.6);
 }
 
 .kind-image.selected {
-  border-color: @secondary;
+  border-color: transparent;
   background-color: alpha(@secondary, 0.12);
   box-shadow: 0 0 0 2px alpha(@secondary, 0.6);
 }
 
 .kind-color.selected {
-  border-color: @tertiary;
+  border-color: transparent;
   background-color: alpha(@tertiary, 0.12);
   box-shadow: 0 0 0 2px alpha(@tertiary, 0.6);
 }
 
 .kind-emoji.selected {
-  border-color: @tertiary_container;
+  border-color: transparent;
   background-color: alpha(@tertiary_container, 0.12);
   box-shadow: 0 0 0 2px alpha(@tertiary_container, 0.6);
 }
@@ -281,9 +281,7 @@ window#clipboard-window {
   color: alpha(@on_surface, 0.45);
 }
 
-/* The gear is a Gtk.MenuButton: style the menubutton AND its child button node
- * so theme/skin button paint cannot leak through as a permanent rounded box. */
-menubutton.clipboard-gear,
+/* Plain gear button (no popover/menubutton). */
 .clipboard-gear {
   min-width: 38px;
   min-height: 38px;
@@ -295,31 +293,13 @@ menubutton.clipboard-gear,
   color: alpha(@on_surface, 0.8);
 }
 
-menubutton.clipboard-gear > button,
-.clipboard-gear > button {
-  min-width: 38px;
-  min-height: 38px;
-  border: none;
-  border-radius: 10px;
-  background-color: transparent;
-  box-shadow: none;
-  padding: 0;
-  color: inherit;
-}
-
-menubutton.clipboard-gear:hover,
-.clipboard-gear:hover,
-menubutton.clipboard-gear > button:hover,
-.clipboard-gear > button:hover {
+.clipboard-gear:hover {
   background-color: alpha(@on_surface, 0.08);
   box-shadow: 0 0 0 1px alpha(@primary, 0.7);
   color: @on_surface;
 }
 
-menubutton.clipboard-gear:active,
-.clipboard-gear:active,
-menubutton.clipboard-gear > button:active,
-.clipboard-gear > button:active {
+.clipboard-gear:active {
   background-color: alpha(@primary, 0.18);
   box-shadow: 0 0 0 1px @primary;
   color: @on_surface;
@@ -523,7 +503,7 @@ menubutton.clipboard-gear > button:active,
 }
 
 .kind-text.clipboard-pin-card.focused {
-  border-color: @primary;
+  border-color: transparent;
   box-shadow:
     0 0 0 2px @primary,
     0 0 0 7px alpha(@primary, 0.22),
@@ -531,7 +511,7 @@ menubutton.clipboard-gear > button:active,
 }
 
 .kind-link.clipboard-pin-card.focused {
-  border-color: @primary_container;
+  border-color: transparent;
   box-shadow:
     0 0 0 2px @primary_container,
     0 0 0 7px alpha(@primary_container, 0.22),
@@ -539,7 +519,7 @@ menubutton.clipboard-gear > button:active,
 }
 
 .kind-code.clipboard-pin-card.focused {
-  border-color: @secondary_container;
+  border-color: transparent;
   box-shadow:
     0 0 0 2px @secondary_container,
     0 0 0 7px alpha(@secondary_container, 0.22),
@@ -547,7 +527,7 @@ menubutton.clipboard-gear > button:active,
 }
 
 .kind-image.clipboard-pin-card.focused {
-  border-color: @secondary;
+  border-color: transparent;
   box-shadow:
     0 0 0 2px @secondary,
     0 0 0 7px alpha(@secondary, 0.22),
@@ -555,7 +535,7 @@ menubutton.clipboard-gear > button:active,
 }
 
 .kind-color.clipboard-pin-card.focused {
-  border-color: @tertiary;
+  border-color: transparent;
   box-shadow:
     0 0 0 2px @tertiary,
     0 0 0 7px alpha(@tertiary, 0.22),
@@ -563,7 +543,7 @@ menubutton.clipboard-gear > button:active,
 }
 
 .kind-emoji.clipboard-pin-card.focused {
-  border-color: @tertiary_container;
+  border-color: transparent;
   box-shadow:
     0 0 0 2px @tertiary_container,
     0 0 0 7px alpha(@tertiary_container, 0.22),
@@ -953,24 +933,9 @@ menubutton.clipboard-gear > button:active,
   opacity: 0.8;
 }
 
-/* Settings popover (app-owned values)
- *
- * The native popover/contents node is stripped: `.clipboard-settings` is the
- * one and only visible frame. This avoids the nested rounded container that
- * appeared when both the popover node and the content box were painted.
- */
-
-.clipboard-settings-popover,
-.clipboard-settings-popover > contents,
-.clipboard-settings-popover contents,
-.clipboard-settings-popover > arrow,
-.clipboard-settings-popover arrow {
+/* In-page settings panel over a full-window catcher (no Gtk.Popover). */
+.clipboard-settings-catcher {
   background-color: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  padding: 0;
-  margin: 0;
 }
 
 .clipboard-settings {

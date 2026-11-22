@@ -23,9 +23,9 @@ import { handleRequest } from "./lib/requests"
 // without a clipboard request command.
 const appearance = createAppearance({ configDir: "ags-clipboard" })
 
-// TSX-owned layout token. The accessor is reactive; `peek()` reads it without
-// registering a dependency because `ItemCard` needs a plain pixel number.
-const cardWidth = appearance.value("layout.ags-clipboard.card-width", 260)
+// App-owned layout constant. The batch rule forbids reading appearance tokens
+// from app code; the card width is layout, not paint.
+const CARD_WIDTH = 260
 
 // The runtime-owned appearance refresh (AD-27), composed with the overlay's
 // existing show/hide/toggle request surface below. The v3 request is
@@ -88,7 +88,7 @@ app.start({
     // style.css glass fallback in place.
     appearance.apply()
     for (const monitor of app.get_monitors()) {
-      addWindow(ClipboardWindow(monitor, cardWidth))
+      addWindow(ClipboardWindow(monitor, CARD_WIDTH))
     }
   },
 })
