@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — REQ-009 117 batch alignment
+
+- Move overlay settings from `Gtk.Popover`/`MenuButton` to one in-page
+  `.clipboard-settings` panel over a full-window `.clipboard-settings-catcher`.
+  Compact temporarily expands the same `surface.panel` window full-monitor while
+  settings are open so the panel is never clipped; Esc/outside click close and
+  changes save immediately.
+- Remove the `appearance.value("layout.ags-clipboard.card-width", 260)` read.
+  The card width is the app-owned `CARD_WIDTH = 260` constant.
+- Keep clipboard type accents as app-owned content paint: per-widget
+  `Gtk.CssProvider` at `USER + 1` for headers/dots/pin fills/selected/focused
+  cards. Selected/focused states replace the skin base hairline with one ring.
+- Document the skin boundary and the exact selectors the skin template must
+  remove/replace; clipboard stays on `surface.panel` (no `surface.overlay`,
+  contracts v0.14.0 / assets v0.23.0).
+
 ## Unreleased — REQ-009 card-stage clipboard
 
 - Replace the REQ-005 rail + preview surface with the card-stage clipboard.

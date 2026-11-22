@@ -95,11 +95,17 @@ glass fallback. Missing artifacts are a no-op, so the bundled fallback keeps
 today's rendering. Card header ink is a static `on_*` role map in `style.css`;
 the app does no palette parsing or luminance math.
 
-The card width is the TSX-owned layout token
-`layout.ags-clipboard.card-width` (fallback `260`), read through
-`appearance.value(...)` with `peek()` where GTK needs a plain number. No
-skin-refresh request is added; the one fixed `appearance-refresh <genHash>`
-command is the only appearance trigger.
+The card width is an app-owned layout constant (`CARD_WIDTH = 260` in
+`app.tsx`). The app does **not** read appearance tokens; the batch rule treats
+`appearance.value(...)` as a layout-gate failure. No skin-refresh request is
+added; the one fixed `appearance-refresh <genHash>` command is the only
+appearance trigger.
+
+Per-item card/type colours are app-owned content paint (per-widget providers at
+`USER + 1`); the skin owns role surfaces/base states. In-overlay settings are
+the in-page `.clipboard-settings` panel over a full-window catcher, not a
+`Gtk.Popover`. The outer role is `surface.panel` (assets v0.22.3), never
+`surface.overlay`.
 
 ## Local development
 

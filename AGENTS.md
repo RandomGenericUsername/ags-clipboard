@@ -94,6 +94,6 @@ composed palette, skin and mode. The one refresh command is the v3
 `appearance-refresh <genHash>`; the work returns `{ status: "applied" }` so the
 helper can answer with the requested hash. There is no separate skin-refresh
 request and the retired `palette-refresh` command is not accepted. `style.css`
-remains the bundled glass fallback. Layout is TSX-owned: the card width is
-`layout.ags-clipboard.card-width` (fallback `260`), read with `peek()` where GTK
-needs a plain number.
+remains the bundled glass fallback. Layout is app-owned: the card width is the
+`CARD_WIDTH = 260` constant in `app.tsx`. The app must not read appearance
+tokens (`appearance.value(...)` fails the 117 batch layout gate).

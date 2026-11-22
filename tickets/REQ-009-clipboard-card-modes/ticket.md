@@ -296,11 +296,11 @@ Merged `main` at `8ed90d6` (fast-forward from `bc4e2a2`) before implementation.
 | Command | Result |
 | --- | --- |
 | `make test` | exit 0 — 28 tests pass (settings domain/port, deck/view/selection/pinned-focus, appearance order, request dispatch, header/type-role gates) |
-| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 32 tests pass (manifest identity, settings path/anatomy, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
+| `CONTRACTS_ROOT=/home/inumaki/Development/dotfiles/contracts make conformance` | exit 0 — 33 tests pass (manifest identity, in-page settings/catcher, no Popover, app-owned card width, content accents at USER+1, save-on-change, compact Open chip/view keys, owner-feedback regressions, CSS validity, accent-family headers, skin/focus/pin geometry, template gate, refresh invariants) |
 | `CONTRACTS_ROOT=... make drift` | exit 0 — "all checks passed" against contracts v0.12.0 |
 | `make typecheck` | exit 0 — `OK: 0 errors in the ags-clipboard tree` (27 tolerated `/usr/share/ags/js` errors, 0 platform) |
-| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,287,280 bytes) |
-| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 32 conformance, drift "all checks passed", bundle 1,287,280 bytes, 0 type errors) |
+| `make bundle` | exit 0 — `build/ags-clipboard.js` (1,305,356 bytes) |
+| `CONTRACTS_ROOT=... make gates` | exit 0 — all of the above (28 unit + 33 conformance, drift "all checks passed", bundle 1,305,356 bytes, 0 type errors) |
 
 Implementation map:
 
@@ -332,67 +332,117 @@ Known deviations / follow-ups:
 - Runtime behaviour was exercised by the local gates (typecheck/bundle), not by
   a headless GTK session; visual pixel-parity with the mock is a review step.
 
-### Skin follow-up (shared paint pass, not this lane)
+### Skin handoff (117 batch; not edited in this lane)
 
-Roles/selectors that need skin paint in
-`dotfiles-assets/skins/templates/ags-clipboard.gtk.css.j2`:
+Canonical file: `dotfiles-assets/skins/templates/ags-clipboard.gtk.css.j2`.
+Clipboard is a layer-shell overlay, so the outer role is **`surface.panel`**
+(assets v0.22.3). Do not use `surface.overlay` / contracts v0.14.0 / assets
+v0.23.0.
+
+**Remove from the skin template (content accents/layout):**
 
 ```text
-.clipboard-root.clipboard-mode-full
-.clipboard-stage-card, .clipboard-stage-body
-.clipboard-peek, .clipboard-peek-card, .clipboard-peek-body
-.clipboard-nav-arrow, .clipboard-control-bar, .clipboard-bar-button
-.clipboard-pins-pill, .clipboard-pin-card.focused
-.clipboard-compact, .clipboard-compact.align-left, .clipboard-compact.align-right
-.clipboard-search-box, .clipboard-chip.selected, .clipboard-view-tab.active
-.clipboard-open-chip, .clipboard-strip-arrow
-.clipboard-settings, .clipboard-segment-button.selected
+.clipboard-head.on-dark
+.clipboard-head.on-light
 
-/* round 2: skin-neutral chrome + shared selection */
-menubutton.clipboard-gear, .clipboard-gear > button
-menubutton.clipboard-gear:hover, .clipboard-gear > button:hover
-menubutton.clipboard-gear:active, .clipboard-gear > button:active
-.clipboard-pin-button, .clipboard-pin-button:hover, .clipboard-pin-button.is-on
-/* radii to follow Hyprmod/Hyprland: */
-.clipboard-card, .clipboard-stage-card, .clipboard-peek-card,
-.clipboard-pin-card, .clipboard-compact, .clipboard-control-bar,
-.clipboard-nav-arrow, .clipboard-strip-arrow, .clipboard-gear
+.kind-text .clipboard-head
+.kind-link .clipboard-head
+.kind-code .clipboard-head
+.kind-image .clipboard-head
+.kind-color .clipboard-head
+.kind-emoji .clipboard-head
 
-/* round 3: search focus + visible pin fill */
-.clipboard-pin-button, .clipboard-pin-button:hover, .clipboard-pin-button.is-on
-.clipboard-pin-body
-.clipboard-search-box.focused
-.clipboard-search:focus, .clipboard-search:focus-visible
+.kind-text.selected
+.kind-link.selected
+.kind-code.selected
+.kind-image.selected
+.kind-color.selected
+.kind-emoji.selected
 
-/* round 5: accent-family headers (replace the old per-kind roles) */
-.clipboard-head                      /* structural only: height/padding/hairline */
-.kind-text .clipboard-head           /* @primary / @on_primary */
-.kind-link .clipboard-head           /* @primary_container / @on_primary_container */
-.kind-code .clipboard-head           /* @secondary_container / @on_secondary_container */
-.kind-image .clipboard-head          /* @secondary / @on_secondary */
-.kind-color .clipboard-head          /* @tertiary / @on_tertiary */
-.kind-emoji .clipboard-head          /* @tertiary_container / @on_tertiary_container */
+.kind-text.clipboard-pin-card.focused
+.kind-link.clipboard-pin-card.focused
+.kind-code.clipboard-pin-card.focused
+.kind-image.clipboard-pin-card.focused
+.kind-color.clipboard-pin-card.focused
+.kind-emoji.clipboard-pin-card.focused
 
-.kind-text.selected, .kind-link.selected, .kind-code.selected,
-.kind-image.selected, .kind-color.selected, .kind-emoji.selected
-.kind-text.clipboard-pin-card.focused, .kind-link.clipboard-pin-card.focused,
-.kind-code.clipboard-pin-card.focused, .kind-image.clipboard-pin-card.focused,
-.kind-color.clipboard-pin-card.focused, .kind-emoji.clipboard-pin-card.focused
-.kind-text .clipboard-pin-button, .kind-link .clipboard-pin-button,
-.kind-code .clipboard-pin-button, .kind-image .clipboard-pin-button,
-.kind-color .clipboard-pin-button, .kind-emoji .clipboard-pin-button
+.kind-text .clipboard-pin-button
+.kind-link .clipboard-pin-button
+.kind-code .clipboard-pin-button
+.kind-image .clipboard-pin-button
+.kind-color .clipboard-pin-button
+.kind-emoji .clipboard-pin-button
 
-.clipboard-filter-dot.kind-text, .clipboard-filter-dot.kind-link,
-.clipboard-filter-dot.kind-code, .clipboard-filter-dot.kind-image,
-.clipboard-filter-dot.kind-color, .clipboard-filter-dot.kind-emoji
-.clipboard-type-dot.kind-text, .clipboard-type-dot.kind-link,
-.clipboard-type-dot.kind-code, .clipboard-type-dot.kind-image,
-.clipboard-type-dot.kind-color, .clipboard-type-dot.kind-emoji
-/* The old @error / @error_container / @surface_container_lowest mappings are
- * removed from all of the selectors above; no hex. */
+.clipboard-filter-dot.kind-*
+.clipboard-type-dot.kind-*
+
+.clipboard-card { min-width: 260px; }   /* layout; app owns */
 ```
 
-## Feedback round 1 (2026-11-20)
+**Skin owns role surfaces/base states (paint only):**
+
+```text
+window#clipboard-window            /* surface.panel bg/ink/radius/border */
+.clipboard-root                    /* surface.panel */
+.clipboard-full, .clipboard-compact
+.clipboard-control-bar, .clipboard-pins-panel
+.clipboard-card                     /* base surface.card bg/border/radius */
+.clipboard-stage-card, .clipboard-peek-card, .clipboard-pin-card
+.clipboard-search-box, .clipboard-search
+.clipboard-chip, .clipboard-view-tab
+.clipboard-gear, .clipboard-bar-button, .clipboard-pins-pill
+.clipboard-nav-arrow, .clipboard-strip-arrow
+.clipboard-settings                 /* in-page settings role surface */
+.clipboard-settings-catcher         /* transparent catcher; no paint needed */
+.clipboard-open-chip, .clipboard-keycap
+```
+
+The app owns content accents (headers, type/filter dots, selected/focused
+rings, pin fills) via per-widget providers at `USER + 1`; they must not be
+duplicated in the skin. Selected/focused providers set `border-color:
+transparent` and draw one ring, replacing the skin base hairline.
+
+## Batch implementation (2026-11-21)
+
+App-side batch work, staged in this worktree only (no assets/provision/composition
+changes, no tag).
+
+- **Outer role:** clipboard remains an AGS layer-shell overlay mapped to
+  **`surface.panel`**. No `surface.overlay`, no contracts v0.14.0 / assets
+  v0.23.0.
+- **Settings:** removed `Gtk.Popover`/`Gtk.MenuButton` entirely. One in-page
+  `.clipboard-settings` panel sits over a full-window
+  `.clipboard-settings-catcher` inside the overlay. Gears are plain buttons.
+  Esc/outside click close; changes save immediately. For compact mode the same
+  window temporarily anchors full-monitor while settings are open, with the
+  strip pinned at the bottom, so the panel is never clipped; closing restores
+  the compact anchor.
+- **Layout token:** `app.tsx` now uses an app-owned `CARD_WIDTH = 260`; there is
+  no `appearance.value(...)` read. README/AGENTS state the batch rule.
+- **Content accents:** type header plates, type/filter dots, pin fills,
+  selected/focused rings are app-owned content. They are painted by per-widget
+  `Gtk.CssProvider` providers at `Gtk.STYLE_PROVIDER_PRIORITY_USER + 1`
+  (`lib/type-accents.ts`, `ui/accent.ts`) so they win over skin role rules.
+  Selected/focused providers set `border-color: transparent` and draw exactly
+  one ring; they never stack on the skin hairline.
+- **Skin boundary:** the skin template keeps role surfaces/base states only.
+  It must remove the six per-kind header plates, `on-dark`/`on-light` classes,
+  six per-kind `.selected` rules, six per-kind focused rules, any per-kind pin
+  fills, the type/filter dot selectors, and the `.clipboard-card
+  { min-width: 260px }` layout rule.
+  It should paint `.clipboard-root`/`window#clipboard-window` as
+  `surface.panel`, plus the role surfaces listed in the skin follow-up section.
+- **Tests:** conformance now rejects `Gtk.Popover`/`MenuButton` in the overlay,
+  asserts the in-page catcher/panel, asserts the app-owned constant and no
+  `appearance.value`, and asserts the content-accent providers at USER + 1.
+  Existing per-kind header/selection/focus/pin assertions remain.
+- **Gates (app worktree):** `make test` 28 pass; `make conformance` 33 pass;
+  `make drift` all checks passed; `make typecheck` 0 app errors; `make bundle`
+  1,305,356 bytes; `make gates` green. Final numbers in the Evidence table.
+- **Visual checks that still need the skin lane:** four-column pinned geometry
+  under each of the five skins, settings panel/catcher paint, gear hover, and
+  the one-ring selected state after the skin template removes its base
+  duplicate/old per-kind rules.
 
 Owner live-test feedback against HEAD `9331c25`. Each item records the
 before-state (code at that HEAD), the fix and the check that keeps it fixed.
@@ -804,7 +854,7 @@ semantic accent families, so cards should use them instead of `@error` /
   identity rule, and checks dot mappings.
 - `tests/app-contract.test.mjs` asserts per-kind selection/focus/pin fills,
   the six header families, no hex and no `min-width: 260px`.
-- Evidence: `make test` 28 pass; `make conformance` 32 pass; full gates below.
+- Evidence: `make test` 28 pass; `make conformance` 33 pass; full gates below.
 
 ### D. Skin caveat
 
