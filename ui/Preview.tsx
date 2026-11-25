@@ -189,7 +189,10 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
     : Math.max(12, Math.floor((width - 4) / 7))
   label.set_width_chars(maxChars)
   label.set_max_width_chars(maxChars)
-  label.set_halign(Gtk.Align.START)
+  // The stage label must occupy the full body width; the width cap only
+  // bounds natural width, it must not shrink the text column.
+  label.set_halign(stage ? Gtk.Align.FILL : Gtk.Align.START)
+  label.set_hexpand(stage)
   label.add_css_class("clipboard-text")
   if (item.kind === "code") {
     label.add_css_class("clipboard-code")
