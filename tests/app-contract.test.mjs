@@ -742,8 +742,9 @@ test("stage cards are fixed-size and link/code labels are width-capped", () => {
   assert.match(preview, /url\.set_max_width_chars\(linkChars\)/);
   assert.match(preview, /url\.set_ellipsize\(Pango\.EllipsizeMode\.END\)/);
   assert.match(preview, /url\.set_lines\(2\)/);
-  assert.match(preview, /const budget = Math\.max\(displayChars \* maxLines, displayChars\)/);
-  assert.match(preview, /fullText\.slice\(0, budget - 1\)/);
+  assert.match(preview, /const logicalLines = fullText\.split\("\\n"\)\.slice\(0, maxLines\)/);
+  assert.match(preview, /line\.slice\(0, Math\.max\(1, displayChars - 1\)\)/);
+  assert.match(preview, /\.join\("\\n"\)\s*\.slice\(0, budget\)/);
   assert.match(preview, /label\.set_ellipsize\(Pango\.EllipsizeMode\.END\)/);
   assert.match(preview, /stage && \(item\.kind === "text" \|\| item\.kind === "code"\)/);
   assert.match(preview, /const maxLines = item\.kind === "code" \? \(stage \? 10 : 6\)/);

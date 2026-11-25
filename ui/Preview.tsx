@@ -184,9 +184,16 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   // clamp the content itself so one huge item cannot make navigation lay out
   // thousands of characters inside a standard card.
   const displayChars = stage ? Math.max(24, Math.floor(width / 7)) : maxChars
+  // Clamp logical lines first: a huge paste with many newlines must not create
+  // hundreds of label lines before GTK even considers the character budget.
+  const logicalLines = fullText.split("\n").slice(0, maxLines)
   const budget = Math.max(displayChars * maxLines, displayChars)
-  const labelText =
-    fullText.length > budget ? `${fullText.slice(0, budget - 1).trimEnd()}\u2026` : fullText
+  const labelText = logicalLines
+    .map((line) =>
+      line.length > displayChars ? `${line.slice(0, Math.max(1, displayChars - 1))}\u2026` : line,
+    )
+    .join("\n")
+    .slice(0, budget)
   const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
   label.set_wrap(true)
   label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
