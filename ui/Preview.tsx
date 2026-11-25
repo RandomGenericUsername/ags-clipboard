@@ -169,24 +169,28 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
     return box
   }
 
-  const labelText =
-    stage && (item.kind === "text" || item.kind === "code")
-      ? (item.text ?? itemTitle(item))
-      : itemTitle(item)
-  const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
-  label.set_wrap(true)
-  label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-  // An ellipsized multi-line label has a bounded natural height. Without
-  // ellipsize, GTK measures the FULL wrapped text even when `lines` is set,
-  // which made long text cards grow past the standard stage height.
-  label.set_ellipsize(Pango.EllipsizeMode.END)
-  label.set_lines(item.kind === "code" ? (stage ? 10 : 6) : stage ? 8 : 5)
+  const maxLines = item.kind === "code" ? (stage ? 10 : 6) : stage ? 8 : 5
   // Bound the natural width so a long line cannot stretch the card. The cap
   // scales with the requested body width, which is what keeps Small/Medium/
   // Large cards at exactly 220/260/300 px.
   const maxChars = stage
     ? Math.max(18, Math.min(56, Math.floor(width / 8)))
     : Math.max(12, Math.floor((width - 4) / 7))
+  const fullText =
+    stage && (item.kind === "text" || item.kind === "code")
+      ? (item.text ?? itemTitle(item))
+      : itemTitle(item)
+  // GTK still measures a wrapped label's full string even with `lines` set;
+  // clamp the content itself so one huge item cannot make navigation lay out
+  // thousands of characters inside a standard card.
+  const budget = Math.max(maxChars * maxLines, maxChars)
+  const labelText =
+    fullText.length > budget ? `${fullText.slice(0, budget - 1).trimEnd()}\u2026` : fullText
+  const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
+  label.set_wrap(true)
+  label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+  label.set_ellipsize(Pango.EllipsizeMode.END)
+  label.set_lines(maxLines)
   label.set_width_chars(maxChars)
   label.set_max_width_chars(maxChars)
   // The stage label must occupy the full body width; the width cap only
