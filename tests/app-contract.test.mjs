@@ -734,7 +734,9 @@ test("stage cards are fixed-size and link/code labels are width-capped", () => {
   const itemCard = readText("ui", "ItemCard.tsx");
   const preview = readText("ui", "Preview.tsx");
   const stage = functionBody(itemCard, "export function StageCard");
-  assert.match(stage, /new Gtk\.Fixed\(\)/);
+  assert.match(stage, /new Gtk\.ScrolledWindow/);
+  assert.match(stage, /frame\.set_propagate_natural_width\(false\)/);
+  assert.match(stage, /frame\.set_propagate_natural_height\(false\)/);
   assert.match(stage, /frame\.set_size_request\(width, height\)/);
   assert.match(stage, /card\.set_size_request\(width, height\)/);
   assert.match(preview, /const linkChars = Math\.max\(12, Math\.floor\(width \/ 8\)\)/);
