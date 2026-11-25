@@ -176,7 +176,10 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
   label.set_wrap(true)
   label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
-  label.set_ellipsize(stage ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END)
+  // An ellipsized multi-line label has a bounded natural height. Without
+  // ellipsize, GTK measures the FULL wrapped text even when `lines` is set,
+  // which made long text cards grow past the standard stage height.
+  label.set_ellipsize(Pango.EllipsizeMode.END)
   label.set_lines(item.kind === "code" ? (stage ? 10 : 6) : stage ? 8 : 5)
   // Bound the natural width so a long line cannot stretch the card. The cap
   // scales with the requested body width, which is what keeps Small/Medium/

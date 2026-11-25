@@ -744,7 +744,7 @@ test("stage cards are fixed-size and link/code labels are width-capped", () => {
   assert.match(preview, /url\.set_max_width_chars\(linkChars\)/);
   assert.match(preview, /url\.set_ellipsize\(Pango\.EllipsizeMode\.END\)/);
   assert.match(preview, /url\.set_lines\(2\)/);
-  assert.match(preview, /label\.set_ellipsize\(stage \? Pango\.EllipsizeMode\.NONE/);
+  assert.match(preview, /label\.set_ellipsize\(Pango\.EllipsizeMode\.END\)/);
   assert.match(preview, /stage && \(item\.kind === "text" \|\| item\.kind === "code"\)/);
   assert.match(preview, /set_lines\(item\.kind === "code" \? \(stage \? 10 : 6\)/);
 });
