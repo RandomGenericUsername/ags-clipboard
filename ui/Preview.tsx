@@ -183,7 +183,8 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   // GTK still measures a wrapped label's full string even with `lines` set;
   // clamp the content itself so one huge item cannot make navigation lay out
   // thousands of characters inside a standard card.
-  const budget = Math.max(maxChars * maxLines, maxChars)
+  const displayChars = stage ? Math.max(24, Math.floor(width / 7)) : maxChars
+  const budget = Math.max(displayChars * maxLines, displayChars)
   const labelText =
     fullText.length > budget ? `${fullText.slice(0, budget - 1).trimEnd()}\u2026` : fullText
   const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
