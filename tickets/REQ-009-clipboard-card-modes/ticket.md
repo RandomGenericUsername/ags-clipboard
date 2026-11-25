@@ -1069,3 +1069,11 @@ full-layout search/filter/clear, fixed stage-card sizing and Enter-to-collapse
 are all in the release. Skin paint is `dotfiles-assets` **v0.22.4**
 (`surface.panel`, paint-only). Composition pin is owned by the `dotfiles-v3`
 release lane.
+
+## Feedback round 6 (2026-11-25)
+
+- **Image cards were cropped/zoomed.** `Preview` used `Gtk.ContentFit.COVER`,
+  so a portrait screenshot was cropped to the stage body. Changed to `CONTAIN`
+  with centered letterboxing; stage image cards now use the full body height
+  below the header. Added conformance coverage that the whole capture is
+  contained and not cropped.

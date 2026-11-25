@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — image card contain
+
+- Image previews now use `Gtk.ContentFit.CONTAIN` with centered letterboxing
+  instead of `COVER` cropping, so portrait and wide clipboard captures show the
+  whole image in both full-stage and compact cards. Stage image cards use the
+  full body height below the header.
+
 ## v0.7.0 — 2026-11-22
 
 ### REQ-009 full-layout polish

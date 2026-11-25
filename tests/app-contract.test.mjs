@@ -777,6 +777,17 @@ test("full layout has synced search/filter and inline clear", () => {
   assert.match(window, /fullClearButton\.set_visible\(!clearConfirm\)/);
 });
 
+test("image previews contain the whole capture instead of cropping it", () => {
+  const preview = readText("ui", "Preview.tsx");
+  const itemCard = readText("ui", "ItemCard.tsx");
+  assert.match(preview, /Gtk\.ContentFit\.CONTAIN/);
+  assert.doesNotMatch(preview, /Gtk\.ContentFit\.COVER/);
+  assert.match(preview, /picture\.set_halign\(Gtk\.Align\.CENTER\)/);
+  assert.match(preview, /picture\.set_valign\(Gtk\.Align\.CENTER\)/);
+  assert.match(itemCard, /const image = item\.kind === "image"/);
+  assert.match(itemCard, /height: Math\.max\(160, image \? height - 38 : height - 76\)/);
+});
+
 test("pinned panel fills the full stage and search boxes show the slash keycap", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const mode = functionBody(window, "function applyMode");

@@ -73,7 +73,12 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
       // (otherwise it reports the full source image and widens the card).
       const pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(item.path, width, height)
       const picture = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pixbuf))
-      picture.set_content_fit(Gtk.ContentFit.COVER)
+      // Show the whole clipboard image instead of cropping it to the card.
+      // `CONTAIN` letterboxes portrait/landscape captures inside the fixed
+      // card body; the card surface remains the background around it.
+      picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+      picture.set_halign(Gtk.Align.CENTER)
+      picture.set_valign(Gtk.Align.CENTER)
       picture.set_size_request(width, height)
       // Gtk.Picture reports expand via compute_expand; putting it in a
       // Gtk.Fixed (which does not propagate expand) keeps the card fixed-size.

@@ -319,11 +319,14 @@ export function StageCard(
   body.add_css_class("clipboard-stage-body")
   body.add_css_class(`clipboard-stage-body-${item.kind}`)
   body.set_vexpand(true)
+  const image = item.kind === "image"
   body.append(
     Preview(item, {
       stage: true,
-      width: Math.max(240, width - 48),
-      height: Math.max(160, height - 120),
+      width: Math.max(240, image ? width - 2 : width - 48),
+      // Image cards have no body padding; use the full body below the header
+      // so a portrait capture is not letterboxed into a small strip.
+      height: Math.max(160, image ? height - 38 : height - 76),
     }),
   )
   card.append(body)
