@@ -169,7 +169,10 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
     return box
   }
 
-  const maxLines = item.kind === "code" ? (stage ? 10 : 6) : stage ? 8 : 5
+  // Fit what the body can actually show. Stage text that fits (even 15–18
+  // lines) is displayed in full; only overflow is clamped. Compact keeps its
+  // short card identity.
+  const maxLines = stage ? Math.max(6, Math.floor(height / 20)) : item.kind === "code" ? 6 : 5
   // Bound the natural width so a long line cannot stretch the card. The cap
   // scales with the requested body width, which is what keeps Small/Medium/
   // Large cards at exactly 220/260/300 px.
