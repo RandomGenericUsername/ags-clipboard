@@ -332,22 +332,9 @@ export function StageCard(
   card.append(body)
 
   attachCardGestures(card, item, onSelect, undefined, onOpenLink, suppress)
-  // Hard-clipping frame: a child's natural width AND height can never grow the
-  // stage card. `Gtk.Fixed` still propagates the child's natural size, so use
-  // a non-propagating scroller with both scrollbars disabled.
-  const frame = new Gtk.ScrolledWindow({
-    hscrollbar_policy: Gtk.PolicyType.NEVER,
-    vscrollbar_policy: Gtk.PolicyType.NEVER,
-  })
-  frame.set_propagate_natural_width(false)
-  frame.set_propagate_natural_height(false)
-  frame.set_size_request(width, height)
-  frame.set_overflow(Gtk.Overflow.HIDDEN)
-  frame.set_hexpand(false)
-  frame.set_halign(Gtk.Align.CENTER)
-  frame.set_valign(Gtk.Align.CENTER)
-  frame.set_child(card)
-  return frame
+  // The stage label is line-capped and ellipsized, so its natural height is
+  // bounded. The card itself is the fixed-size frame; no scroller is needed.
+  return card
 }
 
 /** A narrow, dimmed previous/next card on the full stage. */
