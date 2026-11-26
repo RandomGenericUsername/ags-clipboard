@@ -895,6 +895,15 @@ test("search focus ring lives on the rounded box, not the inner entry", () => {
   assert.match(css, /\.clipboard-chip\.selected\s*\{[^}]*alpha\(@primary/s);
 });
 
+test("the full stage opens on the newest copied item", () => {
+  const window = readText("ui", "ClipboardWindow.tsx");
+  const modes = readText("lib", "card-modes.ts");
+  assert.match(modes, /export function newestItem/);
+  assert.match(window, /function selectNewest\(\)[\s\S]*?newestItem\(items\)/);
+  const map = functionBody(window, 'self.connect("map"');
+  assert.match(map, /items = readHistory\(\)[\s\S]*?selectNewest\(\)[\s\S]*?ensureSelection\(\)/);
+});
+
 test("compact view has no duplicate new/recent counters", () => {
   const window = readText("ui", "ClipboardWindow.tsx");
   const css = readText("style.css");

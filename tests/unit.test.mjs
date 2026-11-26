@@ -46,6 +46,7 @@ import {
   moveCompactSelection,
   nextCompactView,
   nextPinFocus,
+  newestItem,
   ordered,
   pinCopyTarget,
   pinnedOrdered,
@@ -384,4 +385,9 @@ test("pinned focus wraps in both directions and copies only a real pin", () => {
   assert.equal(pinCopyTarget(DECK, "text:a"), null);
   assert.equal(itemByKey(DECK, "image:d"), DECK[3]);
   assert.equal(itemByKey(DECK, "missing"), null);
+});
+
+test("newestItem picks the most recent capture regardless of pin order", () => {
+  assert.equal(newestItem(DECK)?.hash, "b");
+  assert.equal(newestItem([]), null);
 });

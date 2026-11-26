@@ -25,6 +25,15 @@ export const TYPE_FILTERS: readonly TypeFilter[] = [
   "emoji",
 ];
 
+/** The most recently copied item, regardless of pin state. */
+export function newestItem(items: readonly ClipboardItem[]): ClipboardItem | null {
+  let newest: ClipboardItem | null = null
+  for (const item of items) {
+    if (newest === null || item.timestamp > newest.timestamp) newest = item
+  }
+  return newest
+}
+
 /** The complete deck: pinned cards first, recency order inside each group. */
 export function ordered(items: readonly ClipboardItem[]): ClipboardItem[] {
   const byRecency = [...items].sort((a, b) => b.timestamp - a.timestamp)

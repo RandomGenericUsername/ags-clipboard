@@ -33,6 +33,7 @@ import {
   nextPinFocus,
   ordered,
   pinCopyTarget,
+  newestItem,
   pinnedOrdered,
   type TypeFilter,
   TYPE_FILTERS,
@@ -873,6 +874,11 @@ export function ClipboardWindow(
 
   function selectedItem(): ClipboardItem | null {
     return itemByKey(items, selectedKey)
+  }
+
+  function selectNewest(): void {
+    const newest = newestItem(items)
+    if (newest !== null) selectedKey = itemKey(newest)
   }
 
   function ensureSelection(): void {
@@ -1837,6 +1843,7 @@ export function ClipboardWindow(
   // ── initial state ────────────────────────────────────────────────────────
 
   items = readHistory()
+  selectNewest()
   ensureSelection()
   applyMode()
   renderAll()
@@ -1888,6 +1895,7 @@ export function ClipboardWindow(
             return false
           })
           items = readHistory()
+          selectNewest()
           ensureSelection()
           renderAll()
           scheduleInputRegion()
