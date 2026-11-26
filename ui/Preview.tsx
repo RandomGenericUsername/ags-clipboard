@@ -185,18 +185,14 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
       : itemTitle(item)
   // GTK still measures a wrapped label's full string even with `lines` set;
   // clamp the content itself so one huge item cannot make navigation lay out
-  // thousands of characters inside a standard card.
+  // thousands of characters inside a standard card. Text is normalized to
+  // spaces so wrapping is continuous; only the character budget decides the
+  // cutoff, then one ellipsis is appended.
   const displayChars = stage ? Math.max(24, Math.floor(width / 7)) : maxChars
-  // Clamp logical lines first: a huge paste with many newlines must not create
-  // hundreds of label lines before GTK even considers the character budget.
-  const logicalLines = fullText.split("\n").slice(0, maxLines)
   const budget = Math.max(displayChars * maxLines, displayChars)
-  const labelText = logicalLines
-    .map((line) =>
-      line.length > displayChars ? `${line.slice(0, Math.max(1, displayChars - 1))}\u2026` : line,
-    )
-    .join("\n")
-    .slice(0, budget)
+  const normalized = item.kind === "code" ? fullText : fullText.replace(/\s+/g, " ").trim()
+  const labelText =
+    normalized.length > budget ? `${normalized.slice(0, budget - 1).trimEnd()}\u2026` : normalized
   const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
   label.set_wrap(true)
   label.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
