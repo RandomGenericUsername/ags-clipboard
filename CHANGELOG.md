@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.7.4 — 2026-11-26
+
+- Compact text/code cards now show content previews instead of only the first
+  line: up to 5 text lines / 6 code lines, width-clamped before layout.
+
 ## v0.7.3 — 2026-11-26
 
 - Clamp code-card text by both logical lines and per-line width before GTK

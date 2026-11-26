@@ -198,8 +198,10 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   const maxChars = stage
     ? Math.max(18, Math.min(56, Math.floor(width / 8)))
     : Math.max(12, Math.floor((width - 4) / 7))
+  // Compact text/code must show content lines, not just itemTitle()'s first
+  // line. Stage and compact share the same clamps with different line caps.
   const fullText =
-    stage && (item.kind === "text" || item.kind === "code")
+    item.kind === "text" || item.kind === "code"
       ? (item.text ?? itemTitle(item))
       : itemTitle(item)
   // GTK still measures a wrapped label's full string even with `lines` set;

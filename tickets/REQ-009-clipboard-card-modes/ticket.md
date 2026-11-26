@@ -1093,3 +1093,8 @@ release lane.
 
 - Code cards clamp logical lines + per-line width; 100-line paste stays at
   standard stage size. Shipped as `ags-clipboard v0.7.3`.
+
+## Patch v0.7.4 (2026-11-26)
+
+- Compact text/code previews use full content with 5/6-line caps and width
+  clamps. Shipped as `ags-clipboard v0.7.4`.
