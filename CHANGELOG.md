@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.3 — 2026-11-26
+
+- Clamp code-card text by both logical lines and per-line width before GTK
+  measures it. A pasted 100-line code item now stays at the standard 720×450
+  stage size and navigation no longer lays out the full paste.
+
 ## v0.7.2 — 2026-11-26
 
 - Give the root widget key focus when the overlay opens in both layouts, so

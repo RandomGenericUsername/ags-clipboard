@@ -1088,3 +1088,8 @@ release lane.
 
 - Root key focus on open in full and compact; full-layout search no longer
   intercepts arrows. Shipped as `ags-clipboard v0.7.2`.
+
+## Patch v0.7.3 (2026-11-26)
+
+- Code cards clamp logical lines + per-line width; 100-line paste stays at
+  standard stage size. Shipped as `ags-clipboard v0.7.3`.

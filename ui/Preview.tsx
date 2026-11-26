@@ -209,7 +209,18 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
   // cutoff, then one ellipsis is appended.
   const displayChars = stage ? Math.max(24, Math.floor(width / 7)) : maxChars
   const budget = Math.max(displayChars * maxLines, displayChars)
-  const normalized = item.kind === "code" ? fullText : fullText.replace(/\s+/g, " ").trim()
+  const normalized =
+    item.kind === "code"
+      ? fullText
+          .split("\n")
+          .slice(0, maxLines)
+          .map((line) =>
+            line.length > displayChars
+              ? `${line.slice(0, Math.max(1, displayChars - 1))}\u2026`
+              : line,
+          )
+          .join("\n")
+      : fullText.replace(/\s+/g, " ").trim()
   const labelText =
     normalized.length > budget ? `${normalized.slice(0, budget - 1).trimEnd()}\u2026` : normalized
   const label = new Gtk.Label({ label: labelText, xalign: 0, yalign: 0 })
