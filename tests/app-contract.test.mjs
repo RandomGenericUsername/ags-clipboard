@@ -780,6 +780,14 @@ test("full layout has synced search/filter and inline clear", () => {
   assert.match(window, /fullClearButton\.set_visible\(!clearConfirm\)/);
 });
 
+test("image previews reuse a bounded decoded-texture cache", () => {
+  const preview = readText("ui", "Preview.tsx");
+  assert.match(preview, /const imageCache = new Map<string, Gdk\.Texture>\(\)/);
+  assert.match(preview, /const IMAGE_CACHE_MAX = 24/);
+  assert.match(preview, /imageTexture\(item\.path, width, height\)/);
+  assert.match(preview, /imageCache\.delete\(oldest\)/);
+});
+
 test("image previews contain the whole capture instead of cropping it", () => {
   const preview = readText("ui", "Preview.tsx");
   const itemCard = readText("ui", "ItemCard.tsx");

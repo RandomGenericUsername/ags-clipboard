@@ -8,6 +8,26 @@ import { itemTitle } from "../lib/clipboard-types"
 const BODY_WIDTH = 236
 const BODY_HEIGHT = 118
 
+// Bounded cache of decoded clipboard-image textures. The full stage rebuilds
+// the current card plus both peeks on every selection, so without this an
+// image card re-decodes the same PNG/JPEG up to three times per keypress.
+const IMAGE_CACHE_MAX = 24
+const imageCache = new Map<string, Gdk.Texture>()
+
+function imageTexture(path: string, width: number, height: number): Gdk.Texture {
+  const key = `${path}:${width}x${height}`
+  const cached = imageCache.get(key)
+  if (cached !== undefined) return cached
+  const pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(path, width, height)
+  const texture = Gdk.Texture.new_for_pixbuf(pixbuf)
+  if (imageCache.size >= IMAGE_CACHE_MAX) {
+    const oldest = imageCache.keys().next().value
+    if (oldest !== undefined) imageCache.delete(oldest)
+  }
+  imageCache.set(key, texture)
+  return texture
+}
+
 export interface PreviewOptions {
   /** Body width in px (stage cards are wider than strip cards). */
   width?: number
@@ -71,8 +91,7 @@ export function Preview(item: ClipboardItem, options: PreviewOptions = {}): Gtk.
     try {
       // Rasterize at the target size so the Picture's NATURAL size is bounded
       // (otherwise it reports the full source image and widens the card).
-      const pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_size(item.path, width, height)
-      const picture = Gtk.Picture.new_for_paintable(Gdk.Texture.new_for_pixbuf(pixbuf))
+      const picture = Gtk.Picture.new_for_paintable(imageTexture(item.path, width, height))
       // Show the whole clipboard image instead of cropping it to the card.
       // `CONTAIN` letterboxes portrait/landscape captures inside the fixed
       // card body; the card surface remains the background around it.
