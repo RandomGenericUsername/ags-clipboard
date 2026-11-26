@@ -1,11 +1,18 @@
 # Changelog
 
-## Unreleased — image card contain
+## v0.7.1 — 2026-11-26
 
 - Image previews now use `Gtk.ContentFit.CONTAIN` with centered letterboxing
   instead of `COVER` cropping, so portrait and wide clipboard captures show the
   whole image in both full-stage and compact cards. Stage image cards use the
   full body height below the header.
+- Full-stage text/code labels are clamped before GTK measures them: text is
+  normalized, cut to a character budget derived from card width/height, and
+  ends with one ellipsis. Fitting text is shown in full; oversized pastes stay
+  at the standard 720×460 card size.
+- Decoded image textures are cached (24 entries) so full-stage navigation does
+  not re-decode current/peek images.
+- Opening the overlay selects the newest copied item.
 
 ## v0.7.0 — 2026-11-22
 

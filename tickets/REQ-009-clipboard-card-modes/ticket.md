@@ -1077,3 +1077,9 @@ release lane.
   with centered letterboxing; stage image cards now use the full body height
   below the header. Added conformance coverage that the whole capture is
   contained and not cropped.
+
+## Patch v0.7.1 (2026-11-26)
+
+- Image `CONTAIN`, clamped stage text with a plain character budget, decoded
+  image texture cache, and newest-item selection on open.
+- Shipped as `ags-clipboard v0.7.1`; composition pin follows.

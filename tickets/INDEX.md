@@ -18,7 +18,7 @@
 - [REQ-006-ink-over-cleanup/ticket.md](./REQ-006-ink-over-cleanup/ticket.md) — Use static role-based card header ink | `done` | links: worktree `.worktrees/REQ-006/`, branch `ticket/REQ-006-ink-over-cleanup`
 - [REQ-007-generations-v3/ticket.md](./REQ-007-generations-v3/ticket.md) — Consume Generations v3 (contracts v0.8.0 / ags-platform v1.0.0) | `done` | links: worktree `.worktrees/REQ-007/`, branch `ticket/REQ-007-generations-v3`
 - [REQ-008-dev-pin-parity/ticket.md](./REQ-008-dev-pin-parity/ticket.md) — Refresh the local ags-platform pin to v1.0.1 | `done` | links: worktree `.worktrees/REQ-008/`, branch `ticket/REQ-008-dev-pin-parity`
-- [REQ-009-clipboard-card-modes/ticket.md](./REQ-009-clipboard-card-modes/ticket.md) — Card-stage clipboard: full card deck + compact strip (supersedes REQ-005) | `done` | links: worktree `.worktrees/REQ-009/`, branch `ticket/REQ-009-clipboard-card-modes`; released as v0.7.0
+- [REQ-009-clipboard-card-modes/ticket.md](./REQ-009-clipboard-card-modes/ticket.md) — Card-stage clipboard: full card deck + compact strip (supersedes REQ-005) | `done` | links: worktree `.worktrees/REQ-009/`, branch `ticket/REQ-009-clipboard-card-modes`; released as v0.7.0; patch v0.7.1
 - [REQ-010-dev-pin-parity/ticket.md](./REQ-010-dev-pin-parity/ticket.md) — Refresh the local pin tuple to ags-platform v1.1.0 / contracts v0.12.0 | `done` | links: worktree `.worktrees/REQ-010/`, branch `ticket/REQ-010-dev-pin-parity`
 
 ## Bugs
