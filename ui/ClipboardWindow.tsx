@@ -1888,10 +1888,12 @@ export function ClipboardWindow(
           // `present()` can still hand focus to the first focusable child
           // (the entry), so clear that focus on the next idle tick.
           GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            if (mode === "compact") {
-              root.grab_focus()
-              if (!search.has_focus) searchBox.remove_css_class("focused")
-            }
+            // `present()` can hand focus to the first focusable child (a search
+            // entry). Always give the root the key focus so arrows navigate in
+            // both modes; `/` or a click focuses search intentionally.
+            root.grab_focus()
+            if (!search.has_focus) searchBox.remove_css_class("focused")
+            if (!fullSearch.has_focus) fullSearchBox.remove_css_class("focused")
             return false
           })
           items = readHistory()

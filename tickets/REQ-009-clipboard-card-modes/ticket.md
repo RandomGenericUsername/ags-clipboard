@@ -1083,3 +1083,8 @@ release lane.
 - Image `CONTAIN`, clamped stage text with a plain character budget, decoded
   image texture cache, and newest-item selection on open.
 - Shipped as `ags-clipboard v0.7.1`; composition pin follows.
+
+## Patch v0.7.2 (2026-11-26)
+
+- Root key focus on open in full and compact; full-layout search no longer
+  intercepts arrows. Shipped as `ags-clipboard v0.7.2`.

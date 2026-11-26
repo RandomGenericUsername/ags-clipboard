@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.7.2 — 2026-11-26
+
+- Give the root widget key focus when the overlay opens in both layouts, so
+  the full-layout search entry no longer swallows arrow-key navigation. `/`
+  still focuses search intentionally.
+
 ## v0.7.1 — 2026-11-26
 
 - Image previews now use `Gtk.ContentFit.CONTAIN` with centered letterboxing
